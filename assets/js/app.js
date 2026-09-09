@@ -6,7 +6,7 @@
   'use strict';
 
   /* ── CONSTANTES ─────────────────────────────────────── */
-  const APP_VERSION = '2.4.2';
+  const APP_VERSION = '2.4.4';
 
   const MS = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
   const MS_FULL = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
@@ -499,7 +499,9 @@
       tab === 'tabelas'  ? 'tabelas.' : mod.titulo;
 
     /* a barra de baixo só existe dentro de um módulo */
-    el.navbar.hidden = noHub || tab === 'settings';
+    const semNavbar = noHub || tab === 'settings';
+    el.navbar.hidden = semNavbar;
+    $('app').classList.toggle('sem-navbar', semNavbar);
     if (mod) {
       $('nav-main-lbl').textContent = mod.navLbl;
       $('nav-main-ico').innerHTML = ico(mod.navIco, 'navico');
@@ -1819,47 +1821,51 @@
   /* ══════════════════════════════════════════════════════
      HUB — reordenar segurando e arrastando
      ══════════════════════════════════════════════════════ */
+  /**
+   * Segurar e arrastar para reordenar.
+   *
+   * No toque, o navegador decide se o gesto é rolagem assim que o dedo se
+   * move — e aí cancela o pointer. Por isso: capturamos o ponteiro e, enquanto
+   * arrastamos, cortamos o touchmove num listener NÃO passivo. Só assim o
+   * gesto fica nosso.
+   */
   function ligarArrasto() {
     const caixa = $('hub-cards');
-    let alvo = null, timer = null, y0 = 0, dy = 0, alturas = [], indice = 0, arrastando = false;
+    let alvo = null, timer = null, y0 = 0, dy = 0;
+    let passo = 0, indice = 0, destino = 0;
+    let arrastando = false, ponteiro = null;
 
     const cartoes = () => Array.prototype.slice.call(caixa.children);
 
-    function medir() {
-      alturas = cartoes().map(function (n) { return n.getBoundingClientRect().height + 14; });
-      indice = cartoes().indexOf(alvo);
-    }
-
     function comecar() {
+      if (!alvo) return;
       arrastando = true;
-      medir();
+      indice = cartoes().indexOf(alvo);
+      destino = indice;
+      passo = alvo.getBoundingClientRect().height + 14;
       alvo.classList.add('arrastando');
       cartoes().forEach(function (n) { if (n !== alvo) n.classList.add('deslocando'); });
+      caixa.classList.add('reordenando');
       if (navigator.vibrate) { try { navigator.vibrate(12); } catch (e) {} }
     }
 
-    /** Move visualmente os vizinhos enquanto o cartão é arrastado. */
+    /** Desloca os vizinhos para abrir espaço onde o cartão vai cair. */
     function mover() {
-      const passo = alturas[indice] || 1;
       const salto = Math.round(dy / passo);
-      const destino = Math.max(0, Math.min(cartoes().length - 1, indice + salto));
+      destino = Math.max(0, Math.min(cartoes().length - 1, indice + salto));
       alvo.style.transform = 'translateY(' + dy + 'px)';
       cartoes().forEach(function (n, i) {
         if (n === alvo) return;
-        let desloca = 0;
-        if (indice < destino && i > indice && i <= destino) desloca = -passo;
-        if (indice > destino && i < indice && i >= destino) desloca = passo;
-        n.style.transform = desloca ? 'translateY(' + desloca + 'px)' : '';
+        let d = 0;
+        if (indice < destino && i > indice && i <= destino) d = -passo;
+        if (indice > destino && i < indice && i >= destino) d = passo;
+        n.style.transform = d ? 'translateY(' + d + 'px)' : '';
       });
-      return destino;
     }
 
-    function soltar(destino) {
-      cartoes().forEach(function (n) {
-        n.style.transform = '';
-        n.classList.remove('arrastando', 'deslocando');
-      });
-      if (arrastando && destino !== indice && alvo) {
+    function encerrar() {
+      const moveu = arrastando && destino !== indice && alvo;
+      if (moveu) {
         const irmaos = cartoes();
         const ref = irmaos[destino];
         if (ref) {
@@ -1869,43 +1875,68 @@
           toast('Ordem salva');
         }
       }
-      alvo = null; arrastando = false; dy = 0;
+      cartoes().forEach(function (n) {
+        n.style.transform = '';
+        n.classList.remove('arrastando', 'deslocando');
+      });
+      caixa.classList.remove('reordenando');
+      if (alvo && ponteiro !== null && alvo.releasePointerCapture) {
+        try { alvo.releasePointerCapture(ponteiro); } catch (e) {}
+      }
       clearTimeout(timer);
+      // o clique que vem logo depois de arrastar não deve abrir o módulo
+      if (moveu) caixa.dataset.acabouDeArrastar = '1';
+      alvo = null; ponteiro = null; dy = 0;
+      arrastando = false;
     }
 
     caixa.addEventListener('pointerdown', function (ev) {
+      if (ev.button !== undefined && ev.button !== 0) return;
       const c = ev.target.closest('.hub-card');
       if (!c) return;
-      alvo = c; y0 = ev.clientY; dy = 0;
+      alvo = c; ponteiro = ev.pointerId; y0 = ev.clientY; dy = 0;
+      // manter o ponteiro conosco mesmo se o dedo sair de cima do cartão
+      if (c.setPointerCapture) { try { c.setPointerCapture(ev.pointerId); } catch (e) {} }
       clearTimeout(timer);
-      // segurar por meio segundo entra no modo de reordenar
-      timer = setTimeout(comecar, 500);
+      timer = setTimeout(comecar, 450);
     });
 
     caixa.addEventListener('pointermove', function (ev) {
-      if (!alvo) return;
+      if (!alvo || ev.pointerId !== ponteiro) return;
       dy = ev.clientY - y0;
       if (!arrastando) {
-        // rolar a página cancela a intenção de arrastar
-        if (Math.abs(dy) > 8) { clearTimeout(timer); alvo = null; }
+        // moveu antes de segurar: era rolagem, desiste
+        if (Math.abs(dy) > 10) { clearTimeout(timer); alvo = null; ponteiro = null; }
         return;
       }
-      ev.preventDefault();
       mover();
     });
 
-    ['pointerup', 'pointercancel', 'pointerleave'].forEach(function (e) {
-      caixa.addEventListener(e, function () {
-        if (!alvo) return;
-        if (!arrastando) { clearTimeout(timer); alvo = null; return; }
-        const passo = alturas[indice] || 1;
-        const destino = Math.max(0, Math.min(cartoes().length - 1, indice + Math.round(dy / passo)));
-        soltar(destino);
+    /* Sem isto o navegador rola a página e mata o gesto no toque. */
+    caixa.addEventListener('touchmove', function (ev) {
+      if (arrastando) ev.preventDefault();
+    }, { passive: false });
+
+    /* Segurar abre o menu de contexto em alguns navegadores. */
+    caixa.addEventListener('contextmenu', function (ev) {
+      if (arrastando || alvo) ev.preventDefault();
+    });
+
+    ['pointerup', 'pointercancel'].forEach(function (e) {
+      caixa.addEventListener(e, function (ev) {
+        if (!alvo || (ev.pointerId !== undefined && ev.pointerId !== ponteiro)) return;
+        if (!arrastando) { clearTimeout(timer); alvo = null; ponteiro = null; return; }
+        encerrar();
       });
     });
 
-    /* um clique curto abre o módulo; depois de arrastar, não */
+    /* toque curto abre o módulo; logo após um arrasto, não */
     caixa.addEventListener('click', function (ev) {
+      if (caixa.dataset.acabouDeArrastar) {
+        delete caixa.dataset.acabouDeArrastar;
+        ev.preventDefault(); ev.stopPropagation();
+        return;
+      }
       const c = ev.target.closest('[data-go]');
       if (c && !arrastando) setScreen(c.dataset.go);
     }, true);
