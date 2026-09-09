@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>orçamento. — Simulador Econômico</title>
+<meta name="description" content="Simulador de orçamento pessoal: projete aportes, rendas e o saldo acumulado dos próximos 12 meses em cenário pessimista ou otimista.">
+<meta name="theme-color" content="#123A2C">
+<meta name="color-scheme" content="light">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="orçamento.">
+
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="assets/icons/favicon-32.png" sizes="32x32" type="image/png">
+<link rel="apple-touch-icon" href="assets/icons/apple-touch-icon.png">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/css/app.css">
+</head>
+<body>
+
+<!-- ══ TELA DE ENTRADA ═══════════════════════════════ -->
+<div class="auth" id="auth" hidden>
+
+  <span class="auth-glow" aria-hidden="true"></span>
+  <span class="auth-dots auth-dots-r" aria-hidden="true"></span>
+  <span class="auth-dots auth-dots-l" aria-hidden="true"></span>
+
+  <div class="auth-inner">
+
+    <header class="auth-top">
+      <span class="wordmark auth-wordmark">orçamento.</span>
+      <span class="auth-badge" aria-hidden="true">R$</span>
+    </header>
+
+    <div class="auth-greet">
+      <span class="auth-eyebrow" id="auth-eyebrow">Olá de novo,</span>
+      <h1 class="auth-title" id="auth-title">Bem-vindo!</h1>
+      <span class="auth-sub" id="auth-sub">Entre para ver suas projeções</span>
+    </div>
+
+    <form class="auth-card" id="auth-form" novalidate>
+
+      <div class="auth-tabs">
+        <div class="auth-tab">Acesso seguro</div>
+        <div class="auth-tab-corner" aria-hidden="true"></div>
+        <div class="auth-tab-row">
+          <span class="auth-tab-lbl">Simulador econômico</span>
+          <span class="auth-tab-br">BR</span>
+        </div>
+      </div>
+
+      <div class="auth-fields">
+        <span class="auth-fields-icon" aria-hidden="true">R$</span>
+
+        <label class="auth-field" id="auth-email-field">
+          <span class="auth-lbl">E-mail</span>
+          <span class="auth-line">
+            <span class="auth-dot" aria-hidden="true"></span>
+            <input type="email" id="auth-email" placeholder="voce@email.com"
+                   autocomplete="email" inputmode="email" enterkeyhint="next" required>
+          </span>
+        </label>
+
+        <label class="auth-field" id="auth-pass-field">
+          <span class="auth-lbl" id="auth-pass-label">Senha</span>
+          <span class="auth-line">
+            <span class="auth-dot auth-dot-sq" aria-hidden="true"></span>
+            <input type="password" id="auth-pass" placeholder="••••••••"
+                   autocomplete="current-password" enterkeyhint="go">
+            <button class="auth-reveal" type="button" id="auth-eye">Mostrar</button>
+          </span>
+          <span class="auth-hint" id="auth-pass-hint" hidden>Mínimo de 6 caracteres.</span>
+        </label>
+
+        <div class="auth-row" id="auth-options">
+          <button class="auth-remember" type="button" id="auth-remember" aria-pressed="true">
+            <span class="auth-check" aria-hidden="true"><span class="auth-check-dot"></span></span>
+            Lembrar
+          </button>
+          <button class="auth-forgot" type="button" id="auth-to-reset">Esqueci a senha</button>
+        </div>
+      </div>
+
+      <p class="auth-msg" id="auth-msg" role="status" aria-live="polite"></p>
+
+      <div class="auth-actions" id="auth-actions">
+        <button class="auth-secondary" type="button" id="auth-secondary">Criar conta</button>
+        <button class="auth-primary" type="submit" id="auth-submit">Entrar</button>
+      </div>
+    </form>
+
+    <p class="auth-foot" id="auth-foot">
+      Não tem conta? <button class="auth-foot-link" type="button" id="auth-foot-btn">Criar agora</button>
+    </p>
+
+  </div>
+</div>
+
+<div id="app">
+
+  <!-- ══ APP BAR (mobile) ══════════════════════════════ -->
+  <header class="appbar mobile-only">
+    <span class="wordmark">orçamento.</span>
+    <span class="avatar" id="m-avatar">AM</span>
+  </header>
+
+  <!-- ══ VIEWS (mobile) ════════════════════════════════ -->
+  <div class="views mobile-only" id="views">
+
+    <!-- ── SIMULADOR: tudo numa rolagem só ── -->
+    <section class="view on" id="view-sim" aria-label="Simulador">
+      <div class="view-scroll" id="slot-sim">
+
+        <!-- aba do cenário + saldo inicial -->
+        <div class="m-tabcard">
+          <div class="m-tab" id="m-scenario-tab">Cenário pessimista</div>
+          <div class="m-tab-corner" aria-hidden="true"></div>
+          <div class="m-tab-row">
+            <label class="m-tab-lbl" for="m-si">Saldo inicial</label>
+            <span class="m-si-wrap">
+              <span class="m-si-pfx">R$</span>
+              <input type="text" id="m-si" value="0" inputmode="decimal"
+                     autocomplete="off" enterkeyhint="done" aria-label="Saldo inicial em reais">
+            </span>
+          </div>
+        </div>
+
+        <!-- acumulado + cenário + ações -->
+        <div class="m-hero">
+          <div class="m-hero-top">
+            <span class="m-hero-k">Acumulado</span>
+            <div class="m-vtog" role="group" aria-label="Cenário">
+              <button id="bp-m" class="on" data-view="p" aria-pressed="true">Pes.</button>
+              <button id="bo-m" data-view="o" aria-pressed="false">Otim.</button>
+            </div>
+          </div>
+          <span class="m-hero-val-wrap">
+            <span class="m-hero-pfx">R$</span>
+            <span class="m-hero-val" id="m-acum-val">0</span>
+          </span>
+          <span class="m-hero-period" id="m-acum-period">em 12 meses</span>
+          <span class="m-hero-growth" id="m-growth">12 meses</span>
+          <div class="m-hero-actions">
+            <button class="m-btn-edit" id="m-btn-edit">Editar</button>
+            <button class="m-btn-add" id="m-btn-add">+ Entrada</button>
+          </div>
+          <span class="save-st" id="save-st" role="status" aria-live="polite"></span>
+        </div>
+
+        <!-- KPIs em faixa rolante -->
+        <div class="m-kpis" id="m-kpis"></div>
+
+        <!-- seletor de mês -->
+        <div class="m-months" id="m-months" role="tablist" aria-label="Meses"></div>
+
+        <!-- curva do acumulado -->
+        <div class="m-curve">
+          <div class="m-curve-hd">
+            <span class="m-curve-k">Curva do acumulado</span>
+            <span class="m-curve-final" id="m-curve-final">R$0 final</span>
+          </div>
+          <div class="m-curve-body" id="m-curve-body"></div>
+          <div class="m-curve-axis" id="m-curve-axis"></div>
+        </div>
+
+        <!-- mês selecionado -->
+        <div class="m-sel-hd">
+          <span class="m-sel-lbl" id="m-sel-lbl">—</span>
+          <span class="m-sel-saldo" id="m-sel-saldo">saldo R$0</span>
+        </div>
+        <div class="card m-card" id="m-entries"></div>
+
+        <!-- tabela mês a mês -->
+        <div class="m-sel-hd">
+          <span class="m-sel-lbl">Tabela mês a mês</span>
+          <span class="m-sel-note" id="m-table-note">cenário pessimista</span>
+        </div>
+        <div class="card m-card m-table" id="m-table"></div>
+
+      </div>
+    </section>
+
+    <!-- ── MENU: entradas, legenda e ajustes ── -->
+    <section class="view" id="view-menu" aria-label="Menu">
+      <div class="view-scroll" id="slot-menu"></div>
+    </section>
+
+  </div>
+
+  <!-- ══ NAV FLUTUANTE (mobile) ════════════════════════ -->
+  <nav class="navbar mobile-only" id="navbar" aria-label="Navegação principal">
+    <div class="navbar-pill">
+      <button class="navitem on" data-tab="sim" aria-current="page">
+        <span class="navdot navdot-sq" aria-hidden="true"></span>
+        simulador
+      </button>
+      <span class="navfab-slot">
+        <button class="navfab" id="fab-add" aria-label="Nova entrada">
+          <span class="navfab-plus" aria-hidden="true"></span>
+        </button>
+      </span>
+      <button class="navitem" data-tab="menu">
+        <span class="navdot" aria-hidden="true"></span>
+        menu
+      </button>
+    </div>
+  </nav>
+
+  <!-- ══ SIDEBAR (desktop) ═════════════════════════════ -->
+  <aside class="sb desktop-only" id="sb">
+    <div class="sb-scroll" id="sb-scroll">
+      <div class="sb-wordmark">
+        <span class="wordmark">orçamento.</span>
+        <span class="avatar" id="avatar">AM</span>
+      </div>
+      <div id="slot-sb-hero"></div>
+      <div id="slot-sb-list" style="flex:1;min-height:0;display:flex"></div>
+      <div id="slot-sb-legend"></div>
+    </div>
+  </aside>
+
+  <!-- ══ MAIN (desktop) ════════════════════════════════ -->
+  <main class="main desktop-only" id="main">
+    <header class="main-hd">
+      <div class="main-hd-left">
+        <span class="main-sub">Acompanhe aportes, rendas e o saldo do período</span>
+        <h1 class="main-title">Projeção mensal</h1>
+      </div>
+      <div class="vtog" role="group" aria-label="Cenário">
+        <button id="bp" class="on" data-view="p" aria-pressed="true">Pessimista</button>
+        <button id="bo" data-view="o" aria-pressed="false">Otimista</button>
+      </div>
+    </header>
+    <div id="slot-main-kpis"></div>
+    <div class="twrap">
+      <div class="tscroll">
+        <div class="tinner" id="tinner"></div>
+      </div>
+    </div>
+  </main>
+
+  <!-- ══ COMPONENTES REALOCÁVEIS ═══════════════════════
+       Movidos entre os slots mobile / desktop por app.js -->
+
+  <!-- cartão escuro: saldo inicial + acumulado + ações -->
+  <div id="c-hero" class="sb-card desktop-only">
+    <div class="scenario-tab desktop-only" id="scenario-tab">Cenário pessimista</div>
+    <div class="scenario-tab-corner desktop-only"></div>
+    <div class="hero">
+      <span class="hero-tab mobile-only" id="scenario-tab-m">
+        <span class="dot"></span><span>Cenário pessimista</span>
+      </span>
+      <div class="opening-row">
+        <label class="opening-lbl" for="si">Saldo inicial</label>
+        <div class="opening-inp-wrap">
+          <span class="opening-pfx">R$</span>
+          <input type="text" id="si" value="0" inputmode="decimal"
+                 autocomplete="off" enterkeyhint="done" aria-label="Saldo inicial em reais">
+        </div>
+      </div>
+      <div class="acum-dashed">
+        <span class="acum-icon" aria-hidden="true">R$</span>
+        <div class="acum-total-wrap">
+          <span class="acum-pfx">R$</span>
+          <span class="acum-val" id="sb-final">0</span>
+        </div>
+        <span class="acum-period" id="sb-final-label">Acumulado em 12 meses</span>
+        <span class="acum-growth" id="sb-growth">12 meses</span>
+      </div>
+      <div class="hero-actions">
+        <button class="btn-edit" id="btn-settings">Ajustes</button>
+        <button class="btn-add" id="btn-add">+ Entrada</button>
+      </div>
+      <span class="save-st" id="save-st-d" role="status" aria-live="polite"></span>
+    </div>
+  </div>
+
+  <!-- KPIs -->
+  <div id="c-kpis" class="kpi-grid desktop-only"></div>
+
+  <!-- lista de entradas -->
+  <div id="c-list" class="card sb-list-card">
+    <div class="sb-list-hd">
+      <div class="sb-list-top">
+        <span class="card-title">Entradas</span>
+        <span class="pill-count" id="elist-count">0</span>
+      </div>
+      <div class="search-wrap">
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+          <circle cx="6" cy="6" r="4.2" stroke="#9CB2A4" stroke-width="1.3"/>
+          <path d="M9.4 9.4l2.6 2.6" stroke="#9CB2A4" stroke-width="1.3" stroke-linecap="round"/>
+        </svg>
+        <input type="search" id="esearch" placeholder="Buscar entrada"
+               autocomplete="off" enterkeyhint="search" aria-label="Buscar entrada">
+      </div>
+    </div>
+    <div class="sb-list-body elist" id="elist"></div>
+  </div>
+
+  <!-- legenda -->
+  <div id="c-legend" class="legend">
+    <span class="leg-item"><span class="leg-dot" style="background:var(--dot-fs)"></span>Poupança</span>
+    <span class="leg-item"><span class="leg-dot" style="background:var(--dot-os)"></span>Pontual</span>
+    <span class="leg-item"><span class="leg-dot" style="background:var(--dot-ci)"></span>Renda certa</span>
+    <span class="leg-item"><span class="leg-dot" style="background:var(--dot-ui)"></span>Renda incerta</span>
+    <span class="leg-item"><span class="leg-dot" style="background:var(--dot-em)"></span>Empréstimo</span>
+    <span class="leg-item"><span class="leg-dot" style="background:var(--dot-co)"></span>Consórcio</span>
+  </div>
+
+  <!-- ajustes -->
+  <div id="c-settings" style="display:flex;flex-direction:column;gap:14px">
+
+    <div class="card">
+      <div class="set-block">
+        <span class="set-title">Exportar dados</span>
+        <p class="set-desc">Copie o JSON abaixo para fazer backup ou levar seus dados para outro aparelho.</p>
+        <textarea id="export-ta" class="ta" readonly aria-label="JSON exportado"></textarea>
+        <button class="btn-solid" id="btn-export">Copiar JSON</button>
+        <button class="btn-ghost" id="btn-export-file">Baixar arquivo</button>
+        <span class="fb ok" id="export-fb"></span>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="set-block">
+        <span class="set-title">Importar dados</span>
+        <p class="set-desc">Cole um JSON exportado anteriormente para restaurar suas entradas.</p>
+        <textarea id="import-ta" class="ta" placeholder='{"entries":[...],"saldoInicial":0}'
+                  spellcheck="false" aria-label="JSON para importar"></textarea>
+        <button class="btn-solid" id="btn-import">Importar</button>
+        <span class="fb" id="import-fb"></span>
+      </div>
+    </div>
+
+    <div class="card" id="account-card" hidden>
+      <div class="set-block">
+        <span class="set-title">Conta</span>
+        <p class="set-desc">Você está conectado como <strong id="account-email">—</strong>. As entradas sincronizam sozinhas entre seus aparelhos.</p>
+        <button class="btn-ghost" id="btn-signout">Sair da conta</button>
+      </div>
+    </div>
+
+    <div class="card" id="install-card" hidden>
+      <div class="set-block">
+        <span class="set-title">Instalar app</span>
+        <p class="set-desc">Adicione o orçamento. à tela inicial para abrir em tela cheia e funcionar offline.</p>
+        <button class="btn-solid" id="btn-install">Instalar</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="set-block">
+        <span class="set-title">Dados locais</span>
+        <p class="set-desc">Tudo fica guardado só neste aparelho. Apagar volta às entradas originais.</p>
+        <button class="btn-ghost" id="btn-reset">Apagar dados salvos</button>
+        <span class="fb" id="reset-fb"></span>
+      </div>
+    </div>
+
+    <p class="about">orçamento. · simulador econômico<br><span id="app-version">v1.0</span></p>
+  </div>
+
+  <!-- ══ SHEETS ════════════════════════════════════════ -->
+  <div class="sheet-backdrop" id="backdrop"></div>
+
+  <!-- formulário de entrada -->
+  <div class="sheet" id="sheet-form" role="dialog" aria-modal="true" aria-labelledby="ftitle">
+    <span class="sheet-grab mobile-only" aria-hidden="true"></span>
+    <div class="fhd">
+      <button class="bbk" id="form-back" aria-label="Voltar">
+        <svg width="18" height="18" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+          <path d="M10 12L6 8l4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </button>
+      <div class="ftitle" id="ftitle">Nova entrada</div>
+    </div>
+    <div class="fbody">
+      <div class="ff">
+        <label class="fl" for="fn">Nome</label>
+        <input type="text" class="fi" id="fn" placeholder="ex: Poupança mensal" enterkeyhint="next">
+      </div>
+      <div class="ff">
+        <label class="fl" for="ft">Tipo</label>
+        <select class="fsel" id="ft">
+          <option value="fs">Poupança frequente (todo mês)</option>
+          <option value="os">Poupança pontual</option>
+          <option value="ci">Renda extra certa</option>
+          <option value="ui">Renda extra incerta</option>
+          <option value="em">Empréstimo</option>
+          <option value="co">Consórcio</option>
+        </select>
+      </div>
+      <div class="ff" id="fa">
+        <label class="fl" for="famt">Valor (R$)</label>
+        <input type="text" class="fi" id="famt" placeholder="0" inputmode="decimal" enterkeyhint="done">
+      </div>
+      <div id="fr" hidden>
+        <div class="frow">
+          <div class="ff">
+            <label class="fl" for="fmin">Mínimo (R$)</label>
+            <input type="text" class="fi" id="fmin" placeholder="0" inputmode="decimal">
+          </div>
+          <div class="ff">
+            <label class="fl" for="fmax">Máximo (R$)</label>
+            <input type="text" class="fi" id="fmax" placeholder="0" inputmode="decimal">
+          </div>
+        </div>
+      </div>
+      <div class="ff" id="fmn" hidden>
+        <label class="cbrow">
+          <input type="checkbox" id="fmno">
+          Pode não ocorrer (pessimista = R$ 0)
+        </label>
+      </div>
+      <div class="ff" id="fms" hidden>
+        <span class="fl">Meses</span>
+        <div class="range-row">
+          <span class="range-lbl">Repetir de</span>
+          <select class="range-sel" id="rFrom" aria-label="Mês inicial"></select>
+          <span class="range-lbl">até</span>
+          <select class="range-sel" id="rTo" aria-label="Mês final"></select>
+          <button class="range-clr" id="range-clr" title="Limpar seleção" aria-label="Limpar seleção">✕</button>
+        </div>
+        <div class="mgrid" id="mgrid"></div>
+      </div>
+      <div class="ff">
+        <label class="cbrow">
+          <input type="checkbox" id="fhid">
+          Ocultar desta visualização
+        </label>
+      </div>
+    </div>
+    <div class="ffoot">
+      <button class="bcn" id="form-cancel">Cancelar</button>
+      <button class="bsv" id="form-save">Salvar</button>
+    </div>
+  </div>
+
+  <!-- ajustes (sheet no desktop) -->
+  <div class="sheet" id="sheet-settings" role="dialog" aria-modal="true" aria-label="Ajustes">
+    <span class="sheet-grab mobile-only" aria-hidden="true"></span>
+    <div class="fhd">
+      <button class="bbk" id="settings-back" aria-label="Voltar">
+        <svg width="18" height="18" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+          <path d="M10 12L6 8l4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </button>
+      <div class="ftitle">Ajustes</div>
+    </div>
+    <div class="fbody" id="slot-settings-sheet"></div>
+  </div>
+
+  <!-- componentes que ficam fora do fluxo no breakpoint atual -->
+  <div id="parked" hidden></div>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+</div>
+
+<script src="assets/js/config.js"></script>
+<script src="assets/vendor/supabase.js"></script>
+<script src="assets/js/store.js"></script>
+<script src="assets/js/app.js"></script>
+</body>
+</html>
