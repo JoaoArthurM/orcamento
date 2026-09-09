@@ -6,7 +6,7 @@
   'use strict';
 
   /* ── CONSTANTES ─────────────────────────────────────── */
-  const APP_VERSION = '1.3.1';
+  const APP_VERSION = '1.3.2';
 
   const MS = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
   const MS_FULL = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
@@ -328,9 +328,10 @@
     const sbVal = decIdx >= 0 ? acum[decIdx] : finalVal;
 
     const periodo = decIdx >= 0 ? 'Acumulado em dezembro ' + curY : 'Acumulado em 12 meses';
-    const growth = saldoInicial > 0
+    const pct = saldoInicial > 0
       ? '+' + Math.round(((sbVal - saldoInicial) / saldoInicial) * 100) + '%'
-      : '12 meses';
+      : null;
+    const growth = pct || '12 meses';
 
     // sidebar (desktop)
     el.sbFinal.textContent = num(sbVal);
@@ -341,7 +342,7 @@
     const last = w12[w12.length - 1];
     $('m-acum-val').textContent = num(finalVal);
     $('m-acum-period').textContent = 'em ' + MS[last.m - 1].toLowerCase() + ' ' + String(last.y).slice(2);
-    $('m-growth').textContent = growth;
+    $('m-growth').textContent = pct ? pct + ' no período' : '12 meses';
 
     const txt = 'Cenário ' + (view === 'p' ? 'pessimista' : 'otimista');
     if (el.scenarioTab) el.scenarioTab.textContent = txt;
