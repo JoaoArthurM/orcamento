@@ -199,6 +199,17 @@ npx serve -l 4173 .
 # abre http://localhost:4173
 ```
 
+## Campos de dinheiro
+
+Máscara de centavos, como nos apps de banco: cada dígito entra pela direita.
+`1` → 0,01 · `1243` → 12,43 · `124300` → 1.243,00
+
+A [literatura de UX](https://uxpatterns.dev/patterns/forms/currency-input)
+desaconselha formatar durante a digitação porque o cursor pula ao inserir o
+separador de milhar. Essa máscara escapa disso: o cursor fica fixo no fim.
+
+Campos novos de valor entram na lista `CAMPOS_DINHEIRO` em `app.js`.
+
 ## Testes
 
 A camada de dados (diff por linha, normalização, reconciliação) tem 72

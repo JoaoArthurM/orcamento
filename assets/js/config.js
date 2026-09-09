@@ -18,6 +18,6 @@
    local (dados só neste aparelho, como antes do Supabase).
    ══════════════════════════════════════════════════════ */
 window.ORCAMENTO_CONFIG = {
-  SUPABASE_URL: '',
-  SUPABASE_ANON_KEY: '',
+  SUPABASE_URL: 'https://cctuyzmsdyfxupymdkvj.supabase.co',
+  SUPABASE_ANON_KEY: 'sb_publishable_AJvQ-rlmtDnkD32GZ4Sb8Q_sQic82px',
 };
