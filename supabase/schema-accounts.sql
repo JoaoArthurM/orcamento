@@ -15,6 +15,7 @@
 --   fixa       → amount + due_day + paid     (valor previsível, dia certo)
 --   variavel   → amount + avg_amount         (oscila mês a mês)
 --   assinatura → amount                      (mensal; o anual é derivado)
+--   economia   → amount                      (quanto se guarda por mês)
 --
 -- Nada de total anual guardado: sai sempre de amount * 12, para não
 -- haver como ficar fora de sincronia.
@@ -23,7 +24,7 @@ create table if not exists public.accounts (
   user_id       uuid        not null references auth.users(id) on delete cascade,
 
   kind          text        not null
-                            check (kind in ('renda','fixa','variavel','assinatura')),
+                            check (kind in ('renda','fixa','variavel','assinatura','economia')),
   name          text        not null check (length(trim(name)) > 0 and length(name) <= 120),
 
   -- valor mensal corrente (para renda: o quanto entra por ocorrência)
@@ -52,6 +53,7 @@ create table if not exists public.accounts (
      or (kind = 'fixa'       and due_day   is not null)
      or (kind = 'variavel')
      or (kind = 'assinatura')
+     or (kind = 'economia')
   )
 );
 
@@ -112,7 +114,10 @@ $$;
 -- normalizadas para o equivalente mensal:
 --   semanal ×4.345 · quinzenal ×2 · anual ÷12 · pontual não entra
 -- ══════════════════════════════════════════════════════
-create or replace view public.contas_resumo as
+-- CREATE OR REPLACE só acrescenta coluna no fim; como a ordem mudou,
+-- a view é recriada. Nada depende dela além do SQL Editor.
+drop view if exists public.contas_resumo;
+create view public.contas_resumo as
 select
   user_id,
   coalesce(sum(case when kind = 'renda' then amount * case frequency
@@ -125,6 +130,8 @@ select
   coalesce(sum(amount) filter (where kind = 'variavel'), 0)   as contas_variaveis,
   coalesce(sum(amount) filter (where kind = 'assinatura'), 0) as assinaturas,
   coalesce(sum(amount) filter (where kind = 'assinatura'), 0) * 12 as assinaturas_ano,
+  coalesce(sum(amount) filter (where kind = 'economia'), 0)   as economia,
+  coalesce(sum(amount) filter (where kind = 'economia'), 0) * 12 as economia_ano,
   count(*) filter (where kind = 'renda')                      as fontes_renda,
   count(*) filter (where kind = 'fixa' and not paid)           as fixas_em_aberto
 from public.accounts

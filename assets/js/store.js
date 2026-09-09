@@ -166,7 +166,7 @@
     return out;
   }
 
-  const KINDS_OK = ['renda', 'fixa', 'variavel', 'assinatura'];
+  const KINDS_OK = ['renda', 'fixa', 'variavel', 'assinatura', 'economia'];
   const FREQ_OK  = ['mensal', 'quinzenal', 'semanal', 'anual', 'pontual'];
 
   /** Quanto uma renda representa por mês, seja qual for a frequência. */

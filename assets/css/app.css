@@ -1865,6 +1865,17 @@ svg { display: block; flex: none; }
 .ct-meta-v { font-size: 12px; font-weight: 600; font-variant-numeric: tabular-nums; }
 .ct-meta-lbl { font-size: 9.5px; }
 
+/* meta já alcançada pelo quanto se guarda hoje */
+.ct-meta { position: relative; }
+.ct-meta-ok {
+  position: absolute; top: -6px; right: -4px;
+  width: 18px; height: 18px; border-radius: 50%;
+  background: var(--lime); color: var(--dark);
+  border: 2px solid var(--dark);
+  display: flex; align-items: center; justify-content: center;
+}
+.ct-meta-ok .ico { width: 10px; height: 10px; stroke-width: 2.6; }
+
 /* o módulo de contas é só de mobile */
 @media (min-width: 1024px) {
   #view-contas { display: none !important; }

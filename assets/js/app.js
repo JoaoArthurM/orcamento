@@ -6,7 +6,7 @@
   'use strict';
 
   /* ── CONSTANTES ─────────────────────────────────────── */
-  const APP_VERSION = '2.4.4';
+  const APP_VERSION = '2.5.0';
 
   const MS = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
   const MS_FULL = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
@@ -166,6 +166,7 @@
     fixa:       { rotulo: 'Conta fixa', ico: 'calendar', bg: '#FAF2DF', fg: '#B58F3F' },
     variavel:   { rotulo: 'Variável',   ico: 'graph-up', bg: '#FBEFE7', fg: '#D98F62' },
     assinatura: { rotulo: 'Assinatura', ico: 'repeat',   bg: '#F1F6EE', fg: '#93AA9B' },
+    economia:   { rotulo: 'Economia',   ico: 'piggy-bank', bg: '#E4F2E9', fg: '#2F6142' },
   };
 
   const FREQ_LABEL = {
@@ -193,12 +194,15 @@
     const variaveis  = doTipo('variavel').reduce(function (a, c) { return a + c.amount; }, 0);
     const varMedia   = doTipo('variavel').reduce(function (a, c) { return a + (c.avg_amount || 0); }, 0);
     const assinaturas= doTipo('assinatura').reduce(function (a, c) { return a + c.amount; }, 0);
-    const comprometido = fixas + variaveis + assinaturas;
+    const economia   = doTipo('economia').reduce(function (a, c) { return a + c.amount; }, 0);
+    // guardar é um destino do dinheiro como outro qualquer: sai da sobra
+    const comprometido = fixas + variaveis + assinaturas + economia;
     const sobra = renda - comprometido;
     const pct = (v) => (renda > 0 ? Math.max(0, (v / renda) * 100) : 0);
     return {
-      renda, fixas, variaveis, varMedia, assinaturas, comprometido, sobra,
+      renda, fixas, variaveis, varMedia, assinaturas, economia, comprometido, sobra,
       pctFixas: pct(fixas), pctSubs: pct(assinaturas), pctVar: pct(variaveis),
+      pctEco: pct(economia),
       pctSobra: renda > 0 ? Math.max(0, (sobra / renda) * 100) : 0,
       fontes: doTipo('renda').length,
       emAberto: doTipo('fixa').filter(function (c) { return !c.paid; }).length,
@@ -975,6 +979,7 @@
       { pct: r.pctFixas, cor: '#B58F3F', nome: 'Contas' },
       { pct: r.pctSubs,  cor: '#93AA9B', nome: 'Assinaturas' },
       { pct: r.pctVar,   cor: '#D98F62', nome: 'Variáveis' },
+      { pct: r.pctEco,   cor: '#2F6142', nome: 'Economia' },
       { pct: r.pctSobra, cor: 'var(--lime)', nome: 'Livre' },
     ];
     $('ct-bar').innerHTML = faixas.map(function (f) {
@@ -1029,10 +1034,25 @@
         }).join('')
       : vazio('Nenhuma assinatura', 'Streaming, apps, academia…');
 
-    /* metas */
-    $('ct-save-sub').textContent = 'Sobre a renda de R$ ' + num(r.renda);
+    /* economia */
+    const ecos = doTipo('economia');
+    $('ct-eco-total').textContent = 'R$ ' + num(r.economia) + '/mês';
+    $('ct-economia').innerHTML = ecos.length
+      ? ecos.map(function (c) {
+          return linha(c, KIND_META.economia, 'R$ ' + num(c.amount * 12) + '/ano', 'renda');
+        }).join('')
+      : vazio('Nada guardado ainda', 'Cadastre quanto você separa por mês.');
+
+    /* metas — com a economia real comparada a elas */
+    const pctReal = r.renda > 0 ? (r.economia / r.renda) * 100 : 0;
+    $('ct-save-sub').textContent = r.economia > 0
+      ? 'Você guarda R$ ' + num(r.economia) + ' — ' +
+        pctReal.toLocaleString('pt-BR', { maximumFractionDigits: 1 }) + '% da renda'
+      : 'Sobre a renda de R$ ' + num(r.renda);
     $('ct-metas').innerHTML = METAS.map(function (t) {
-      return '<div class="ct-meta" style="background:' + t.bg + '">' +
+      const batida = pctReal >= t.pct;
+      return '<div class="ct-meta' + (batida ? ' batida' : '') + '" style="background:' + t.bg + '">' +
+        (batida ? '<span class="ct-meta-ok">' + ico('check') + '</span>' : '') +
         '<span class="ct-meta-pct" style="color:' + t.fg + '">' + t.pct + '%</span>' +
         '<span class="ct-meta-v-wrap">' +
           '<span class="ct-meta-pfx" style="color:' + t.note + '">R$</span>' +

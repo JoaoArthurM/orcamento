@@ -1,7 +1,7 @@
 /* orçamento. — service worker
    App shell em cache-first, rede em segundo plano para atualizar. */
 
-const VERSION = 'v2.4.4';
+const VERSION = 'v2.5.0';
 const CACHE   = 'orcamento-' + VERSION;
 
 const SHELL = [

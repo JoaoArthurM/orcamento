@@ -73,6 +73,7 @@ Uma linha por registro em `accounts`, separadas pelo campo `kind`:
 | `fixa` | dia do vencimento, pago | valor previsível, data certa |
 | `variavel` | média dos últimos meses | oscila mês a mês |
 | `assinatura` | — | mensal recorrente |
+| `economia` | — | quanto se guarda por mês |
 
 **O total anual nunca é guardado**: sai de `valor × 12`. As rendas são
 normalizadas para o equivalente mensal antes de somar:
@@ -85,7 +86,8 @@ normalizadas para o equivalente mensal antes de somar:
 | uma vez por ano | ÷12 |
 | pontual | não entra no fluxo mensal |
 
-`sobra = renda − fixas − variáveis − assinaturas`. A barra do topo mostra a
+`sobra = renda − fixas − variáveis − assinaturas − economia` — guardar é um
+destino do dinheiro como outro qualquer, então sai da sobra. A barra do topo mostra a
 fatia de cada grupo sobre a renda, e as metas de economia são 10 / 20 / 30%
 dela.
 
@@ -131,6 +133,9 @@ nesta ordem:
 1. [`supabase/schema.sql`](supabase/schema.sql) — `entries` e `settings` (economia)
 2. [`supabase/schema-loans.sql`](supabase/schema-loans.sql) — `loans` (empréstimos)
 3. [`supabase/schema-accounts.sql`](supabase/schema-accounts.sql) — `accounts` (contas)
+
+Quem criou `accounts` antes do tipo `economia` precisa rodar também
+[`supabase/schema-accounts-economia.sql`](supabase/schema-accounts-economia.sql).
 
 Os dois ligam o RLS e publicam no Realtime. É seguro rodar de novo.
 
