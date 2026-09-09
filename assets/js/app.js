@@ -6,7 +6,7 @@
   'use strict';
 
   /* ── CONSTANTES ─────────────────────────────────────── */
-  const APP_VERSION = '3.1.0';
+  const APP_VERSION = '3.1.1';
 
   const MS = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
   const MS_FULL = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
@@ -2580,6 +2580,7 @@
     hideAuth();
     $('account-card').hidden = false;
     $('password-card').hidden = false;
+    $('btn-signout').hidden = false;
     $('account-email').textContent = u.email || '—';
 
     // iniciais a partir do e-mail, para o avatar do topo
@@ -2618,6 +2619,7 @@
     hideAuth();
     $('account-card').hidden = true;
     $('password-card').hidden = true;
+    $('btn-signout').hidden = true;
     const cached = Store.localState() || Store.legacyState();
     adoptState(cached || seedState());
     applySI(); render();
