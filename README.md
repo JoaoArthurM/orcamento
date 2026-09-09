@@ -199,6 +199,15 @@ npx serve -l 4173 .
 # abre http://localhost:4173
 ```
 
+## Testes
+
+A camada de dados (diff por linha, normalização, reconciliação) tem 72
+asserções, com um cliente Supabase falso — não tocam a rede nem o seu projeto.
+
+```bash
+node tests/run-all.js
+```
+
 ## Publicar
 
 Arquivos estáticos, sem build. Em **GitHub Pages** (Settings → Pages → branch `main`,
@@ -250,6 +259,8 @@ supabase/schema-accounts.sql accounts, RLS e realtime
 manifest.webmanifest       metadados do PWA
 sw.js                      service worker (app shell offline)
 assets/icons/              ícones 192/512/maskable/apple-touch
+tests/                     asserções da camada de dados (node tests/run-all.js)
+CLAUDE.md                  contexto e armadilhas para quem for mexer no código
 ```
 
 Os componentes compartilhados (`#c-list`, `#c-legend`, `#c-settings`) são movidos

@@ -1815,10 +1815,22 @@ svg { display: block; flex: none; }
   font-size: 13.5px; font-weight: 500; letter-spacing: -.015em;
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
+.ct-sub-row { display: flex; align-items: center; gap: 7px; min-width: 0; }
 .ct-sub {
   font-size: 11px; color: #8AA294;
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
+
+/* pastilha de pago / em aberto — também é o botão de alternar */
+.ct-pill {
+  flex: none;
+  border-radius: 99px; padding: 3px 9px;
+  font-size: 10px; font-weight: 600; white-space: nowrap;
+  line-height: 1.4;
+  transition: filter 140ms, transform 140ms;
+}
+.ct-pill:active { transform: scale(.94); }
+.ct-pill:hover { filter: brightness(.96); }
 .ct-amt { display: flex; align-items: baseline; gap: 2px; white-space: nowrap; flex: none; }
 .ct-amt-pfx { font-size: 10px; color: #8AA294; align-self: flex-start; padding-top: 2px; }
 .ct-amt-v {

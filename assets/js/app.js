@@ -6,7 +6,7 @@
   'use strict';
 
   /* ── CONSTANTES ─────────────────────────────────────── */
-  const APP_VERSION = '2.5.0';
+  const APP_VERSION = '3.1.0';
 
   const MS = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
   const MS_FULL = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
@@ -69,6 +69,7 @@
   let loans        = [];
   let contas       = [];
   let editContaId  = null;
+  let hubOrder     = null;   // ordem dos módulos no hub, vinda da conta
   let saldoInicial = 0;
   let screen       = 'hub';     // hub · eco · loans
   let loanFilter   = 'todos';   // todos · aberto · atrasados · quitados
@@ -183,6 +184,18 @@
 
   const doTipo = (k) => contas.filter(function (c) { return c.kind === k; });
 
+  /** "AAAA-MM" de hoje — o mês que manda no estado das contas fixas. */
+  const mesAtual = () => Store.hoje().slice(0, 7);
+
+  /**
+   * Uma conta fixa está paga só se foi paga NESTE mês. Como o estado é
+   * derivado da data, toda conta reabre sozinha na virada do mês — sem
+   * rotina agendada nem nada rodando por trás.
+   */
+  function estaPaga(c) {
+    return !!c.paid_on && c.paid_on.slice(0, 7) === mesAtual();
+  }
+
   /** Quanto uma renda vale por mês, seja qual for a frequência. */
   function rendaMensal(c) {
     return c.amount * (Store.FREQ_MES[c.frequency] !== undefined ? Store.FREQ_MES[c.frequency] : 1);
@@ -205,7 +218,7 @@
       pctEco: pct(economia),
       pctSobra: renda > 0 ? Math.max(0, (sobra / renda) * 100) : 0,
       fontes: doTipo('renda').length,
-      emAberto: doTipo('fixa').filter(function (c) { return !c.paid; }).length,
+      emAberto: doTipo('fixa').filter(function (c) { return !estaPaga(c); }).length,
     };
   }
 
@@ -311,6 +324,49 @@
     }
     return n.toLocaleString('pt-BR', { maximumFractionDigits: 0 });
   }
+  /* ══════════════════════════════════════════════════════
+     MÁSCARA DE DINHEIRO
+     ══════════════════════════════════════════════════════ */
+
+  /** Todo campo de valor do app. */
+  const CAMPOS_DINHEIRO = [
+    'si', 'm-si',                                        // saldo inicial
+    'famt', 'fmin', 'fmax',                              // entradas
+    'lo-principal', 'lo-total', 'lo-received',
+    'lo-installment-amount',                             // empréstimos
+    'ct-amount', 'ct-avg',                               // contas
+  ];
+
+  /**
+   * Máscara de centavos, como nos apps de banco: cada dígito entra pela
+   * direita. 1 → 0,01 · 12 → 0,12 · 1243 → 12,43 · 124300 → 1.243,00
+   *
+   * O cursor fica sempre no fim, e é justamente isso que evita o salto de
+   * caret que atrapalha máscaras que agrupam o milhar durante a digitação.
+   */
+  function mascaraDinheiro(input) {
+    if (!input) return;
+
+    function aoDigitar() {
+      const digitos = input.value.replace(/\D/g, '').slice(0, 12);   // até 9.999.999.999,99
+      input.value = digitos
+        ? (Number(digitos) / 100).toLocaleString('pt-BR',
+            { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+        : '';
+      aoFim();
+    }
+
+    function aoFim() {
+      const fim = input.value.length;
+      try { input.setSelectionRange(fim, fim); } catch (e) {}
+    }
+
+    input.addEventListener('input', aoDigitar);
+    // clicar no meio do número não deixa editar no meio: volta para o fim
+    input.addEventListener('focus', function () { setTimeout(aoFim, 0); });
+    input.addEventListener('click', aoFim);
+  }
+
   /** Aceita "1.234,56", "1234.56", "1234" e devolve Number. */
   function parseBRL(s) {
     if (s === null || s === undefined) return 0;
@@ -377,7 +433,7 @@
   function triggerSave() {
     clearTimeout(saveTimer);
     saveTimer = setTimeout(function () {
-      Store.save(entries, saldoInicial, loans, contas);
+      Store.save(entries, saldoInicial, loans, contas, hubOrder);
     }, 500);
   }
 
@@ -387,6 +443,7 @@
     saldoInicial = state.saldoInicial;
     loans        = state.loans || [];
     contas       = state.accounts || [];
+    if (Array.isArray(state.hubOrder)) hubOrder = state.hubOrder;
   }
 
   function seedState() {
@@ -442,13 +499,32 @@
 
   const VIEWS = ['view-hub', 'view-sim', 'view-loans', 'view-contas', 'view-tabelas', 'view-settings'];
 
+  /* Onde o usuário estava. sessionStorage: o reload mantém, uma aba nova
+     começa do hub. */
+  const TELA_KEY = 'orcamento:tela';
+
+  function lembrarTela() {
+    try { sessionStorage.setItem(TELA_KEY, JSON.stringify({ screen: screen, tab: tab })); } catch (e) {}
+  }
+
+  function telaLembrada() {
+    try {
+      const d = JSON.parse(sessionStorage.getItem(TELA_KEY) || 'null');
+      if (d && (d.screen === 'hub' || MODULOS[d.screen])) return d;
+    } catch (e) {}
+    return null;
+  }
+
   /* Ordem dos módulos no hub — o usuário reordena arrastando. */
   const ORDEM_PADRAO = ['loans', 'eco', 'contas'];
   const ORDEM_KEY = 'orcamento:hub-ordem';
 
   function lerOrdem() {
-    let salvo = null;
-    try { salvo = JSON.parse(localStorage.getItem(ORDEM_KEY) || 'null'); } catch (e) {}
+    // a conta manda; o aparelho é só o fallback do modo local
+    let salvo = hubOrder;
+    if (!Array.isArray(salvo)) {
+      try { salvo = JSON.parse(localStorage.getItem(ORDEM_KEY) || 'null'); } catch (e) {}
+    }
     if (!Array.isArray(salvo)) return ORDEM_PADRAO.slice();
     // mantém só os módulos conhecidos e acrescenta os que faltarem
     const limpa = salvo.filter(function (m) { return ORDEM_PADRAO.indexOf(m) >= 0; });
@@ -466,7 +542,9 @@
 
   function gravarOrdem() {
     const m = Array.prototype.map.call($('hub-cards').children, function (n) { return n.dataset.mod; });
+    hubOrder = m;
     try { localStorage.setItem(ORDEM_KEY, JSON.stringify(m)); } catch (e) {}
+    triggerSave();   // sobe junto com o resto do estado
   }
 
   /**
@@ -522,6 +600,8 @@
 
     const ab = document.querySelector('.appbar');
     if (ab) ab.classList.remove('flutuando');
+
+    lembrarTela();
 
     if (tab === 'settings') fillExport();
     if (tab === 'tabelas') renderList();
@@ -698,7 +778,7 @@
         const m = KIND_META[c.kind];
         let sub = m.rotulo;
         if (c.kind === 'renda') sub += ' · ' + FREQ_LABEL[c.frequency];
-        if (c.kind === 'fixa') sub += ' · dia ' + c.due_day + (c.paid ? ' · pago' : '');
+        if (c.kind === 'fixa') sub += ' · dia ' + c.due_day + (estaPaga(c) ? ' · pago' : ' · em aberto');
         if (c.kind === 'assinatura') sub += ' · R$ ' + num(c.amount * 12) + '/ano';
         return {
           icoNome: m.ico, icoBg: m.bg, icoFg: m.fg,
@@ -1006,8 +1086,13 @@
     const fixas = doTipo('fixa');
     $('ct-fixas-total').textContent = 'R$ ' + num(r.fixas) + '/mês';
     $('ct-fixas').innerHTML = fixas.length ? fixas.map(function (c) {
-      const m = KIND_META.fixa;
-      return cartao(c, m, 'vence dia ' + c.due_day + ' · ' + (c.paid ? 'pago' : 'em aberto'));
+      const paga = estaPaga(c);
+      return cartao(c, KIND_META.fixa, 'vence dia ' + c.due_day, {
+        texto: paga ? 'pago' : 'em aberto',
+        bg: paga ? '#E9F6D6' : '#FAF2DF',
+        fg: paga ? '#2F6142' : '#8A6A24',
+        id: c.id,
+      });
     }).join('') : '<div class="card m-card">' + vazio('Nenhuma conta fixa', 'Aluguel, luz, internet…') + '</div>';
 
     /* contas variáveis */
@@ -1069,6 +1154,8 @@
       { nome: 'Contas fixas', v: r.fixas,       cor: '#B58F3F' },
       { nome: 'Variáveis',    v: r.variaveis,   cor: '#D98F62' },
       { nome: 'Assinaturas',  v: r.assinaturas, cor: '#93AA9B' },
+      // guardar também é destino do dinheiro — mesma cor da faixa lá em cima
+      { nome: 'Economia',     v: r.economia,    cor: '#2F6142' },
     ].filter(function (f) { return f.v > 0; });
 
     const total = fatias.reduce(function (a, f) { return a + f.v; }, 0);
@@ -1079,8 +1166,8 @@
       cartao.classList.add('vazio');
       $('ct-pizza').innerHTML = '';
       $('ct-pizza-leg').innerHTML =
-        '<span class="ct-pz-nome">Cadastre uma conta fixa, variável ou assinatura ' +
-        'para ver a divisão dos gastos.</span>';
+        '<span class="ct-pz-nome">Cadastre uma conta ou uma economia ' +
+        'para ver para onde vai o seu dinheiro.</span>';
       return;
     }
     cartao.classList.remove('vazio');
@@ -1134,16 +1221,32 @@
     '</button>';
   }
 
-  function cartao(c, m, sub) {
+  function cartao(c, m, sub, pill) {
     return '<button class="ct-card" data-cid="' + c.id + '">' +
       '<span class="ct-ico" style="background:' + m.bg + ';color:' + m.fg + '">' + ico(m.ico) + '</span>' +
       '<span class="ct-body">' +
         '<span class="ct-name">' + esc(c.name) + '</span>' +
-        '<span class="ct-sub">' + sub + '</span>' +
+        '<span class="ct-sub-row">' +
+          '<span class="ct-sub">' + sub + '</span>' +
+          (pill
+            // a pastilha é o próprio botão de marcar/desmarcar
+            ? '<span class="ct-pill" role="button" tabindex="0" data-pago="' + pill.id + '" ' +
+              'style="background:' + pill.bg + ';color:' + pill.fg + '">' + pill.texto + '</span>'
+            : '') +
+        '</span>' +
       '</span>' +
       '<span class="ct-amt"><span class="ct-amt-pfx">R$</span>' +
         '<span class="ct-amt-v">' + num(c.amount) + '</span></span>' +
     '</button>';
+  }
+
+  /** Alterna o pagamento do mês corrente. */
+  function alternarPago(id) {
+    const c = contas.find(function (x) { return x.id === id; });
+    if (!c) return;
+    c.paid_on = estaPaga(c) ? null : Store.hoje();
+    render(); triggerSave();
+    toast(c.paid_on ? '“' + c.name + '” marcada como paga' : '“' + c.name + '” reaberta');
   }
 
   function vazio(titulo, sub) {
@@ -1452,7 +1555,7 @@
     $('ct-amount').value    = c ? num(c.amount) : '';
     $('ct-frequency').value = c && c.frequency ? c.frequency : 'mensal';
     $('ct-due-day').value   = c && c.due_day ? c.due_day : '';
-    $('ct-paid').checked    = c ? !!c.paid : false;
+    $('ct-paid').checked    = c ? estaPaga(c) : false;
     $('ct-avg').value       = c && c.avg_amount ? num(c.avg_amount) : '';
     $('ct-notes').value     = c && c.notes ? c.notes : '';
 
@@ -1520,6 +1623,7 @@
       if (!(d >= 1 && d <= 31)) { $('ct-due-day').focus(); toast('Informe o dia do vencimento (1 a 31)'); return; }
     }
 
+    const atual = editContaId ? contas.find(function (x) { return x.id === editContaId; }) : null;
     const c = Store.normalizeAccount({
       id: editContaId || undefined,
       kind: kind,
@@ -1527,7 +1631,10 @@
       amount: parseBRL($('ct-amount').value) || 0,
       frequency: $('ct-frequency').value,
       due_day: $('ct-due-day').value,
-      paid: $('ct-paid').checked,
+      // marcar aqui vale para o mês corrente; desmarcar limpa a data
+      paid_on: $('ct-paid').checked
+        ? ((atual && atual.paid_on && estaPaga(atual)) ? atual.paid_on : Store.hoje())
+        : null,
       avg_amount: $('ct-avg').value ? parseBRL($('ct-avg').value) : undefined,
       notes: $('ct-notes').value.trim() || null,
     });
@@ -1994,6 +2101,9 @@
   }
 
   function bindEvents() {
+    // antes de tudo: quem lê o valor depois já pega ele formatado
+    CAMPOS_DINHEIRO.forEach(function (id) { mascaraDinheiro($(id)); });
+
     /* cenário */
     ['bp','bo','bp-m','bo-m'].forEach(function (id) {
       const b = $(id);
@@ -2153,6 +2263,8 @@
     /* contas */
     ['ct-rendas', 'ct-fixas', 'ct-variaveis', 'ct-subs'].forEach(function (id) {
       $(id).addEventListener('click', function (ev) {
+        const p = ev.target.closest('[data-pago]');
+        if (p) { ev.preventDefault(); ev.stopPropagation(); alternarPago(p.dataset.pago); return; }
         const b = ev.target.closest('[data-cid]');
         if (b) openConta(b.dataset.cid);
       });
@@ -2482,7 +2594,14 @@
     // desenha já com o que houver neste aparelho, sem esperar a rede
     const cached = Store.localState() || Store.legacyState();
     adoptState(cached || seedState());
-    applySI(); render(); setScreen('hub');
+    applySI(); render();
+    const onde = telaLembrada();
+    if (onde && onde.screen !== 'hub') {
+      screen = onde.screen;
+      setScreen(onde.tab === 'main' ? onde.screen : onde.tab);
+    } else {
+      setScreen('hub');
+    }
 
     const r = await Store.reconcile(Store.legacyState() || seedState());
     if (r.state) {
@@ -2492,7 +2611,7 @@
     }
 
     Store.startRealtime();
-    Store.retry(entries, saldoInicial, loans, contas);
+    Store.retry(entries, saldoInicial, loans, contas, hubOrder);
   }
 
   function startLocalOnly() {
@@ -2501,7 +2620,14 @@
     $('password-card').hidden = true;
     const cached = Store.localState() || Store.legacyState();
     adoptState(cached || seedState());
-    applySI(); render(); setScreen('hub');
+    applySI(); render();
+    const onde = telaLembrada();
+    if (onde && onde.screen !== 'hub') {
+      screen = onde.screen;
+      setScreen(onde.tab === 'main' ? onde.screen : onde.tab);
+    } else {
+      setScreen('hub');
+    }
   }
 
   function init() {
@@ -2524,7 +2650,7 @@
     });
 
     // reenvia o que ficou pendente quando a conexão volta
-    window.addEventListener('online', function () { Store.retry(entries, saldoInicial, loans, contas); });
+    window.addEventListener('online', function () { Store.retry(entries, saldoInicial, loans, contas, hubOrder); });
 
     if (!Store.init()) {
       startLocalOnly();

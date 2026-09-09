@@ -187,7 +187,7 @@
       amount: Math.max(0, Number(a.amount) || 0),
       frequency:  null,
       due_day:    null,
-      paid:       false,
+      paid_on:    null,        // data em que foi paga; o mês dela é que vale
       avg_amount: null,
       notes:  a.notes ? String(a.notes).slice(0, 500) : null,
     };
@@ -196,7 +196,7 @@
     } else if (kind === 'fixa') {
       const d = parseInt(a.due_day, 10);
       out.due_day = (d >= 1 && d <= 31) ? d : 1;
-      out.paid = !!a.paid;
+      out.paid_on = dataOuNulo(a.paid_on);
     } else if (kind === 'variavel') {
       // sem média informada, a própria conta vira a referência
       const m = Number(a.avg_amount);
@@ -268,7 +268,7 @@
       kind: a.kind, name: a.name, amount: a.amount,
       frequency:  a.kind === 'renda'    ? a.frequency  : null,
       due_day:    a.kind === 'fixa'     ? a.due_day    : null,
-      paid:       a.kind === 'fixa'     ? !!a.paid     : false,
+      paid_on:    a.kind === 'fixa'     ? a.paid_on    : null,
       avg_amount: a.kind === 'variavel' ? a.avg_amount : null,
       notes: a.notes,
       position: index,
@@ -278,7 +278,7 @@
   function fromAccountRow(r) {
     return normalizeAccount({
       id: r.id, kind: r.kind, name: r.name, amount: r.amount,
-      frequency: r.frequency, due_day: r.due_day, paid: r.paid,
+      frequency: r.frequency, due_day: r.due_day, paid_on: r.paid_on,
       avg_amount: r.avg_amount, notes: r.notes,
     });
   }
@@ -315,6 +315,7 @@
             saldoInicial: Number(d.saldoInicial) || 0,
             loans: Array.isArray(d.loans) ? d.loans.filter(validLoan).map(normalizeLoan) : [],
             accounts: Array.isArray(d.accounts) ? d.accounts.filter(validAccount).map(normalizeAccount) : [],
+            hubOrder: Array.isArray(d.hubOrder) ? d.hubOrder : null,
           };
         }
       } catch (e) {}
@@ -344,6 +345,7 @@
       saldoInicial: state.saldoInicial,
       loans: state.loans || [],
       accounts: state.accounts || [],
+      hubOrder: state.hubOrder || null,
       savedAt: Date.now(),
     }));
   }
@@ -376,8 +378,13 @@
       .select('*').eq('user_id', user.id).order('position', { ascending: true });
     if (er.error) throw er.error;
 
-    const sr = await client.from('settings')
-      .select('saldo_inicial').eq('user_id', user.id).maybeSingle();
+    /* hub_order só existe a partir da migração v3 */
+    let sr = await client.from('settings')
+      .select('saldo_inicial, hub_order').eq('user_id', user.id).maybeSingle();
+    if (sr.error && /hub_order|column/i.test(sr.error.message || '')) {
+      sr = await client.from('settings')
+        .select('saldo_inicial').eq('user_id', user.id).maybeSingle();
+    }
     if (sr.error) throw sr.error;
 
     /* As tabelas dos módulos novos são opcionais: se o SQL ainda não rodou,
@@ -398,6 +405,7 @@
     return {
       entries: er.data.map(fromRow),
       saldoInicial: sr.data ? (Number(sr.data.saldo_inicial) || 0) : 0,
+      hubOrder: (sr.data && Array.isArray(sr.data.hub_order)) ? sr.data.hub_order : null,
       loans: loans,
       accounts: accounts,
     };
@@ -439,7 +447,10 @@
         return { col: col, upserts: upserts, deletes: deletes };
       });
 
-      const saldoMudou = !synced || synced.saldoInicial !== state.saldoInicial;
+      const ordemAntes = synced ? JSON.stringify(synced.hubOrder || null) : null;
+      const ordemAgora = JSON.stringify(state.hubOrder || null);
+      const saldoMudou = !synced || synced.saldoInicial !== state.saldoInicial
+                         || ordemAntes !== ordemAgora;
       const temTrabalho = saldoMudou || planos.some(function (p) {
         return p.upserts.length || p.deletes.length;
       });
@@ -462,12 +473,18 @@
       }
 
       if (saldoMudou) {
-        const r = await client.from('settings')
-          .upsert({ user_id: user.id, saldo_inicial: state.saldoInicial }, { onConflict: 'user_id' });
+        const linha = { user_id: user.id, saldo_inicial: state.saldoInicial };
+        if (state.hubOrder) linha.hub_order = state.hubOrder;
+        let r = await client.from('settings').upsert(linha, { onConflict: 'user_id' });
+        if (r.error && /hub_order|column/i.test(r.error.message || '')) {
+          // sem a migração v3 a ordem fica só no aparelho
+          delete linha.hub_order;
+          r = await client.from('settings').upsert(linha, { onConflict: 'user_id' });
+        }
         if (r.error) throw r.error;
       }
 
-      const confirmado = { saldoInicial: state.saldoInicial };
+      const confirmado = { saldoInicial: state.saldoInicial, hubOrder: state.hubOrder || null };
       COLECOES.forEach(function (col) { confirmado[col.chave] = clone(state[col.chave] || []); });
       writeSynced(confirmado);
 
@@ -673,11 +690,11 @@
           || (local.accounts && local.accounts.length));
         if (temAlgo) {
           // synced zerado força o diff a enviar tudo
-          writeSynced({ entries: [], saldoInicial: null, loans: [], accounts: [] });
+          writeSynced({ entries: [], saldoInicial: null, loans: [], accounts: [], hubOrder: null });
           await push(local);
           return { state: local, source: 'uploaded' };
         }
-        writeSynced({ entries: [], saldoInicial: 0, loans: [], accounts: [] });
+        writeSynced({ entries: [], saldoInicial: 0, loans: [], accounts: [], hubOrder: null });
         return { state: null, source: 'empty' };
       } catch (err) {
         status('offline — usando dados deste aparelho', 'readonly');
@@ -687,9 +704,10 @@
     },
 
     /** O app chama isto a cada mudança, sempre com o estado completo. */
-    save(entries, saldoInicial, loans, accounts) {
+    save(entries, saldoInicial, loans, accounts, hubOrder) {
       const state = { entries: entries, saldoInicial: saldoInicial,
-                      loans: loans || [], accounts: accounts || [] };
+                      loans: loans || [], accounts: accounts || [],
+                      hubOrder: hubOrder || null };
       const ok = writeLocal(state);
       if (this.mode !== 'cloud' || !user) {
         status(ok ? 'salvo ✓' : 'erro ao salvar', ok ? 'ok' : 'err');
@@ -700,10 +718,10 @@
     },
 
     /** Reenvia o que ficou pendente (volta da conexão, app reaberto). */
-    retry(entries, saldoInicial, loans, accounts) {
+    retry(entries, saldoInicial, loans, accounts, hubOrder) {
       if (this.mode !== 'cloud' || !user || !dirty) return;
       push({ entries: entries, saldoInicial: saldoInicial,
-             loans: loans || [], accounts: accounts || [] });
+             loans: loans || [], accounts: accounts || [], hubOrder: hubOrder || null });
     },
 
     /** Apaga os dados deste usuário — aqui e na nuvem. */
@@ -722,7 +740,7 @@
             const r = await client.from(t).delete().eq('user_id', user.id);
             if (r.error && !/schema cache|does not exist/i.test(r.error.message || '')) throw r.error;
           }
-          writeSynced({ entries: [], saldoInicial: 0, loans: [], accounts: [] });
+          writeSynced({ entries: [], saldoInicial: 0, loans: [], accounts: [], hubOrder: null });
         } catch (e) {
           if (window.console) console.warn('[orçamento] falha ao apagar na nuvem:', e.message || e);
           throw e;

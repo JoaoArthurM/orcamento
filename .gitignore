@@ -1,0 +1,6 @@
+# arquivos de preview criados durante o desenvolvimento
+_*.html
+
+# lixo de sistema
+.DS_Store
+Thumbs.db
