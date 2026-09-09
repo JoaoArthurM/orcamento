@@ -52,6 +52,7 @@
   --sar: env(safe-area-inset-right, 0px);
 
   --navbar-h: 70px;
+  --appbar-h: 58px;            /* altura do cabeçalho flutuante */
   --tap: 44px;                 /* alvo mínimo de toque */
   --page-x: 16px;              /* respiro horizontal do conteúdo */
 }
@@ -139,26 +140,44 @@ svg { display: block; flex: none; }
 }
 
 /* ── APP BAR ────────────────────────────────────────── */
+/* Flutua sobre o conteúdo, como a barra de baixo. Ao rolar, o título sai
+   e sobram só os dois botões — voltar e avatar. */
 .appbar {
-  position: relative;
+  position: absolute; top: 0; left: 0; right: 0;
   z-index: 20;
-  flex: none;
   padding: calc(var(--sat) + 10px) calc(var(--page-x) + var(--sar)) 10px
            calc(var(--page-x) + var(--sal));
   display: flex;
   align-items: center;
   gap: 12px;
+  pointer-events: none;
 }
+.appbar > * { pointer-events: auto; }
+
+/* o título some com a rolagem */
+.appbar .wordmark {
+  transition: opacity 180ms, transform 180ms;
+}
+.appbar.flutuando .wordmark {
+  opacity: 0;
+  transform: translateY(-6px);
+  pointer-events: none;
+}
+
+/* os dois botões viram pastilhas flutuantes */
+
 .appbar-back {
-  width: 36px; height: 36px; margin-left: -8px;
+  width: 36px; height: 36px;
   border-radius: 50%; flex: none;
   display: flex; align-items: center; justify-content: center;
-  color: var(--dark);
-  transition: background 140ms;
+  background: var(--dark); color: #fff;
+  box-shadow: 0 8px 26px rgba(18,58,44,.28);
+  transition: background 140ms, transform 140ms;
 }
+.appbar-back:active { transform: scale(.94); }
 .appbar-back[hidden] { display: none; }
 .appbar-back .ico { width: 21px; height: 21px; }
-.appbar-back:active, .appbar-back:hover { background: rgba(18,58,44,.07); }
+.appbar-back:hover { background: var(--dark3); }
 
 .wordmark {
   font-size: 19px; font-weight: 700;
@@ -171,6 +190,7 @@ svg { display: block; flex: none; }
   background: var(--dark); color: #fff;
   display: flex; align-items: center; justify-content: center;
   font-size: 12px; font-weight: 600; flex: none;
+  box-shadow: 0 8px 26px rgba(18,58,44,.28);
 }
 
 /* alternador de cenário */
@@ -209,8 +229,8 @@ svg { display: block; flex: none; }
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
   overscroll-behavior: contain;
-  /* espaço para a nav flutuante não cobrir o fim do conteúdo */
-  padding: 4px 0 calc(var(--navbar-h) + var(--sab) + 28px);
+  /* espaço para as barras flutuantes não cobrirem o conteúdo */
+  padding: calc(var(--sat) + var(--appbar-h)) 0 calc(var(--navbar-h) + var(--sab) + 28px);
   display: flex; flex-direction: column; gap: 0;
 }
 /* o respiro horizontal fica nos filhos, para as faixas rolantes
@@ -1491,6 +1511,25 @@ svg { display: block; flex: none; }
   padding: 0 calc(16px + var(--sar)) calc(12px + var(--sab)) calc(16px + var(--sal));
   pointer-events: none;
 }
+/* o conteúdo que passa atrás e embaixo da barra sai de foco, em vez de
+   aparecer nítido pelas beiradas; a máscara faz a transição ser suave */
+.navbar::before {
+  content: "";
+  position: absolute; left: 0; right: 0; bottom: 0;
+  /* só a faixa que sobra embaixo da pastilha, nada acima dela */
+  height: calc(16px + var(--sab));
+  pointer-events: none;
+  -webkit-backdrop-filter: blur(7px);
+  backdrop-filter: blur(7px);
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0%, #000 55%);
+  mask-image: linear-gradient(to bottom, transparent 0%, #000 55%);
+}
+/* sem backdrop-filter (Firefox antigo), um véu do tom da página resolve */
+@supports not (backdrop-filter: blur(1px)) {
+  .navbar::before {
+    background: linear-gradient(to bottom, rgba(233,244,225,0) 0%, rgba(233,244,225,.92) 46%);
+  }
+}
 .navbar-pill {
   position: relative;
   height: var(--navbar-h);
@@ -1558,6 +1597,13 @@ svg { display: block; flex: none; }
 .hub-loans::after { background-image: radial-gradient(rgba(201,232,142,.45) 2px, transparent 2px); }
 .hub-eco { background: var(--lime); color: var(--dark); }
 .hub-eco::after { background-image: radial-gradient(rgba(18,58,44,.20) 2px, transparent 2px); }
+.hub-contas { background: #EFE0BC; color: #4A3A14; }
+.hub-contas::after { background-image: radial-gradient(rgba(120,92,30,.26) 2px, transparent 2px); }
+.hub-contas .hub-ico { background: rgba(255,255,255,.6); color: #8A6A24; }
+.hub-contas .hub-arrow { color: #9A7C36; }
+.hub-contas .hub-name { color: #7A5F22; }
+.hub-contas .hub-pfx  { color: #7A5F22; }
+.hub-contas .hub-note { color: #86682A; }
 
 .hub-card-top {
   width: 100%;
@@ -1714,4 +1760,174 @@ svg { display: block; flex: none; }
    ══════════════════════════════════════════════════════ */
 @media (min-width: 1024px) {
   #view-hub, #view-loans { display: none !important; }
+}
+
+/* ══════════════════════════════════════════════════════
+   CONTAS
+   ══════════════════════════════════════════════════════ */
+.ct-renda { font-size: 12.5px; font-weight: 700; color: var(--dark); white-space: nowrap; }
+
+.ct-hero .m-hero-val-wrap { padding-top: 4px; }
+
+/* barra empilhada: contas · assinaturas · variáveis · livre */
+.ct-bar {
+  position: relative;
+  width: 100%; display: flex; height: 8px;
+  border-radius: 99px; overflow: hidden;
+  margin-top: 14px; background: var(--dark3);
+}
+.ct-bar span { display: block; transition: width 220ms; }
+
+.ct-legend {
+  position: relative;
+  width: 100%; display: flex; flex-wrap: wrap;
+  gap: 9px 14px; padding-top: 9px;
+}
+.ct-leg {
+  display: flex; align-items: center; gap: 6px;
+  font-size: 10.5px; color: #C6DDCD;
+}
+.ct-leg i { width: 6px; height: 6px; border-radius: 50%; display: block; flex: none; }
+
+/* listas em cartão individual (fixas e variáveis) */
+.ct-cards { display: flex; flex-direction: column; gap: 8px; margin-top: 10px; }
+.ct-card {
+  width: 100%; text-align: left;
+  background: #fff; border-radius: 16px;
+  padding: 12px 14px;
+  display: flex; align-items: center; gap: 12px;
+  box-shadow: 0 2px 14px rgba(18,58,44,.04);
+  transition: transform 140ms;
+}
+.ct-card:active { transform: scale(.99); }
+.ct-ico {
+  width: 34px; height: 34px; border-radius: 10px; flex: none;
+  display: flex; align-items: center; justify-content: center;
+}
+.ct-ico .ico { width: 17px; height: 17px; }
+.ct-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.ct-name {
+  font-size: 13.5px; font-weight: 500; letter-spacing: -.015em;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.ct-sub {
+  font-size: 11px; color: #8AA294;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.ct-amt { display: flex; align-items: baseline; gap: 2px; white-space: nowrap; flex: none; }
+.ct-amt-pfx { font-size: 10px; color: #8AA294; align-self: flex-start; padding-top: 2px; }
+.ct-amt-v {
+  font-size: 13.5px; font-weight: 600; letter-spacing: -.025em;
+  font-variant-numeric: tabular-nums;
+}
+.ct-amt-v.renda { color: var(--ci-fg); }
+
+/* linhas dentro de um cartão só (rendas e assinaturas) */
+.ct-row {
+  width: 100%; text-align: left;
+  display: flex; align-items: center; gap: 12px;
+  padding: 13px 16px;
+  border-bottom: 1px solid #F1F5EE;
+}
+.ct-row:last-child { border-bottom: none; }
+
+/* faixa de total das assinaturas */
+.ct-subs-head {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 12px 16px;
+  background: var(--ui-bg);
+  border-bottom: 1px dashed #EEDFBA;
+}
+.ct-subs-head span:first-child { font-size: 11.5px; color: var(--ui-fg); }
+.ct-subs-head span:last-child { font-size: 13px; font-weight: 700; color: var(--ui-fg); }
+
+/* metas de economia */
+.ct-save {
+  background: var(--dark); border-radius: 20px;
+  padding: 18px 18px 16px; margin-top: 20px;
+}
+.ct-save-t { font-size: 13px; font-weight: 600; color: #fff; }
+.ct-save-s { display: block; font-size: 11.5px; color: #8FAE9C; padding-top: 3px; }
+.ct-save-row { display: flex; gap: 8px; padding-top: 14px; }
+.ct-meta {
+  flex: 1; min-width: 0;
+  border-radius: 14px; padding: 10px 10px 11px;
+  display: flex; flex-direction: column; align-items: center; gap: 4px;
+}
+.ct-meta-pct { font-size: 15px; font-weight: 700; letter-spacing: -.02em; }
+.ct-meta-v-wrap { display: flex; align-items: baseline; gap: 2px; }
+.ct-meta-pfx { font-size: 9px; align-self: flex-start; padding-top: 1px; }
+.ct-meta-v { font-size: 12px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.ct-meta-lbl { font-size: 9.5px; }
+
+/* o módulo de contas é só de mobile */
+@media (min-width: 1024px) {
+  #view-contas { display: none !important; }
+}
+
+/* ── hub: cartões reordenáveis ──────────────────────── */
+.hub-cards { display: flex; flex-direction: column; gap: 14px; }
+
+.hub-card { touch-action: manipulation; }
+.hub-card.arrastando {
+  opacity: .92;
+  transform: scale(1.03);
+  box-shadow: 0 14px 34px rgba(18,58,44,.28);
+  z-index: 2;
+  cursor: grabbing;
+}
+.hub-card.deslocando { transition: transform 180ms ease; }
+
+.hub-dica {
+  font-size: 11px; color: var(--tx-d);
+  display: flex; align-items: center; justify-content: center; gap: 6px;
+  padding: 2px 0;
+}
+.hub-dica .ico { width: 14px; height: 14px; }
+
+/* ── tabelas: linhas por módulo ─────────────────────── */
+.tb-row { display: flex; align-items: center; gap: 12px; padding: 10px 14px; border-bottom: 1px solid #F2F7EE; }
+.tb-row:last-child { border-bottom: none; }
+.tb-tag {
+  border-radius: 99px; padding: 3px 9px; flex: none;
+  font-size: 10px; font-weight: 600; white-space: nowrap;
+}
+
+/* ── contas: rosca dos gastos ────────────────────────── */
+.ct-pizza-card { margin-top: 20px; padding: 16px 16px 18px; }
+.ct-pizza-hd { display: flex; flex-direction: column; gap: 2px; }
+.ct-pizza-t { font-size: 13.5px; font-weight: 600; letter-spacing: -.02em; }
+.ct-pizza-s { font-size: 11.5px; color: var(--tx-d); }
+
+.ct-pizza-body {
+  display: flex; align-items: center; gap: 16px;
+  padding-top: 14px;
+}
+.ct-pizza-svg { width: 118px; height: 118px; flex: none; position: relative; }
+.ct-pizza-svg svg { width: 100%; height: 100%; display: block; transform: rotate(-90deg); }
+.ct-pizza-svg .fatia { fill: none; stroke-width: 17; transition: stroke-dasharray 260ms; }
+.ct-pizza-centro {
+  position: absolute; inset: 0;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 1px; pointer-events: none;
+}
+.ct-pizza-pct { font-size: 19px; font-weight: 700; letter-spacing: -.03em; line-height: 1; }
+.ct-pizza-cap { font-size: 9px; color: var(--tx-d); text-align: center; line-height: 1.2; }
+
+.ct-pizza-leg { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 9px; }
+.ct-pz {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 11.5px; min-width: 0;
+}
+.ct-pz i { width: 9px; height: 9px; border-radius: 3px; flex: none; }
+.ct-pz-nome { flex: 1; min-width: 0; color: var(--tx-m); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ct-pz-val { font-weight: 600; letter-spacing: -.02em; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.ct-pz-pct { font-size: 10px; color: var(--tx-d); width: 30px; text-align: right; flex: none; }
+
+/* sem gastos: a rosca sai e a mensagem ocupa o cartão inteiro */
+.ct-pizza-card.vazio .ct-pizza-svg { display: none; }
+.ct-pizza-card.vazio .ct-pizza-body { padding-top: 10px; }
+.ct-pizza-card.vazio .ct-pz-nome {
+  white-space: normal; overflow: visible; text-overflow: clip;
+  line-height: 1.5;
 }

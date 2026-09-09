@@ -6,7 +6,7 @@
   'use strict';
 
   /* ── CONSTANTES ─────────────────────────────────────── */
-  const APP_VERSION = '2.0.0';
+  const APP_VERSION = '2.4.2';
 
   const MS = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
   const MS_FULL = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
@@ -67,6 +67,8 @@
   /* ── ESTADO ─────────────────────────────────────────── */
   let entries      = [];
   let loans        = [];
+  let contas       = [];
+  let editContaId  = null;
   let saldoInicial = 0;
   let screen       = 'hub';     // hub · eco · loans
   let loanFilter   = 'todos';   // todos · aberto · atrasados · quitados
@@ -154,6 +156,53 @@
       co += r.netO; r.cumO = co;
     });
     return rows;
+  }
+
+  /* ══════════════════════════════════════════════════════
+     CONTAS
+     ══════════════════════════════════════════════════════ */
+  const KIND_META = {
+    renda:      { rotulo: 'Renda',      ico: 'coins',    bg: '#E9F6D6', fg: '#4A8A5F' },
+    fixa:       { rotulo: 'Conta fixa', ico: 'calendar', bg: '#FAF2DF', fg: '#B58F3F' },
+    variavel:   { rotulo: 'Variável',   ico: 'graph-up', bg: '#FBEFE7', fg: '#D98F62' },
+    assinatura: { rotulo: 'Assinatura', ico: 'repeat',   bg: '#F1F6EE', fg: '#93AA9B' },
+  };
+
+  const FREQ_LABEL = {
+    mensal: 'todo mês', quinzenal: 'a cada 15 dias', semanal: 'toda semana',
+    anual: 'uma vez por ano', pontual: 'pontual',
+  };
+
+  /** Metas clássicas de poupança sobre a renda. */
+  const METAS = [
+    { pct: 10, label: 'tranquilo',  bg: 'var(--dark3)',   fg: '#fff',       note: '#8FAE9C' },
+    { pct: 20, label: 'equilíbrio', bg: 'var(--lime)',    fg: 'var(--dark)', note: '#4C6B3D' },
+    { pct: 30, label: 'agressivo',  bg: 'var(--dark3)',   fg: '#fff',       note: '#8FAE9C' },
+  ];
+
+  const doTipo = (k) => contas.filter(function (c) { return c.kind === k; });
+
+  /** Quanto uma renda vale por mês, seja qual for a frequência. */
+  function rendaMensal(c) {
+    return c.amount * (Store.FREQ_MES[c.frequency] !== undefined ? Store.FREQ_MES[c.frequency] : 1);
+  }
+
+  function contasResumo() {
+    const renda      = doTipo('renda').reduce(function (a, c) { return a + rendaMensal(c); }, 0);
+    const fixas      = doTipo('fixa').reduce(function (a, c) { return a + c.amount; }, 0);
+    const variaveis  = doTipo('variavel').reduce(function (a, c) { return a + c.amount; }, 0);
+    const varMedia   = doTipo('variavel').reduce(function (a, c) { return a + (c.avg_amount || 0); }, 0);
+    const assinaturas= doTipo('assinatura').reduce(function (a, c) { return a + c.amount; }, 0);
+    const comprometido = fixas + variaveis + assinaturas;
+    const sobra = renda - comprometido;
+    const pct = (v) => (renda > 0 ? Math.max(0, (v / renda) * 100) : 0);
+    return {
+      renda, fixas, variaveis, varMedia, assinaturas, comprometido, sobra,
+      pctFixas: pct(fixas), pctSubs: pct(assinaturas), pctVar: pct(variaveis),
+      pctSobra: renda > 0 ? Math.max(0, (sobra / renda) * 100) : 0,
+      fontes: doTipo('renda').length,
+      emAberto: doTipo('fixa').filter(function (c) { return !c.paid; }).length,
+    };
   }
 
   /* ══════════════════════════════════════════════════════
@@ -312,7 +361,7 @@
 
   function setStatus(txt, cls) {
     clearTimeout(statusTimer);
-    [el.saveSt, el.saveStD, el.saveStL].forEach(function (n) {
+    [el.saveSt, el.saveStD, el.saveStL, el.saveStC].forEach(function (n) {
       if (!n) return;
       n.textContent = txt || '';
       n.className = 'save-st' + (txt ? ' vis ' + (cls || '') : '');
@@ -324,7 +373,7 @@
   function triggerSave() {
     clearTimeout(saveTimer);
     saveTimer = setTimeout(function () {
-      Store.save(entries, saldoInicial, loans);
+      Store.save(entries, saldoInicial, loans, contas);
     }, 500);
   }
 
@@ -333,6 +382,7 @@
     entries      = state.entries;
     saldoInicial = state.saldoInicial;
     loans        = state.loans || [];
+    contas       = state.accounts || [];
   }
 
   function seedState() {
@@ -340,6 +390,7 @@
       entries: JSON.parse(JSON.stringify(SEED_ENTRIES)).map(Store.normalize),
       saldoInicial: SEED_SALDO,
       loans: [],
+      accounts: [],
     };
   }
 
@@ -368,10 +419,10 @@
       // o mobile tem hero e KPIs próprios; os do desktop saem do fluxo
       $('parked').appendChild(el.cHero);
       $('parked').appendChild(el.cKpis);
-      const menu = $('slot-menu');
-      menu.appendChild(el.cList);
-      menu.appendChild(el.cLegend);
-      menu.appendChild(el.cSettings);
+      const tabelas = $('slot-tabelas');
+      tabelas.appendChild(el.cList);
+      tabelas.appendChild(el.cLegend);
+      $('slot-settings').appendChild(el.cSettings);
       $('app').appendChild(el.sheetForm);
       $('app').appendChild(el.sheetSettings);
     }
@@ -380,29 +431,60 @@
 
   /* Cada módulo define o rótulo da barra de baixo e o título do topo. */
   const MODULOS = {
-    eco:   { titulo: 'economia.',    navLbl: 'simulador',   navIco: 'stats-up-square', view: 'view-sim' },
-    loans: { titulo: 'empréstimos.', navLbl: 'empréstimos', navIco: 'hand-cash',       view: 'view-loans' },
+    eco:    { titulo: 'economia.',    navLbl: 'simulador',   navIco: 'piggy-bank',      view: 'view-sim' },
+    loans:  { titulo: 'empréstimos.', navLbl: 'empréstimos', navIco: 'hand-cash',       view: 'view-loans' },
+    contas: { titulo: 'contas.',      navLbl: 'contas',      navIco: 'wallet',          view: 'view-contas' },
   };
 
-  const VIEWS = ['view-hub', 'view-sim', 'view-loans', 'view-menu'];
+  const VIEWS = ['view-hub', 'view-sim', 'view-loans', 'view-contas', 'view-tabelas', 'view-settings'];
+
+  /* Ordem dos módulos no hub — o usuário reordena arrastando. */
+  const ORDEM_PADRAO = ['loans', 'eco', 'contas'];
+  const ORDEM_KEY = 'orcamento:hub-ordem';
+
+  function lerOrdem() {
+    let salvo = null;
+    try { salvo = JSON.parse(localStorage.getItem(ORDEM_KEY) || 'null'); } catch (e) {}
+    if (!Array.isArray(salvo)) return ORDEM_PADRAO.slice();
+    // mantém só os módulos conhecidos e acrescenta os que faltarem
+    const limpa = salvo.filter(function (m) { return ORDEM_PADRAO.indexOf(m) >= 0; });
+    ORDEM_PADRAO.forEach(function (m) { if (limpa.indexOf(m) < 0) limpa.push(m); });
+    return limpa;
+  }
+
+  function aplicarOrdem() {
+    const caixa = $('hub-cards');
+    lerOrdem().forEach(function (m) {
+      const n = caixa.querySelector('[data-mod="' + m + '"]');
+      if (n) caixa.appendChild(n);
+    });
+  }
+
+  function gravarOrdem() {
+    const m = Array.prototype.map.call($('hub-cards').children, function (n) { return n.dataset.mod; });
+    try { localStorage.setItem(ORDEM_KEY, JSON.stringify(m)); } catch (e) {}
+  }
 
   /**
    * Navega entre hub, módulos e o menu.
    *   setScreen('hub')            → tela de escolha
    *   setScreen('eco'|'loans')    → módulo, aba principal
-   *   setScreen('menu')           → ajustes (mantém o módulo de origem)
+   *   setScreen('tabelas')        → lançamentos do módulo aberto
+   *   setScreen('settings')       → ajustes (só pelo hub)
    */
   function setScreen(destino) {
-    if (destino === 'menu') {
-      tab = 'menu';
+    if (destino === 'tabelas' || destino === 'settings') {
+      tab = destino;
     } else {
       screen = destino;
       tab = 'main';
     }
 
-    const noHub = screen === 'hub' && tab !== 'menu';
+    const noHub = screen === 'hub' && tab === 'main';
     const mod = MODULOS[screen];
-    const alvo = tab === 'menu' ? 'view-menu' : (noHub ? 'view-hub' : mod.view);
+    const alvo = tab === 'settings' ? 'view-settings'
+               : tab === 'tabelas'  ? 'view-tabelas'
+               : (noHub ? 'view-hub' : mod.view);
 
     VIEWS.forEach(function (v) {
       const n = $(v);
@@ -411,10 +493,13 @@
 
     /* topo: voltar + título */
     $('btn-back').hidden = noHub;
-    $('appbar-title').textContent = noHub ? 'orçamento.' : (tab === 'menu' ? 'ajustes.' : mod.titulo);
+    $('appbar-title').textContent =
+      noHub ? 'orçamento.' :
+      tab === 'settings' ? 'ajustes.' :
+      tab === 'tabelas'  ? 'tabelas.' : mod.titulo;
 
-    /* barra de baixo: some no hub, muda de rótulo por módulo */
-    el.navbar.hidden = noHub;
+    /* a barra de baixo só existe dentro de um módulo */
+    el.navbar.hidden = noHub || tab === 'settings';
     if (mod) {
       $('nav-main-lbl').textContent = mod.navLbl;
       $('nav-main-ico').innerHTML = ico(mod.navIco, 'navico');
@@ -426,18 +511,20 @@
       else b.removeAttribute('aria-current');
     });
 
-    /* a lista de entradas só faz sentido no menu vindo da economia */
-    const soEco = tab === 'menu' && screen === 'eco';
-    el.cList.hidden = !soEco;
-    el.cLegend.hidden = !soEco;
+    /* a legenda dos tipos só faz sentido na tabela da economia */
+    el.cLegend.hidden = !(tab === 'tabelas' && screen === 'eco');
 
-    if (tab === 'menu') fillExport();
+    const ab = document.querySelector('.appbar');
+    if (ab) ab.classList.remove('flutuando');
+
+    if (tab === 'settings') fillExport();
+    if (tab === 'tabelas') renderList();
     if (alvo === 'view-sim' && lastRows) renderCurve(lastRows);
   }
 
-  /** O botão de voltar sobe um nível: menu → módulo, módulo → hub. */
+  /** O botão de voltar sobe um nível: tabelas → módulo, módulo → hub. */
   function voltar() {
-    if (tab === 'menu' && screen !== 'hub') setScreen(screen);
+    if (tab === 'tabelas' && screen !== 'hub') setScreen(screen);
     else { screen = 'hub'; setScreen('hub'); }
   }
 
@@ -460,6 +547,7 @@
     renderCurve(rows);
     renderMonthTable(rows);
     renderLoans();
+    renderContas();
     renderHub(rows);
     if (isDesktop) renderTable(rows);
   }
@@ -561,43 +649,107 @@
     }).join('');
   }
 
-  /* ── lista de entradas ──────────────────────────────── */
-  function renderList() {
-    const q = (el.esearch.value || '').toLowerCase().trim();
-    const filtered = entries.filter(function (e) { return e.name.toLowerCase().includes(q); });
-    el.elistCount.textContent = entries.length;
+  /* ══════════════════════════════════════════════════════
+     TABELAS — os lançamentos do módulo aberto, pesquisáveis
+     ══════════════════════════════════════════════════════ */
 
-    if (!filtered.length) {
+  /** Cada módulo diz o que listar, como procurar e como mostrar. */
+  const TABELAS = {
+    eco: {
+      titulo: 'Entradas',
+      itens: () => entries,
+      procura: (e) => e.name,
+      abrir: (id) => openForm(id),
+      linha: function (e) {
+        const T = TYPES[e.type];
+        return {
+          icoNome: TYPE_ICON[e.type], icoBg: ICON_BG[e.type], icoFg: DOT_COLOR[e.type],
+          nome: e.name, sub: T.label + ' · ' + entryHint(e),
+          valor: entryAmountTxt(e), oculto: e.hidden,
+        };
+      },
+    },
+    loans: {
+      titulo: 'Empréstimos',
+      itens: () => loans,
+      procura: (l) => l.person,
+      abrir: (id) => openLoan(id),
+      linha: function (l) {
+        const i = loanInfo(l);
+        return {
+          icoNome: 'hand-cash', icoBg: i.sbg, icoFg: i.sfg,
+          nome: l.person, sub: i.status + ' · ' + Math.round(i.pct * 100) + '% pago',
+          valor: numRaw(l.total_due), tag: i.status, tagBg: i.sbg, tagFg: i.sfg,
+        };
+      },
+    },
+    contas: {
+      titulo: 'Contas',
+      itens: () => contas,
+      procura: (c) => c.name,
+      abrir: (id) => openConta(id),
+      linha: function (c) {
+        const m = KIND_META[c.kind];
+        let sub = m.rotulo;
+        if (c.kind === 'renda') sub += ' · ' + FREQ_LABEL[c.frequency];
+        if (c.kind === 'fixa') sub += ' · dia ' + c.due_day + (c.paid ? ' · pago' : '');
+        if (c.kind === 'assinatura') sub += ' · R$ ' + num(c.amount * 12) + '/ano';
+        return {
+          icoNome: m.ico, icoBg: m.bg, icoFg: m.fg,
+          nome: c.name, sub: sub, valor: numRaw(c.amount),
+        };
+      },
+    },
+  };
+
+  /** A tabela do módulo aberto. Usada no mobile e na sidebar do desktop. */
+  function renderList() {
+    const spec = TABELAS[screen] || TABELAS.eco;
+    const q = (el.esearch.value || '').toLowerCase().trim();
+    const todos = spec.itens();
+    const lista = todos.filter(function (x) {
+      return String(spec.procura(x)).toLowerCase().includes(q);
+    });
+
+    const t = $('elist-title');
+    if (t) t.textContent = spec.titulo;
+    el.elistCount.textContent = todos.length;
+    el.esearch.placeholder = 'Buscar em ' + spec.titulo.toLowerCase();
+
+    if (!lista.length) {
       el.elist.innerHTML =
         '<div class="empty-list">' +
           '<span class="empty-dots"></span>' +
-          '<span class="empty-title">Nenhuma entrada</span>' +
+          '<span class="empty-title">Nada aqui</span>' +
           '<span class="empty-sub">' +
-            (q ? 'Nada casa com “' + esc(q) + '”' : 'Toque em “+ Entrada” para começar.') +
+            (q ? 'Nada casa com “' + esc(q) + '”'
+               : 'Toque no + para criar o primeiro registro.') +
           '</span>' +
         '</div>';
       return;
     }
 
-    el.elist.innerHTML = filtered.map(function (e) {
-      const T = TYPES[e.type];
-      return '<div class="eitem' + (e.hidden ? ' dim' : '') + '">' +
-        '<span class="ei-icon" style="background:' + ICON_BG[e.type] + ';color:' + DOT_COLOR[e.type] + '">' +
-          ico(TYPE_ICON[e.type], 'ei-ico') + '</span>' +
+    el.elist.innerHTML = lista.map(function (x) {
+      const r = spec.linha(x);
+      return '<div class="eitem' + (r.oculto ? ' dim' : '') + '">' +
+        '<span class="ei-icon" style="background:' + r.icoBg + ';color:' + r.icoFg + '">' +
+          ico(r.icoNome, 'ei-ico') + '</span>' +
         '<span class="ei-body">' +
-          '<span class="ei-name">' + esc(e.name) + '</span>' +
-          '<span class="ei-meta">' + T.label + ' · ' + entryHint(e) + '</span>' +
+          '<span class="ei-name">' + esc(r.nome) + '</span>' +
+          '<span class="ei-meta">' + esc(r.sub) + '</span>' +
         '</span>' +
         '<span class="ei-amt"><span class="ei-pfx">R$</span>' +
-          '<span class="ei-val">' + entryAmountTxt(e) + '</span></span>' +
+          '<span class="ei-val">' + r.valor + '</span></span>' +
         '<div class="eacts">' +
-          '<button class="ib" data-act="tog" data-id="' + e.id + '" ' +
-            'aria-label="' + (e.hidden ? 'Mostrar' : 'Ocultar') + ' ' + esc(e.name) + '">' +
-            (e.hidden ? svgEyeOff() : svgEye()) + '</button>' +
-          '<button class="ib" data-act="edit" data-id="' + e.id + '" ' +
-            'aria-label="Editar ' + esc(e.name) + '">' + svgEdit() + '</button>' +
-          '<button class="ib del" data-act="del" data-id="' + e.id + '" ' +
-            'aria-label="Excluir ' + esc(e.name) + '">' + svgTrash() + '</button>' +
+          (screen === 'eco'
+            ? '<button class="ib" data-act="tog" data-id="' + x.id + '" ' +
+              'aria-label="' + (x.hidden ? 'Mostrar' : 'Ocultar') + '">' +
+              (x.hidden ? svgEyeOff() : svgEye()) + '</button>'
+            : '') +
+          '<button class="ib" data-act="edit" data-id="' + x.id + '" aria-label="Editar">' +
+            svgEdit() + '</button>' +
+          '<button class="ib del" data-act="del" data-id="' + x.id + '" aria-label="Excluir">' +
+            svgTrash() + '</button>' +
         '</div>' +
       '</div>';
     }).join('');
@@ -806,6 +958,177 @@
       '</span></span>';
   }
 
+  /* ── tela de contas ─────────────────────────────────── */
+  function renderContas() {
+    const r = contasResumo();
+
+    $('ct-renda').textContent = 'R$ ' + num(r.renda);
+    $('ct-sobra').textContent = num(r.sobra);
+    $('ct-sobra-note').textContent = r.renda > 0
+      ? Math.round(r.pctSobra) + '% da renda não comprometida'
+      : 'cadastre uma renda para ver a sobra';
+
+    /* barra empilhada — só desenha o que existe */
+    const faixas = [
+      { pct: r.pctFixas, cor: '#B58F3F', nome: 'Contas' },
+      { pct: r.pctSubs,  cor: '#93AA9B', nome: 'Assinaturas' },
+      { pct: r.pctVar,   cor: '#D98F62', nome: 'Variáveis' },
+      { pct: r.pctSobra, cor: 'var(--lime)', nome: 'Livre' },
+    ];
+    $('ct-bar').innerHTML = faixas.map(function (f) {
+      return '<span style="width:' + Math.min(100, f.pct).toFixed(1) + '%;background:' + f.cor + '"></span>';
+    }).join('');
+    $('ct-legend').innerHTML = faixas.map(function (f) {
+      return '<span class="ct-leg"><i style="background:' + f.cor + '"></i>' +
+        f.nome + ' ' + Math.round(f.pct) + '%</span>';
+    }).join('');
+
+    renderPizza(r);
+
+    /* rendas */
+    const rendas = doTipo('renda');
+    $('ct-renda-count').textContent = rendas.length === 1 ? '1 fonte' : rendas.length + ' fontes';
+    $('ct-rendas').innerHTML = rendas.length ? rendas.map(function (c) {
+      const m = KIND_META.renda;
+      const equiv = c.frequency !== 'mensal' && c.frequency !== 'pontual'
+        ? ' · R$ ' + num(rendaMensal(c)) + '/mês' : '';
+      return linha(c, m, FREQ_LABEL[c.frequency] + equiv, 'renda');
+    }).join('') : vazio('Nenhuma renda', 'Toque no + para cadastrar o que entra.');
+
+    /* contas fixas */
+    const fixas = doTipo('fixa');
+    $('ct-fixas-total').textContent = 'R$ ' + num(r.fixas) + '/mês';
+    $('ct-fixas').innerHTML = fixas.length ? fixas.map(function (c) {
+      const m = KIND_META.fixa;
+      return cartao(c, m, 'vence dia ' + c.due_day + ' · ' + (c.paid ? 'pago' : 'em aberto'));
+    }).join('') : '<div class="card m-card">' + vazio('Nenhuma conta fixa', 'Aluguel, luz, internet…') + '</div>';
+
+    /* contas variáveis */
+    const vars = doTipo('variavel');
+    $('ct-var-total').textContent = 'média R$ ' + num(r.varMedia) + '/mês';
+    $('ct-variaveis').innerHTML = vars.length ? vars.map(function (c) {
+      const m = KIND_META.variavel;
+      const media = c.avg_amount || 0;
+      const delta = media > 0 ? ((c.amount - media) / media) * 100 : 0;
+      const sinal = delta > 0.5 ? '+' : '';
+      const varia = media > 0
+        ? ' · variou ' + sinal + delta.toLocaleString('pt-BR', { maximumFractionDigits: 0 }) + '%'
+        : '';
+      return cartao(c, m, 'média R$ ' + num(media) + '/mês' + varia);
+    }).join('') : '<div class="card m-card">' + vazio('Nenhuma conta variável', 'Mercado, combustível…') + '</div>';
+
+    /* assinaturas */
+    const subs = doTipo('assinatura');
+    $('ct-subs-ano').textContent = 'R$ ' + num(r.assinaturas * 12) + '/ano';
+    $('ct-subs').innerHTML = subs.length
+      ? '<div class="ct-subs-head"><span>Total mensal</span><span>R$ ' + num(r.assinaturas) + '</span></div>' +
+        subs.map(function (c) {
+          return linha(c, KIND_META.assinatura, 'R$ ' + num(c.amount * 12) + '/ano');
+        }).join('')
+      : vazio('Nenhuma assinatura', 'Streaming, apps, academia…');
+
+    /* metas */
+    $('ct-save-sub').textContent = 'Sobre a renda de R$ ' + num(r.renda);
+    $('ct-metas').innerHTML = METAS.map(function (t) {
+      return '<div class="ct-meta" style="background:' + t.bg + '">' +
+        '<span class="ct-meta-pct" style="color:' + t.fg + '">' + t.pct + '%</span>' +
+        '<span class="ct-meta-v-wrap">' +
+          '<span class="ct-meta-pfx" style="color:' + t.note + '">R$</span>' +
+          '<span class="ct-meta-v" style="color:' + t.fg + '">' + num(r.renda * t.pct / 100) + '</span>' +
+        '</span>' +
+        '<span class="ct-meta-lbl" style="color:' + t.note + '">' + t.label + '</span>' +
+      '</div>';
+    }).join('');
+  }
+
+  /** Rosca dos gastos: fixas, variáveis e assinaturas. */
+  function renderPizza(r) {
+    const fatias = [
+      { nome: 'Contas fixas', v: r.fixas,       cor: '#B58F3F' },
+      { nome: 'Variáveis',    v: r.variaveis,   cor: '#D98F62' },
+      { nome: 'Assinaturas',  v: r.assinaturas, cor: '#93AA9B' },
+    ].filter(function (f) { return f.v > 0; });
+
+    const total = fatias.reduce(function (a, f) { return a + f.v; }, 0);
+    $('ct-pizza-total').textContent = 'R$ ' + num(total) + ' por mês';
+
+    const cartao = $('ct-pizza-card');
+    if (!total) {
+      cartao.classList.add('vazio');
+      $('ct-pizza').innerHTML = '';
+      $('ct-pizza-leg').innerHTML =
+        '<span class="ct-pz-nome">Cadastre uma conta fixa, variável ou assinatura ' +
+        'para ver a divisão dos gastos.</span>';
+      return;
+    }
+    cartao.classList.remove('vazio');
+
+    /* uma volta = 2πr; cada fatia ocupa a sua fração do traço */
+    const R_ = 41, VOLTA = 2 * Math.PI * R_;
+    let acumulado = 0;
+    const arcos = fatias.map(function (f) {
+      const frac = f.v / total;
+      const arco = '<circle class="fatia" cx="59" cy="59" r="' + R_ + '" stroke="' + f.cor + '" ' +
+        'stroke-dasharray="' + (frac * VOLTA).toFixed(2) + ' ' + VOLTA.toFixed(2) + '" ' +
+        'stroke-dashoffset="' + (-acumulado * VOLTA).toFixed(2) + '"></circle>';
+      acumulado += frac;
+      return arco;
+    }).join('');
+
+    // a maior fatia é a que o miolo destaca
+    const maior = fatias.slice().sort(function (a, b) { return b.v - a.v; })[0];
+    const pctMaior = Math.round((maior.v / total) * 100);
+
+    $('ct-pizza').innerHTML =
+      '<svg viewBox="0 0 118 118" role="img" aria-label="Divisão dos gastos do mês">' +
+        '<circle cx="59" cy="59" r="' + R_ + '" fill="none" stroke="#F1F5EE" stroke-width="17"></circle>' +
+        arcos +
+      '</svg>' +
+      '<span class="ct-pizza-centro">' +
+        '<span class="ct-pizza-pct" style="color:' + maior.cor + '">' + pctMaior + '%</span>' +
+        '<span class="ct-pizza-cap">' + maior.nome.toLowerCase() + '</span>' +
+      '</span>';
+
+    $('ct-pizza-leg').innerHTML = fatias.map(function (f) {
+      const pct = Math.round((f.v / total) * 100);
+      return '<span class="ct-pz">' +
+        '<i style="background:' + f.cor + '"></i>' +
+        '<span class="ct-pz-nome">' + f.nome + '</span>' +
+        '<span class="ct-pz-val">R$ ' + num(f.v) + '</span>' +
+        '<span class="ct-pz-pct">' + pct + '%</span>' +
+      '</span>';
+    }).join('');
+  }
+
+  function linha(c, m, sub, cls) {
+    return '<button class="ct-row" data-cid="' + c.id + '">' +
+      '<span class="ct-ico" style="background:' + m.bg + ';color:' + m.fg + '">' + ico(m.ico) + '</span>' +
+      '<span class="ct-body">' +
+        '<span class="ct-name">' + esc(c.name) + '</span>' +
+        '<span class="ct-sub">' + sub + '</span>' +
+      '</span>' +
+      '<span class="ct-amt"><span class="ct-amt-pfx">R$</span>' +
+        '<span class="ct-amt-v' + (cls ? ' ' + cls : '') + '">' + num(c.amount) + '</span></span>' +
+    '</button>';
+  }
+
+  function cartao(c, m, sub) {
+    return '<button class="ct-card" data-cid="' + c.id + '">' +
+      '<span class="ct-ico" style="background:' + m.bg + ';color:' + m.fg + '">' + ico(m.ico) + '</span>' +
+      '<span class="ct-body">' +
+        '<span class="ct-name">' + esc(c.name) + '</span>' +
+        '<span class="ct-sub">' + sub + '</span>' +
+      '</span>' +
+      '<span class="ct-amt"><span class="ct-amt-pfx">R$</span>' +
+        '<span class="ct-amt-v">' + num(c.amount) + '</span></span>' +
+    '</button>';
+  }
+
+  function vazio(titulo, sub) {
+    return '<div class="m-empty"><span class="m-empty-dots"></span>' +
+      '<span>' + titulo + ' — ' + sub + '</span></div>';
+  }
+
   /* ── cartões do hub ─────────────────────────────────── */
   function renderHub(rows) {
     const r = loansResumo();
@@ -816,6 +1139,12 @@
       : 'nada emprestado ainda';
 
     const acum = acumOf(rows);
+    const rc = contasResumo();
+    $('hub-contas-val').textContent = num(rc.sobra);
+    $('hub-contas-note').textContent = contas.length
+      ? 'sobra no mês · ' + (rc.emAberto ? rc.emAberto + ' conta(s) em aberto' : 'tudo pago')
+      : 'nenhuma conta cadastrada';
+
     $('hub-eco-val').textContent = num(acum[acum.length - 1]);
     $('hub-eco-note').textContent = entries.length
       ? entries.length + (entries.length === 1 ? ' entrada' : ' entradas') + ' · 12 meses'
@@ -1089,6 +1418,122 @@
     toast(wasEdit ? 'Entrada atualizada' : 'Entrada adicionada');
   }
 
+  /* ── formulário de conta ────────────────────────────── */
+  function openConta(id) {
+    editContaId = id || null;
+    $('ct-ftitle').textContent = editContaId ? 'Editar conta' : 'Nova conta';
+    $('ct-del').hidden = !editContaId;
+
+    const c = editContaId ? contas.find(function (x) { return x.id === editContaId; }) : null;
+    $('ct-kind').value      = c ? c.kind : 'fixa';
+    $('ct-name').value      = c ? c.name : '';
+    $('ct-amount').value    = c ? num(c.amount) : '';
+    $('ct-frequency').value = c && c.frequency ? c.frequency : 'mensal';
+    $('ct-due-day').value   = c && c.due_day ? c.due_day : '';
+    $('ct-paid').checked    = c ? !!c.paid : false;
+    $('ct-avg').value       = c && c.avg_amount ? num(c.avg_amount) : '';
+    $('ct-notes').value     = c && c.notes ? c.notes : '';
+
+    onContaKind();
+    openSheet($('sheet-conta'));
+    if (!editContaId) setTimeout(function () { $('ct-name').focus(); }, 320);
+  }
+
+  /** Cada tipo mostra só os campos que usa. */
+  function onContaKind() {
+    const k = $('ct-kind').value;
+    $('ct-freq-field').hidden = k !== 'renda';
+    $('ct-due-field').hidden  = k !== 'fixa';
+    $('ct-avg-field').hidden  = k !== 'variavel';
+    $('ct-amount-lbl').textContent =
+      k === 'renda'      ? 'Quanto entra (R$)' :
+      k === 'assinatura' ? 'Valor mensal (R$)' :
+      k === 'variavel'   ? 'Valor deste mês (R$)' : 'Valor (R$)';
+    onContaAmounts();
+  }
+
+  /** Mostra o equivalente mensal e a variação enquanto o usuário digita. */
+  function onContaAmounts() {
+    const k = $('ct-kind').value;
+    const v = parseBRL($('ct-amount').value) || 0;
+    const dica = $('ct-amount-hint');
+
+    if (k === 'renda') {
+      const f = $('ct-frequency').value;
+      const mes = v * (Store.FREQ_MES[f] !== undefined ? Store.FREQ_MES[f] : 1);
+      dica.textContent = f === 'mensal' ? '' :
+        (f === 'pontual' ? 'Não entra no fluxo mensal.' : 'Equivale a R$ ' + num(mes) + ' por mês.');
+      dica.hidden = !dica.textContent;
+    } else if (k === 'assinatura') {
+      dica.textContent = v > 0 ? 'R$ ' + num(v * 12) + ' por ano.' : '';
+      dica.hidden = !v;
+    } else {
+      dica.hidden = true;
+    }
+
+    if (k === 'variavel') {
+      const m = parseBRL($('ct-avg').value) || 0;
+      const h = $('ct-avg-hint');
+      if (m > 0 && v > 0) {
+        const d = ((v - m) / m) * 100;
+        h.textContent = Math.abs(d) < 0.5 ? 'Em linha com a média.'
+          : (d > 0 ? 'Este mês está ' : 'Este mês está ') +
+            Math.abs(d).toLocaleString('pt-BR', { maximumFractionDigits: 0 }) + '% ' +
+            (d > 0 ? 'acima' : 'abaixo') + ' da média.';
+        h.hidden = false;
+      } else {
+        h.textContent = 'Em branco, o valor deste mês vira a referência.';
+        h.hidden = false;
+      }
+    }
+  }
+
+  function saveConta() {
+    const name = $('ct-name').value.trim();
+    if (!name) { $('ct-name').focus(); toast('Dê um nome para a conta'); return; }
+
+    const kind = $('ct-kind').value;
+    if (kind === 'fixa') {
+      const d = parseInt($('ct-due-day').value, 10);
+      if (!(d >= 1 && d <= 31)) { $('ct-due-day').focus(); toast('Informe o dia do vencimento (1 a 31)'); return; }
+    }
+
+    const c = Store.normalizeAccount({
+      id: editContaId || undefined,
+      kind: kind,
+      name: name,
+      amount: parseBRL($('ct-amount').value) || 0,
+      frequency: $('ct-frequency').value,
+      due_day: $('ct-due-day').value,
+      paid: $('ct-paid').checked,
+      avg_amount: $('ct-avg').value ? parseBRL($('ct-avg').value) : undefined,
+      notes: $('ct-notes').value.trim() || null,
+    });
+
+    const era = !!editContaId;
+    if (era) {
+      const idx = contas.findIndex(function (x) { return x.id === editContaId; });
+      if (idx >= 0) contas[idx] = c;
+    } else {
+      contas.push(c);
+    }
+    closeSheets();
+    render(); triggerSave();
+    toast(era ? 'Conta atualizada' : 'Conta cadastrada');
+  }
+
+  function delConta() {
+    const c = contas.find(function (x) { return x.id === editContaId; });
+    if (!c) return;
+    const backup = JSON.parse(JSON.stringify(contas));
+    contas = contas.filter(function (x) { return x.id !== editContaId; });
+    closeSheets();
+    render(); triggerSave();
+    toast('“' + c.name + '” excluída', 'Desfazer', function () {
+      contas = backup; render(); triggerSave();
+    });
+  }
+
   /* ── formulário de empréstimo ───────────────────────── */
   function openLoan(id) {
     editLoanId = id || null;
@@ -1226,10 +1671,12 @@
     el.sheetForm.classList.remove('open');
     el.sheetSettings.classList.remove('open');
     $('sheet-loan').classList.remove('open');
+    $('sheet-conta').classList.remove('open');
     el.backdrop.classList.remove('open');
     openSheetEl = null;
     editId = null;
     editLoanId = null;
+    editContaId = null;
     if (was && !silent && !isDesktop && sheetHist > 0) {
       sheetHist--;
       try { history.back(); } catch (err) {}
@@ -1370,6 +1817,101 @@
   function svgTrash() { return ico('trash'); }
 
   /* ══════════════════════════════════════════════════════
+     HUB — reordenar segurando e arrastando
+     ══════════════════════════════════════════════════════ */
+  function ligarArrasto() {
+    const caixa = $('hub-cards');
+    let alvo = null, timer = null, y0 = 0, dy = 0, alturas = [], indice = 0, arrastando = false;
+
+    const cartoes = () => Array.prototype.slice.call(caixa.children);
+
+    function medir() {
+      alturas = cartoes().map(function (n) { return n.getBoundingClientRect().height + 14; });
+      indice = cartoes().indexOf(alvo);
+    }
+
+    function comecar() {
+      arrastando = true;
+      medir();
+      alvo.classList.add('arrastando');
+      cartoes().forEach(function (n) { if (n !== alvo) n.classList.add('deslocando'); });
+      if (navigator.vibrate) { try { navigator.vibrate(12); } catch (e) {} }
+    }
+
+    /** Move visualmente os vizinhos enquanto o cartão é arrastado. */
+    function mover() {
+      const passo = alturas[indice] || 1;
+      const salto = Math.round(dy / passo);
+      const destino = Math.max(0, Math.min(cartoes().length - 1, indice + salto));
+      alvo.style.transform = 'translateY(' + dy + 'px)';
+      cartoes().forEach(function (n, i) {
+        if (n === alvo) return;
+        let desloca = 0;
+        if (indice < destino && i > indice && i <= destino) desloca = -passo;
+        if (indice > destino && i < indice && i >= destino) desloca = passo;
+        n.style.transform = desloca ? 'translateY(' + desloca + 'px)' : '';
+      });
+      return destino;
+    }
+
+    function soltar(destino) {
+      cartoes().forEach(function (n) {
+        n.style.transform = '';
+        n.classList.remove('arrastando', 'deslocando');
+      });
+      if (arrastando && destino !== indice && alvo) {
+        const irmaos = cartoes();
+        const ref = irmaos[destino];
+        if (ref) {
+          if (destino > indice) caixa.insertBefore(alvo, ref.nextSibling);
+          else caixa.insertBefore(alvo, ref);
+          gravarOrdem();
+          toast('Ordem salva');
+        }
+      }
+      alvo = null; arrastando = false; dy = 0;
+      clearTimeout(timer);
+    }
+
+    caixa.addEventListener('pointerdown', function (ev) {
+      const c = ev.target.closest('.hub-card');
+      if (!c) return;
+      alvo = c; y0 = ev.clientY; dy = 0;
+      clearTimeout(timer);
+      // segurar por meio segundo entra no modo de reordenar
+      timer = setTimeout(comecar, 500);
+    });
+
+    caixa.addEventListener('pointermove', function (ev) {
+      if (!alvo) return;
+      dy = ev.clientY - y0;
+      if (!arrastando) {
+        // rolar a página cancela a intenção de arrastar
+        if (Math.abs(dy) > 8) { clearTimeout(timer); alvo = null; }
+        return;
+      }
+      ev.preventDefault();
+      mover();
+    });
+
+    ['pointerup', 'pointercancel', 'pointerleave'].forEach(function (e) {
+      caixa.addEventListener(e, function () {
+        if (!alvo) return;
+        if (!arrastando) { clearTimeout(timer); alvo = null; return; }
+        const passo = alturas[indice] || 1;
+        const destino = Math.max(0, Math.min(cartoes().length - 1, indice + Math.round(dy / passo)));
+        soltar(destino);
+      });
+    });
+
+    /* um clique curto abre o módulo; depois de arrastar, não */
+    caixa.addEventListener('click', function (ev) {
+      const c = ev.target.closest('[data-go]');
+      if (c && !arrastando) setScreen(c.dataset.go);
+    }, true);
+  }
+
+  /* ══════════════════════════════════════════════════════
      BOOT
      ══════════════════════════════════════════════════════ */
   function cacheEls() {
@@ -1392,6 +1934,7 @@
     el.saveSt        = $('save-st');
     el.saveStD       = $('save-st-d');
     el.saveStL       = $('save-st-l');
+    el.saveStC       = $('save-st-c');
     el.sbFinal       = $('sb-final');
     el.sbFinalLabel  = $('sb-final-label');
     el.sbGrowth      = $('sb-growth');
@@ -1410,14 +1953,17 @@
     el.navbar.addEventListener('click', function (ev) {
       const b = ev.target.closest('.navitem');
       if (!b) return;
-      setScreen(b.dataset.tab === 'menu' ? 'menu' : screen);
+      // 'main' volta ao módulo; qualquer outro é o nome da aba
+      setScreen(b.dataset.tab === 'main' ? screen : b.dataset.tab);
     });
 
-    /* hub: escolher o módulo */
-    $('slot-hub').addEventListener('click', function (ev) {
-      const b = ev.target.closest('[data-go]');
+    /* hub: o link de ajustes (os cartões têm o próprio handler, com arrasto) */
+    $('hub-dica').parentElement.addEventListener('click', function (ev) {
+      const b = ev.target.closest('.hub-link[data-go]');
       if (b) setScreen(b.dataset.go);
     });
+    aplicarOrdem();
+    ligarArrasto();
 
     $('btn-back').addEventListener('click', voltar);
 
@@ -1446,9 +1992,14 @@
       const b = ev.target.closest('[data-act]');
       if (!b) return;
       const id = b.dataset.id;
-      if (b.dataset.act === 'tog')  tog(id);
-      if (b.dataset.act === 'edit') openForm(id);
-      if (b.dataset.act === 'del')  del(id);
+      const spec = TABELAS[screen] || TABELAS.eco;
+      if (b.dataset.act === 'edit') { spec.abrir(id); return; }
+      if (b.dataset.act === 'tog')  { tog(id); return; }
+      if (b.dataset.act === 'del') {
+        if (screen === 'loans')       { editLoanId = id; delLoan(); }
+        else if (screen === 'contas') { editContaId = id; delConta(); }
+        else                          { del(id); }
+      }
     });
 
     /* seletor de mês */
@@ -1509,6 +2060,7 @@
     // o botão central depende do módulo aberto
     $('fab-add').addEventListener('click', function () {
       if (screen === 'loans') openLoan(null);
+      else if (screen === 'contas') openConta(null);
       else openForm(null);
     });
     ['btn-settings', 'm-btn-edit'].forEach(function (id) {
@@ -1516,7 +2068,7 @@
       if (!b) return;
       b.addEventListener('click', function () {
         if (isDesktop) { fillExport(); openSheet(el.sheetSettings); }
-        else setScreen('menu');
+        else setScreen('tabelas');
       });
     });
 
@@ -1547,6 +2099,23 @@
       if (openSheetEl) closeSheets(true);
     });
 
+    /* contas */
+    ['ct-rendas', 'ct-fixas', 'ct-variaveis', 'ct-subs'].forEach(function (id) {
+      $(id).addEventListener('click', function (ev) {
+        const b = ev.target.closest('[data-cid]');
+        if (b) openConta(b.dataset.cid);
+      });
+    });
+    $('ct-kind').addEventListener('change', onContaKind);
+    $('ct-frequency').addEventListener('change', onContaAmounts);
+    ['ct-amount', 'ct-avg'].forEach(function (id) {
+      $(id).addEventListener('input', onContaAmounts);
+    });
+    $('ct-save').addEventListener('click', saveConta);
+    $('ct-del').addEventListener('click', delConta);
+    $('ct-cancel').addEventListener('click', function () { closeSheets(); });
+    $('ct-back').addEventListener('click', function () { closeSheets(); });
+
     /* empréstimos */
     $('lo-filters').addEventListener('click', function (ev) {
       const b = ev.target.closest('.lo-chip');
@@ -1572,6 +2141,15 @@
     $('btn-export-file').addEventListener('click', doExportFile);
     $('btn-import').addEventListener('click', doImport);
     $('btn-reset').addEventListener('click', doReset);
+
+    /* o cabeçalho encolhe assim que a rolagem sai do topo */
+    const appbar = document.querySelector('.appbar');
+    Array.prototype.forEach.call(document.querySelectorAll('.view-scroll'), function (sc) {
+      sc.addEventListener('scroll', function () {
+        if (!appbar) return;
+        appbar.classList.toggle('flutuando', sc.scrollTop > 8);
+      }, { passive: true });
+    });
 
     /* layout responsivo */
     if (mqDesktop.addEventListener) mqDesktop.addEventListener('change', onBreakpoint);
@@ -1863,7 +2441,7 @@
     }
 
     Store.startRealtime();
-    Store.retry(entries, saldoInicial, loans);
+    Store.retry(entries, saldoInicial, loans, contas);
   }
 
   function startLocalOnly() {
@@ -1895,7 +2473,7 @@
     });
 
     // reenvia o que ficou pendente quando a conexão volta
-    window.addEventListener('online', function () { Store.retry(entries, saldoInicial, loans); });
+    window.addEventListener('online', function () { Store.retry(entries, saldoInicial, loans, contas); });
 
     if (!Store.init()) {
       startLocalOnly();

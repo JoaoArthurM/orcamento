@@ -166,6 +166,45 @@
     return out;
   }
 
+  const KINDS_OK = ['renda', 'fixa', 'variavel', 'assinatura'];
+  const FREQ_OK  = ['mensal', 'quinzenal', 'semanal', 'anual', 'pontual'];
+
+  /** Quanto uma renda representa por mês, seja qual for a frequência. */
+  const FREQ_MES = { mensal: 1, quinzenal: 2, semanal: 4.345, anual: 1 / 12, pontual: 0 };
+
+  function validAccount(a) {
+    return !!a && typeof a === 'object'
+      && typeof a.name === 'string' && a.name.trim() !== ''
+      && KINDS_OK.indexOf(a.kind) >= 0;
+  }
+
+  function normalizeAccount(a) {
+    const kind = KINDS_OK.indexOf(a.kind) >= 0 ? a.kind : 'fixa';
+    const out = {
+      id:     isUuid(a.id) ? a.id : newId(),
+      kind:   kind,
+      name:   String(a.name).trim().slice(0, 120),
+      amount: Math.max(0, Number(a.amount) || 0),
+      frequency:  null,
+      due_day:    null,
+      paid:       false,
+      avg_amount: null,
+      notes:  a.notes ? String(a.notes).slice(0, 500) : null,
+    };
+    if (kind === 'renda') {
+      out.frequency = FREQ_OK.indexOf(a.frequency) >= 0 ? a.frequency : 'mensal';
+    } else if (kind === 'fixa') {
+      const d = parseInt(a.due_day, 10);
+      out.due_day = (d >= 1 && d <= 31) ? d : 1;
+      out.paid = !!a.paid;
+    } else if (kind === 'variavel') {
+      // sem média informada, a própria conta vira a referência
+      const m = Number(a.avg_amount);
+      out.avg_amount = isFinite(m) && m >= 0 ? m : out.amount;
+    }
+    return out;
+  }
+
   /* ── mapeamento app ⇄ banco ─────────────────────────── */
   function toRow(e, index) {
     return {
@@ -223,6 +262,31 @@
     });
   }
 
+  function toAccountRow(a, index) {
+    return {
+      id: a.id, user_id: user.id,
+      kind: a.kind, name: a.name, amount: a.amount,
+      frequency:  a.kind === 'renda'    ? a.frequency  : null,
+      due_day:    a.kind === 'fixa'     ? a.due_day    : null,
+      paid:       a.kind === 'fixa'     ? !!a.paid     : false,
+      avg_amount: a.kind === 'variavel' ? a.avg_amount : null,
+      notes: a.notes,
+      position: index,
+    };
+  }
+
+  function fromAccountRow(r) {
+    return normalizeAccount({
+      id: r.id, kind: r.kind, name: r.name, amount: r.amount,
+      frequency: r.frequency, due_day: r.due_day, paid: r.paid,
+      avg_amount: r.avg_amount, notes: r.notes,
+    });
+  }
+
+  function sameAccountRow(a, b) {
+    return JSON.stringify(toAccountRow(a, a.__pos)) === JSON.stringify(toAccountRow(b, b.__pos));
+  }
+
   function sameLoanRow(a, b) {
     return JSON.stringify(toLoanRow(a, a.__pos)) === JSON.stringify(toLoanRow(b, b.__pos));
   }
@@ -231,6 +295,13 @@
   function sameRow(a, b) {
     return JSON.stringify(toRow(a, a.__pos)) === JSON.stringify(toRow(b, b.__pos));
   }
+
+  /* As três coleções seguem o mesmo diff: mudou a linha, sobe a linha. */
+  const COLECOES = [
+    { chave: 'entries',  tabela: 'entries',  toRow: toRow,        same: sameRow },
+    { chave: 'loans',    tabela: 'loans',    toRow: toLoanRow,    same: sameLoanRow },
+    { chave: 'accounts', tabela: 'accounts', toRow: toAccountRow, same: sameAccountRow },
+  ];
 
   /* ── cache local ────────────────────────────────────── */
   function readLocal() {
@@ -243,6 +314,7 @@
             entries: d.entries.filter(validEntry).map(normalize),
             saldoInicial: Number(d.saldoInicial) || 0,
             loans: Array.isArray(d.loans) ? d.loans.filter(validLoan).map(normalizeLoan) : [],
+            accounts: Array.isArray(d.accounts) ? d.accounts.filter(validAccount).map(normalizeAccount) : [],
           };
         }
       } catch (e) {}
@@ -259,7 +331,7 @@
         if (!d || !Array.isArray(d.entries)) continue;
         const clean = d.entries.filter(validEntry).map(normalize);
         if (!clean.length && d.entries.length) continue;   // blob corrompido
-        return { entries: clean, saldoInicial: Number(d.saldoInicial) || 0, loans: [] };
+        return { entries: clean, saldoInicial: Number(d.saldoInicial) || 0, loans: [], accounts: [] };
       } catch (e) {}
     }
     return null;
@@ -267,10 +339,11 @@
 
   function writeLocal(state) {
     return lsSet(kState(), JSON.stringify({
-      v: 3,
+      v: 4,
       entries: state.entries,
       saldoInicial: state.saldoInicial,
       loans: state.loans || [],
+      accounts: state.accounts || [],
       savedAt: Date.now(),
     }));
   }
@@ -307,23 +380,26 @@
       .select('saldo_inicial').eq('user_id', user.id).maybeSingle();
     if (sr.error) throw sr.error;
 
-    // a tabela de empréstimos é opcional: se schema-loans.sql ainda não
-    // rodou, o módulo fica vazio em vez de derrubar a sincronização toda
-    let loans = [];
-    const lr = await client.from('loans')
-      .select('*').eq('user_id', user.id).order('position', { ascending: true });
-    if (lr.error) {
-      if (!/schema cache|does not exist/i.test(lr.error.message || '')) throw lr.error;
-      if (window.console) console.warn('[orçamento] tabela loans ausente — rode supabase/schema-loans.sql');
-    } else {
-      loans = lr.data.map(fromLoanRow);
+    /* As tabelas dos módulos novos são opcionais: se o SQL ainda não rodou,
+       aquele módulo fica vazio em vez de derrubar a sincronização toda. */
+    async function opcional(tabela, mapear, arquivo) {
+      const r = await client.from(tabela)
+        .select('*').eq('user_id', user.id).order('position', { ascending: true });
+      if (!r.error) return r.data.map(mapear);
+      if (!/schema cache|does not exist/i.test(r.error.message || '')) throw r.error;
+      if (window.console) console.warn('[orçamento] tabela ' + tabela + ' ausente — rode ' + arquivo);
+      return [];
     }
 
-    if (!er.data.length && !sr.data && !loans.length) return null;   // conta ainda vazia
+    const loans    = await opcional('loans',    fromLoanRow,    'supabase/schema-loans.sql');
+    const accounts = await opcional('accounts', fromAccountRow, 'supabase/schema-accounts.sql');
+
+    if (!er.data.length && !sr.data && !loans.length && !accounts.length) return null;
     return {
       entries: er.data.map(fromRow),
       saldoInicial: sr.data ? (Number(sr.data.saldo_inicial) || 0) : 0,
       loans: loans,
+      accounts: accounts,
     };
   }
 
@@ -332,83 +408,69 @@
    * Como o diff sempre parte de `synced`, uma tentativa que falhou
    * é recuperada só chamando push() de novo — não há fila a manter.
    */
+  /**
+   * Envia as diferenças entre `state` e o último estado confirmado.
+   * Como o diff sempre parte de `synced`, uma tentativa que falhou é
+   * recuperada só chamando push() de novo — não há fila a manter.
+   */
   async function push(state) {
     if (!client || !user || pushing) return;
     pushing = true;
     try {
-      const prev = synced ? synced.entries : [];
-      const prevById = {};
-      prev.forEach(function (e, i) { e.__pos = i; prevById[e.id] = e; });
+      /* um plano por coleção: o que criar/atualizar e o que apagar */
+      const planos = COLECOES.map(function (col) {
+        const antes = (synced && synced[col.chave]) ? synced[col.chave] : [];
+        const porId = {};
+        antes.forEach(function (x, i) { x.__pos = i; porId[x.id] = x; });
 
-      const upserts = [];
-      state.entries.forEach(function (e, i) {
-        e.__pos = i;
-        const old = prevById[e.id];
-        if (!old || !sameRow(old, e)) upserts.push(toRow(e, i));
+        const agora = state[col.chave] || [];
+        const upserts = [];
+        agora.forEach(function (x, i) {
+          x.__pos = i;
+          const velho = porId[x.id];
+          if (!velho || !col.same(velho, x)) upserts.push(col.toRow(x, i));
+        });
+
+        const vivos = {};
+        agora.forEach(function (x) { vivos[x.id] = true; });
+        const deletes = antes.filter(function (x) { return !vivos[x.id]; })
+                             .map(function (x) { return x.id; });
+
+        return { col: col, upserts: upserts, deletes: deletes };
       });
 
-      const nextIds = {};
-      state.entries.forEach(function (e) { nextIds[e.id] = true; });
-      const deletes = prev.filter(function (e) { return !nextIds[e.id]; })
-                          .map(function (e) { return e.id; });
-
-      const saldoChanged = !synced || synced.saldoInicial !== state.saldoInicial;
-
-      /* empréstimos: mesmo diff, outra tabela */
-      const prevL = (synced && synced.loans) ? synced.loans : [];
-      const prevLById = {};
-      prevL.forEach(function (l, i) { l.__pos = i; prevLById[l.id] = l; });
-
-      const loansNow = state.loans || [];
-      const upsertsL = [];
-      loansNow.forEach(function (l, i) {
-        l.__pos = i;
-        const old = prevLById[l.id];
-        if (!old || !sameLoanRow(old, l)) upsertsL.push(toLoanRow(l, i));
+      const saldoMudou = !synced || synced.saldoInicial !== state.saldoInicial;
+      const temTrabalho = saldoMudou || planos.some(function (p) {
+        return p.upserts.length || p.deletes.length;
       });
-      const nextLIds = {};
-      loansNow.forEach(function (l) { nextLIds[l.id] = true; });
-      const deletesL = prevL.filter(function (l) { return !nextLIds[l.id]; })
-                            .map(function (l) { return l.id; });
 
-      if (!upserts.length && !deletes.length && !saldoChanged
-          && !upsertsL.length && !deletesL.length) {
-        dirty = false; status('salvo ✓', 'ok');
-        return;
-      }
+      if (!temTrabalho) { dirty = false; status('salvo ✓', 'ok'); return; }
 
       status('sincronizando…', 'saving');
 
-      if (deletes.length) {
-        const r = await client.from('entries').delete()
-          .eq('user_id', user.id).in('id', deletes);
-        if (r.error) throw r.error;
+      for (const p of planos) {
+        /* apaga antes de inserir: evita bater em índice único ao renomear */
+        if (p.deletes.length) {
+          const r = await client.from(p.col.tabela).delete()
+            .eq('user_id', user.id).in('id', p.deletes);
+          if (r.error) throw r.error;
+        }
+        if (p.upserts.length) {
+          const r = await client.from(p.col.tabela).upsert(p.upserts, { onConflict: 'id' });
+          if (r.error) throw r.error;
+        }
       }
-      if (upserts.length) {
-        const r = await client.from('entries').upsert(upserts, { onConflict: 'id' });
-        if (r.error) throw r.error;
-      }
-      if (saldoChanged) {
+
+      if (saldoMudou) {
         const r = await client.from('settings')
           .upsert({ user_id: user.id, saldo_inicial: state.saldoInicial }, { onConflict: 'user_id' });
         if (r.error) throw r.error;
       }
 
-      if (deletesL.length) {
-        const r = await client.from('loans').delete()
-          .eq('user_id', user.id).in('id', deletesL);
-        if (r.error) throw r.error;
-      }
-      if (upsertsL.length) {
-        const r = await client.from('loans').upsert(upsertsL, { onConflict: 'id' });
-        if (r.error) throw r.error;
-      }
+      const confirmado = { saldoInicial: state.saldoInicial };
+      COLECOES.forEach(function (col) { confirmado[col.chave] = clone(state[col.chave] || []); });
+      writeSynced(confirmado);
 
-      writeSynced({
-        entries: clone(state.entries),
-        saldoInicial: state.saldoInicial,
-        loans: clone(loansNow),
-      });
       dirty = false;
       status('salvo ✓', 'ok');
     } catch (err) {
@@ -434,6 +496,9 @@
           scheduleRemote)
       .on('postgres_changes',
           { event: '*', schema: 'public', table: 'loans', filter: 'user_id=eq.' + user.id },
+          scheduleRemote)
+      .on('postgres_changes',
+          { event: '*', schema: 'public', table: 'accounts', filter: 'user_id=eq.' + user.id },
           scheduleRemote)
       .subscribe();
   }
@@ -469,6 +534,9 @@
     validEntry: validEntry,
     normalizeLoan: normalizeLoan,
     validLoan: validLoan,
+    normalizeAccount: normalizeAccount,
+    validAccount: validAccount,
+    FREQ_MES: FREQ_MES,
     hoje: hoje,
 
     onRemoteChange(fn) { onRemote = fn; },
@@ -600,12 +668,16 @@
           return { state: remote, source: 'cloud' };
         }
         const local = readLocal() || localFallback;
-        if (local && (local.entries.length || (local.loans && local.loans.length))) {
-          writeSynced({ entries: [], saldoInicial: null, loans: [] });   // força enviar tudo
+        const temAlgo = local && (local.entries.length
+          || (local.loans && local.loans.length)
+          || (local.accounts && local.accounts.length));
+        if (temAlgo) {
+          // synced zerado força o diff a enviar tudo
+          writeSynced({ entries: [], saldoInicial: null, loans: [], accounts: [] });
           await push(local);
           return { state: local, source: 'uploaded' };
         }
-        writeSynced({ entries: [], saldoInicial: 0, loans: [] });
+        writeSynced({ entries: [], saldoInicial: 0, loans: [], accounts: [] });
         return { state: null, source: 'empty' };
       } catch (err) {
         status('offline — usando dados deste aparelho', 'readonly');
@@ -615,8 +687,9 @@
     },
 
     /** O app chama isto a cada mudança, sempre com o estado completo. */
-    save(entries, saldoInicial, loans) {
-      const state = { entries: entries, saldoInicial: saldoInicial, loans: loans || [] };
+    save(entries, saldoInicial, loans, accounts) {
+      const state = { entries: entries, saldoInicial: saldoInicial,
+                      loans: loans || [], accounts: accounts || [] };
       const ok = writeLocal(state);
       if (this.mode !== 'cloud' || !user) {
         status(ok ? 'salvo ✓' : 'erro ao salvar', ok ? 'ok' : 'err');
@@ -627,9 +700,10 @@
     },
 
     /** Reenvia o que ficou pendente (volta da conexão, app reaberto). */
-    retry(entries, saldoInicial, loans) {
+    retry(entries, saldoInicial, loans, accounts) {
       if (this.mode !== 'cloud' || !user || !dirty) return;
-      push({ entries: entries, saldoInicial: saldoInicial, loans: loans || [] });
+      push({ entries: entries, saldoInicial: saldoInicial,
+             loans: loans || [], accounts: accounts || [] });
     },
 
     /** Apaga os dados deste usuário — aqui e na nuvem. */
@@ -644,9 +718,11 @@
         try {
           await client.from('entries').delete().eq('user_id', user.id);
           await client.from('settings').delete().eq('user_id', user.id);
-          const lr = await client.from('loans').delete().eq('user_id', user.id);
-          if (lr.error && !/schema cache|does not exist/i.test(lr.error.message || '')) throw lr.error;
-          writeSynced({ entries: [], saldoInicial: 0, loans: [] });
+          for (const t of ['loans', 'accounts']) {
+            const r = await client.from(t).delete().eq('user_id', user.id);
+            if (r.error && !/schema cache|does not exist/i.test(r.error.message || '')) throw r.error;
+          }
+          writeSynced({ entries: [], saldoInicial: 0, loans: [], accounts: [] });
         } catch (e) {
           if (window.console) console.warn('[orçamento] falha ao apagar na nuvem:', e.message || e);
           throw e;

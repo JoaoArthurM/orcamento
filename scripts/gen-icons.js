@@ -11,13 +11,13 @@ const ICONES = [
   // login
   'mail', 'lock', 'eye', 'eye-closed', 'shield-check',
   // navegação
-  'stats-up-square', 'menu', 'plus', 'nav-arrow-left', 'nav-arrow-right', 'xmark', 'check',
+  'plus', 'nav-arrow-left', 'drag', 'nav-arrow-right', 'check',
   // cabeçalhos e ações
-  'edit-pencil', 'graph-up', 'calendar', 'reports', 'search', 'trash',
+  'edit-pencil', 'graph-up', 'calendar', 'table-rows', 'search', 'trash',
   // tipos de entrada
   'piggy-bank', 'safe', 'coins', 'dice-five', 'hand-cash', 'bank',
   // kpis / conta / ajustes
-  'wallet', 'log-out', 'settings', 'download', 'upload', 'clipboard-check', 'refresh', 'user',
+  'wallet', 'log-out', 'settings', 'download', 'upload', 'clipboard-check', 'refresh', 'repeat', 'user',
 ];
 
 function baixar(nome) {

@@ -28,12 +28,18 @@ ajustes. Entrando num módulo, o topo ganha um botão de voltar e a barra de bai
 aparece com o rótulo daquele módulo. No hub não há barra de baixo.
 
 ```
-hub ──► economia   ──► [simulador] [+] [menu]
-    └─► empréstimos ──► [empréstimos] [+] [menu]
+hub ──► economia    ──► [simulador]   [+] [tabelas]
+    ├─► empréstimos ──► [empréstimos] [+] [tabelas]
+    ├─► contas      ──► [contas]      [+] [tabelas]
+    └─► ajustes (conta, senha, exportar/importar, apagar)
 ```
 
-O **menu** é compartilhado (conta, senha, exportar/importar, apagar). A lista de
-entradas só aparece nele quando você chega pela economia.
+**Tabelas** mostra os lançamentos do módulo aberto, com busca e ações de editar
+e excluir — a mesma tela serve aos três, trocando só a fonte de dados
+(`TABELAS` em `app.js`). Os **ajustes** ficam só no hub, fora dos módulos.
+
+Os cartões do hub são reordenáveis: segure meio segundo e arraste. A ordem fica
+em `localStorage` (`orcamento:hub-ordem`), por aparelho.
 
 ### Empréstimos
 
@@ -56,6 +62,32 @@ quitou), **Parcial** (recebeu algo), **Em aberto**. Os filtros no topo da lista
 usam os mesmos critérios.
 
 O cartão do topo soma tudo: a receber, juros embutidos, recebido e em aberto.
+
+### Contas
+
+Uma linha por registro em `accounts`, separadas pelo campo `kind`:
+
+| Tipo | Campos próprios | Para quê |
+|---|---|---|
+| `renda` | frequência | o que entra |
+| `fixa` | dia do vencimento, pago | valor previsível, data certa |
+| `variavel` | média dos últimos meses | oscila mês a mês |
+| `assinatura` | — | mensal recorrente |
+
+**O total anual nunca é guardado**: sai de `valor × 12`. As rendas são
+normalizadas para o equivalente mensal antes de somar:
+
+| Frequência | Fator |
+|---|---|
+| todo mês | ×1 |
+| a cada 15 dias | ×2 |
+| toda semana | ×4,345 |
+| uma vez por ano | ÷12 |
+| pontual | não entra no fluxo mensal |
+
+`sobra = renda − fixas − variáveis − assinaturas`. A barra do topo mostra a
+fatia de cada grupo sobre a renda, e as metas de economia são 10 / 20 / 30%
+dela.
 
 ## Como funciona o cálculo
 
@@ -83,7 +115,7 @@ offline) e o **Supabase** é a cópia compartilhada entre os aparelhos. Toda
 alteração grava aqui na hora e sobe para a nuvem em seguida; sem rede, fica
 pendente e sobe sozinha quando a conexão volta.
 
-- Uma linha por entrada em `entries` e por empréstimo em `loans` — editar um
+- Uma linha por registro em `entries`, `loans` e `accounts` — editar um
   registro grava só ele.
 - Alteração feita no PC aparece no celular na hora (Realtime).
 - **Sem credenciais em `assets/js/config.js`, o app roda em modo local**, sem
@@ -98,10 +130,11 @@ nesta ordem:
 
 1. [`supabase/schema.sql`](supabase/schema.sql) — `entries` e `settings` (economia)
 2. [`supabase/schema-loans.sql`](supabase/schema-loans.sql) — `loans` (empréstimos)
+3. [`supabase/schema-accounts.sql`](supabase/schema-accounts.sql) — `accounts` (contas)
 
 Os dois ligam o RLS e publicam no Realtime. É seguro rodar de novo.
 
-Se `loans` ainda não existir, o app não quebra: o módulo de empréstimos fica
+Se uma dessas tabelas ainda não existir, o app não quebra: aquele módulo fica
 vazio e o resto sincroniza normalmente.
 
 **2. Aponte as credenciais.** Em `assets/js/config.js`, preencha `SUPABASE_URL`
@@ -208,6 +241,7 @@ assets/vendor/supabase.js  supabase-js 2.58 (vendorizado p/ funcionar offline)
 scripts/gen-icons.js       baixa os ícones da Iconoir e gera o sprite
 supabase/schema.sql        entries + settings, RLS e realtime
 supabase/schema-loans.sql  loans, RLS e realtime
+supabase/schema-accounts.sql accounts, RLS e realtime
 manifest.webmanifest       metadados do PWA
 sw.js                      service worker (app shell offline)
 assets/icons/              ícones 192/512/maskable/apple-touch
