@@ -6,7 +6,7 @@
   'use strict';
 
   /* ── CONSTANTES ─────────────────────────────────────── */
-  const APP_VERSION = '3.1.1';
+  const APP_VERSION = '3.1.2';
 
   const MS = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
   const MS_FULL = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
@@ -332,7 +332,7 @@
   const CAMPOS_DINHEIRO = [
     'si', 'm-si',                                        // saldo inicial
     'famt', 'fmin', 'fmax',                              // entradas
-    'lo-principal', 'lo-total', 'lo-received',
+    'lo-principal', 'lo-f-total', 'lo-f-received',
     'lo-installment-amount',                             // empréstimos
     'ct-amount', 'ct-avg',                               // contas
   ];
@@ -1672,8 +1672,8 @@
     const l = editLoanId ? loans.find(function (x) { return x.id === editLoanId; }) : null;
     $('lo-person').value     = l ? l.person : '';
     $('lo-principal').value  = l ? num(l.principal) : '';
-    $('lo-total').value      = l ? num(l.total_due) : '';
-    $('lo-received').value   = l ? num(l.received) : '';
+    $('lo-f-total').value    = l ? num(l.total_due) : '';
+    $('lo-f-received').value = l ? num(l.received) : '';
     $('lo-lent').value       = l ? l.lent_on : Store.hoje();
     $('lo-due').value        = l && l.due_on ? l.due_on : '';
     $('lo-method').value     = l ? l.method : 'avista';
@@ -1698,7 +1698,7 @@
   /** Recalcula os juros e a dica de parcela enquanto o usuário digita. */
   function onLoanAmounts() {
     const principal = parseBRL($('lo-principal').value) || 0;
-    const total     = parseBRL($('lo-total').value) || 0;
+    const total     = parseBRL($('lo-f-total').value) || 0;
     const juros     = total - principal;
 
     const box = $('lo-juros');
@@ -1746,8 +1746,8 @@
       id: editLoanId || undefined,
       person: person,
       principal: principal,
-      total_due: parseBRL($('lo-total').value) || principal,
-      received: parseBRL($('lo-received').value) || 0,
+      total_due: parseBRL($('lo-f-total').value) || principal,
+      received: parseBRL($('lo-f-received').value) || 0,
       lent_on: $('lo-lent').value,
       due_on: $('lo-due').value,
       method: method,
@@ -2291,7 +2291,7 @@
       if (b) openLoan(b.dataset.id);
     });
     $('lo-method').addEventListener('change', onLoanMethod);
-    ['lo-principal', 'lo-total', 'lo-installments', 'lo-installment-amount'].forEach(function (id) {
+    ['lo-principal', 'lo-f-total', 'lo-installments', 'lo-installment-amount'].forEach(function (id) {
       $(id).addEventListener('input', onLoanAmounts);
     });
     $('lo-save').addEventListener('click', saveLoan);
