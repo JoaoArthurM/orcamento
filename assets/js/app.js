@@ -6,7 +6,7 @@
   'use strict';
 
   /* ── CONSTANTES ─────────────────────────────────────── */
-  const APP_VERSION = '1.5.1';
+  const APP_VERSION = '2.0.0';
 
   const MS = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
   const MS_FULL = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
@@ -66,7 +66,11 @@
 
   /* ── ESTADO ─────────────────────────────────────────── */
   let entries      = [];
+  let loans        = [];
   let saldoInicial = 0;
+  let screen       = 'hub';     // hub · eco · loans
+  let loanFilter   = 'todos';   // todos · aberto · atrasados · quitados
+  let editLoanId   = null;
   let view         = 'p';        // 'p' pessimista · 'o' otimista
   let tab          = 'resumo';
   let selMonth     = 0;          // índice 0..11 na janela de 12 meses
@@ -152,6 +156,91 @@
     return rows;
   }
 
+  /* ══════════════════════════════════════════════════════
+     EMPRÉSTIMOS
+     ══════════════════════════════════════════════════════ */
+  const METHOD_LABEL = {
+    avista:    'à vista',
+    parcelado: 'parcelado',
+    mensal:    'mensalidade',
+  };
+
+  const LOAN_FILTERS = [
+    { id: 'todos',     label: 'Todos' },
+    { id: 'aberto',    label: 'Em aberto' },
+    { id: 'atrasados', label: 'Atrasados' },
+    { id: 'quitados',  label: 'Quitados' },
+  ];
+
+  /** Data de hoje em ISO, para comparar com due_on sem fuso atrapalhar. */
+  function hojeISO() { return Store.hoje(); }
+
+  /**
+   * Tudo que a tela precisa saber de um empréstimo.
+   * Os juros nunca são guardados: saem de (total_due - principal).
+   */
+  function loanInfo(l) {
+    const juros    = l.total_due - l.principal;
+    const emAberto = Math.max(0, l.total_due - l.received);
+    const quitado  = l.received >= l.total_due && l.total_due > 0;
+    const atrasado = !quitado && !!l.due_on && l.due_on < hojeISO();
+    const pct      = l.total_due > 0 ? Math.min(1, l.received / l.total_due) : 0;
+
+    let status = 'Em aberto', sbg = '#F1F6EE', sfg = '#51705E';
+    if (quitado)       { status = 'Quitado';  sbg = '#E9F6D6'; sfg = '#2F6142'; }
+    else if (atrasado) { status = 'Atrasado'; sbg = '#FEF0EE'; sfg = '#8C3A2F'; }
+    else if (l.received > 0) { status = 'Parcial'; sbg = '#FAF2DF'; sfg = '#8A6A24'; }
+
+    return { juros, emAberto, quitado, atrasado, pct, status, sbg, sfg,
+             jurosPct: l.principal > 0 ? (juros / l.principal) * 100 : 0 };
+  }
+
+  /** Totais do topo da tela de empréstimos. */
+  function loansResumo() {
+    return loans.reduce(function (a, l) {
+      const i = loanInfo(l);
+      a.aReceber += l.total_due;
+      a.juros    += i.juros;
+      a.recebido += Math.min(l.received, l.total_due);
+      a.emAberto += i.emAberto;
+      if (!i.quitado) a.ativos++;
+      if (i.atrasado) a.atrasados++;
+      return a;
+    }, { aReceber: 0, juros: 0, recebido: 0, emAberto: 0, ativos: 0, atrasados: 0 });
+  }
+
+  function loansFiltrados() {
+    return loans.filter(function (l) {
+      const i = loanInfo(l);
+      if (loanFilter === 'aberto')    return !i.quitado;
+      if (loanFilter === 'atrasados') return i.atrasado;
+      if (loanFilter === 'quitados')  return i.quitado;
+      return true;
+    });
+  }
+
+  function iniciais(nome) {
+    const p = String(nome).trim().split(/\s+/).filter(Boolean);
+    if (!p.length) return '—';
+    return (p[0].charAt(0) + (p[1] ? p[1].charAt(0) : '')).toUpperCase();
+  }
+
+  /** Cor do bloco de avatar, estável por nome. */
+  const AVATAR_BG = ['#E9F6D6', '#FAF2DF', '#EEF3FD', '#FEF0EE', '#F1F6EE'];
+  const AVATAR_FG = ['#2F6142', '#8A6A24', '#2E5A8C', '#8C3A2F', '#51705E'];
+  function avatarIdx(nome) {
+    let h = 0;
+    for (let i = 0; i < nome.length; i++) h = (h * 31 + nome.charCodeAt(i)) % 997;
+    return h % AVATAR_BG.length;
+  }
+
+  /** "09/set" — curto, para caber no cartão. */
+  function dataCurta(iso) {
+    if (!iso) return '—';
+    const p = iso.split('-');
+    return p[2] + '/' + MS[parseInt(p[1], 10) - 1].toLowerCase();
+  }
+
   /* ── FORMATAÇÃO ─────────────────────────────────────── */
   function num(n, dec) {
     const d = dec === undefined ? 2 : dec;
@@ -223,7 +312,7 @@
 
   function setStatus(txt, cls) {
     clearTimeout(statusTimer);
-    [el.saveSt, el.saveStD].forEach(function (n) {
+    [el.saveSt, el.saveStD, el.saveStL].forEach(function (n) {
       if (!n) return;
       n.textContent = txt || '';
       n.className = 'save-st' + (txt ? ' vis ' + (cls || '') : '');
@@ -235,7 +324,7 @@
   function triggerSave() {
     clearTimeout(saveTimer);
     saveTimer = setTimeout(function () {
-      Store.save(entries, saldoInicial);
+      Store.save(entries, saldoInicial, loans);
     }, 500);
   }
 
@@ -243,12 +332,14 @@
   function adoptState(state) {
     entries      = state.entries;
     saldoInicial = state.saldoInicial;
+    loans        = state.loans || [];
   }
 
   function seedState() {
     return {
       entries: JSON.parse(JSON.stringify(SEED_ENTRIES)).map(Store.normalize),
       saldoInicial: SEED_SALDO,
+      loans: [],
     };
   }
 
@@ -287,20 +378,67 @@
     closeSheets(true);
   }
 
-  function setTab(name) {
-    tab = name;
-    ['sim', 'menu'].forEach(function (t) {
-      const v = $('view-' + t);
-      if (v) v.classList.toggle('on', t === name);
+  /* Cada módulo define o rótulo da barra de baixo e o título do topo. */
+  const MODULOS = {
+    eco:   { titulo: 'economia.',    navLbl: 'simulador',   navIco: 'stats-up-square', view: 'view-sim' },
+    loans: { titulo: 'empréstimos.', navLbl: 'empréstimos', navIco: 'hand-cash',       view: 'view-loans' },
+  };
+
+  const VIEWS = ['view-hub', 'view-sim', 'view-loans', 'view-menu'];
+
+  /**
+   * Navega entre hub, módulos e o menu.
+   *   setScreen('hub')            → tela de escolha
+   *   setScreen('eco'|'loans')    → módulo, aba principal
+   *   setScreen('menu')           → ajustes (mantém o módulo de origem)
+   */
+  function setScreen(destino) {
+    if (destino === 'menu') {
+      tab = 'menu';
+    } else {
+      screen = destino;
+      tab = 'main';
+    }
+
+    const noHub = screen === 'hub' && tab !== 'menu';
+    const mod = MODULOS[screen];
+    const alvo = tab === 'menu' ? 'view-menu' : (noHub ? 'view-hub' : mod.view);
+
+    VIEWS.forEach(function (v) {
+      const n = $(v);
+      if (n) n.classList.toggle('on', v === alvo);
     });
+
+    /* topo: voltar + título */
+    $('btn-back').hidden = noHub;
+    $('appbar-title').textContent = noHub ? 'orçamento.' : (tab === 'menu' ? 'ajustes.' : mod.titulo);
+
+    /* barra de baixo: some no hub, muda de rótulo por módulo */
+    el.navbar.hidden = noHub;
+    if (mod) {
+      $('nav-main-lbl').textContent = mod.navLbl;
+      $('nav-main-ico').innerHTML = ico(mod.navIco, 'navico');
+    }
     Array.prototype.forEach.call(el.navbar.querySelectorAll('.navitem'), function (b) {
-      const on = b.dataset.tab === name;
+      const on = b.dataset.tab === tab;
       b.classList.toggle('on', on);
       if (on) b.setAttribute('aria-current', 'page');
       else b.removeAttribute('aria-current');
     });
-    if (name === 'menu') fillExport();
-    if (name === 'sim' && lastRows) renderCurve(lastRows);
+
+    /* a lista de entradas só faz sentido no menu vindo da economia */
+    const soEco = tab === 'menu' && screen === 'eco';
+    el.cList.hidden = !soEco;
+    el.cLegend.hidden = !soEco;
+
+    if (tab === 'menu') fillExport();
+    if (alvo === 'view-sim' && lastRows) renderCurve(lastRows);
+  }
+
+  /** O botão de voltar sobe um nível: menu → módulo, módulo → hub. */
+  function voltar() {
+    if (tab === 'menu' && screen !== 'hub') setScreen(screen);
+    else { screen = 'hub'; setScreen('hub'); }
   }
 
   /* ══════════════════════════════════════════════════════
@@ -321,6 +459,8 @@
     renderMonthEntries(rows);
     renderCurve(rows);
     renderMonthTable(rows);
+    renderLoans();
+    renderHub(rows);
     if (isDesktop) renderTable(rows);
   }
 
@@ -585,6 +725,101 @@
     $('m-curve-axis').innerHTML = w12.map(function (mo, i) {
       return '<span' + (i === selMonth ? ' class="on"' : '') + '>' + MS[mo.m - 1] + '</span>';
     }).join('');
+  }
+
+  /* ── tela de empréstimos ────────────────────────────── */
+  function renderLoans() {
+    const r = loansResumo();
+
+    $('lo-active').textContent = r.ativos === 1 ? '1 empréstimo ativo' : r.ativos + ' empréstimos ativos';
+    const late = $('lo-late');
+    late.textContent = r.atrasados + (r.atrasados === 1 ? ' atrasado' : ' atrasados');
+    late.className = 'lo-late' + (r.atrasados === 0 ? ' zero' : '');
+
+    $('lo-total').textContent    = num(r.aReceber);
+    $('lo-interest').textContent = 'inclui R$ ' + num(r.juros) + ' de juros';
+    $('lo-received').textContent = num(r.recebido);
+    $('lo-open').textContent     = num(r.emAberto);
+
+    $('lo-filters').innerHTML = LOAN_FILTERS.map(function (f) {
+      return '<button class="lo-chip' + (f.id === loanFilter ? ' on' : '') + '" data-f="' + f.id + '" ' +
+        'role="tab" aria-selected="' + (f.id === loanFilter) + '">' + f.label + '</button>';
+    }).join('') + '<span style="flex:none;width:2px"></span>';
+
+    const lista = loansFiltrados();
+    $('lo-count').textContent = lista.length === 1 ? '1 pessoa' : lista.length + ' pessoas';
+
+    if (!lista.length) {
+      $('lo-list').innerHTML =
+        '<div class="empty-list">' +
+          '<span class="empty-dots"></span>' +
+          '<span class="empty-title">' +
+            (loans.length ? 'Nada neste filtro' : 'Nenhum empréstimo') + '</span>' +
+          '<span class="empty-sub">' +
+            (loans.length ? 'Troque o filtro acima para ver os outros.'
+                          : 'Toque no + para registrar quem está te devendo.') + '</span>' +
+        '</div>';
+      return;
+    }
+
+    $('lo-list').innerHTML = lista.map(function (l) {
+      const i  = loanInfo(l);
+      const ai = avatarIdx(l.person);
+      let metodo = METHOD_LABEL[l.method];
+      if (l.method === 'parcelado' && l.installments) metodo = l.installments + 'x';
+      if (l.method === 'mensal' && l.installment_amount) metodo = 'R$ ' + num(l.installment_amount) + '/mês';
+
+      const barBg = i.quitado ? 'var(--ok)' : (i.atrasado ? '#C05848' : 'var(--lime)');
+
+      return '<button class="lo-card" data-id="' + l.id + '">' +
+        '<span class="lo-head">' +
+          '<span class="lo-avatar" style="background:' + AVATAR_BG[ai] + ';color:' + AVATAR_FG[ai] + '">' +
+            esc(iniciais(l.person)) + '</span>' +
+          '<span class="lo-who">' +
+            '<span class="lo-name">' + esc(l.person) + '</span>' +
+            '<span class="lo-meta">emprestado em ' + dataCurta(l.lent_on) + ' · ' + metodo + '</span>' +
+          '</span>' +
+          '<span class="lo-status" style="background:' + i.sbg + ';color:' + i.sfg + '">' + i.status + '</span>' +
+        '</span>' +
+
+        '<span class="lo-grid">' +
+          celula('Emprestado', l.principal, '') +
+          celula('Juros', i.juros, 'juros') +
+          celula('A receber', l.total_due, 'total') +
+        '</span>' +
+
+        '<span class="lo-bar-row">' +
+          '<span class="lo-bar"><span style="width:' + (i.pct * 100).toFixed(1) +
+            '%;background:' + barBg + '"></span></span>' +
+          '<span class="lo-bar-lbl">' + Math.round(i.pct * 100) + '% pago</span>' +
+        '</span>' +
+      '</button>';
+    }).join('');
+  }
+
+  function celula(k, v, cls) {
+    return '<span class="lo-cell">' +
+      '<span class="lo-cell-k">' + k + '</span>' +
+      '<span class="lo-cell-v-wrap">' +
+        '<span class="lo-cell-pfx">R$</span>' +
+        '<span class="lo-cell-v' + (cls ? ' ' + cls : '') + '">' + num(v) + '</span>' +
+      '</span></span>';
+  }
+
+  /* ── cartões do hub ─────────────────────────────────── */
+  function renderHub(rows) {
+    const r = loansResumo();
+    $('hub-loans-val').textContent = num(r.emAberto);
+    $('hub-loans-note').textContent = loans.length
+      ? (r.ativos + (r.ativos === 1 ? ' pessoa devendo' : ' pessoas devendo') +
+         (r.atrasados ? ' · ' + r.atrasados + ' em atraso' : ''))
+      : 'nada emprestado ainda';
+
+    const acum = acumOf(rows);
+    $('hub-eco-val').textContent = num(acum[acum.length - 1]);
+    $('hub-eco-note').textContent = entries.length
+      ? entries.length + (entries.length === 1 ? ' entrada' : ' entradas') + ' · 12 meses'
+      : 'nenhuma entrada ainda';
   }
 
   /* ── grade de 12 meses (desktop) ────────────────────── */
@@ -854,25 +1089,149 @@
     toast(wasEdit ? 'Entrada atualizada' : 'Entrada adicionada');
   }
 
+  /* ── formulário de empréstimo ───────────────────────── */
+  function openLoan(id) {
+    editLoanId = id || null;
+    $('lo-ftitle').textContent = editLoanId ? 'Editar empréstimo' : 'Novo empréstimo';
+    $('lo-del').hidden = !editLoanId;
+
+    const l = editLoanId ? loans.find(function (x) { return x.id === editLoanId; }) : null;
+    $('lo-person').value     = l ? l.person : '';
+    $('lo-principal').value  = l ? num(l.principal) : '';
+    $('lo-total').value      = l ? num(l.total_due) : '';
+    $('lo-received').value   = l ? num(l.received) : '';
+    $('lo-lent').value       = l ? l.lent_on : Store.hoje();
+    $('lo-due').value        = l && l.due_on ? l.due_on : '';
+    $('lo-method').value     = l ? l.method : 'avista';
+    $('lo-installments').value = l && l.installments ? l.installments : '';
+    $('lo-installment-amount').value = l && l.installment_amount ? num(l.installment_amount) : '';
+    $('lo-notes').value      = l && l.notes ? l.notes : '';
+
+    onLoanMethod();
+    onLoanAmounts();
+    openSheet($('sheet-loan'));
+    if (!editLoanId) setTimeout(function () { $('lo-person').focus(); }, 320);
+  }
+
+  /** Mostra só o campo do método escolhido. */
+  function onLoanMethod() {
+    const m = $('lo-method').value;
+    $('lo-parc-field').hidden   = m !== 'parcelado';
+    $('lo-mensal-field').hidden = m !== 'mensal';
+    onLoanAmounts();
+  }
+
+  /** Recalcula os juros e a dica de parcela enquanto o usuário digita. */
+  function onLoanAmounts() {
+    const principal = parseBRL($('lo-principal').value) || 0;
+    const total     = parseBRL($('lo-total').value) || 0;
+    const juros     = total - principal;
+
+    const box = $('lo-juros');
+    if (juros < 0) {
+      box.className = 'lo-juros neg';
+      box.textContent = 'O valor a receber está abaixo do emprestado — será ajustado ao salvar.';
+    } else {
+      box.className = 'lo-juros';
+      const pct = principal > 0 ? (juros / principal) * 100 : 0;
+      box.textContent = 'Juros: R$ ' + num(juros) +
+        (principal > 0 ? '  (' + pct.toLocaleString('pt-BR', { maximumFractionDigits: 1 }) + '%)' : '');
+    }
+
+    const m = $('lo-method').value;
+    if (m === 'parcelado') {
+      const n = parseInt($('lo-installments').value, 10);
+      $('lo-parc-hint').textContent = (n > 0 && total > 0)
+        ? n + 'x de R$ ' + num(total / n) : '';
+      $('lo-parc-hint').hidden = !(n > 0 && total > 0);
+    } else if (m === 'mensal') {
+      const v = parseBRL($('lo-installment-amount').value) || 0;
+      const meses = v > 0 ? Math.ceil(total / v) : 0;
+      $('lo-mensal-hint').textContent = meses
+        ? 'Quita em cerca de ' + meses + (meses === 1 ? ' mês' : ' meses') : '';
+      $('lo-mensal-hint').hidden = !meses;
+    }
+  }
+
+  function saveLoan() {
+    const person = $('lo-person').value.trim();
+    if (!person) { $('lo-person').focus(); toast('Diga quem está devendo'); return; }
+
+    const principal = parseBRL($('lo-principal').value) || 0;
+    if (principal <= 0) { $('lo-principal').focus(); toast('Informe quanto foi emprestado'); return; }
+
+    const method = $('lo-method').value;
+    if (method === 'parcelado' && !(parseInt($('lo-installments').value, 10) > 0)) {
+      $('lo-installments').focus(); toast('Informe o número de parcelas'); return;
+    }
+    if (method === 'mensal' && !(parseBRL($('lo-installment-amount').value) > 0)) {
+      $('lo-installment-amount').focus(); toast('Informe o valor da mensalidade'); return;
+    }
+
+    const l = Store.normalizeLoan({
+      id: editLoanId || undefined,
+      person: person,
+      principal: principal,
+      total_due: parseBRL($('lo-total').value) || principal,
+      received: parseBRL($('lo-received').value) || 0,
+      lent_on: $('lo-lent').value,
+      due_on: $('lo-due').value,
+      method: method,
+      installments: $('lo-installments').value,
+      installment_amount: parseBRL($('lo-installment-amount').value),
+      notes: $('lo-notes').value.trim() || null,
+    });
+
+    const era = !!editLoanId;
+    if (era) {
+      const idx = loans.findIndex(function (x) { return x.id === editLoanId; });
+      if (idx >= 0) loans[idx] = l;
+    } else {
+      loans.push(l);
+    }
+    closeSheets();
+    render(); triggerSave();
+    toast(era ? 'Empréstimo atualizado' : 'Empréstimo registrado');
+  }
+
+  function delLoan() {
+    const l = loans.find(function (x) { return x.id === editLoanId; });
+    if (!l) return;
+    const backup = JSON.parse(JSON.stringify(loans));
+    loans = loans.filter(function (x) { return x.id !== editLoanId; });
+    closeSheets();
+    render(); triggerSave();
+    toast('“' + l.person + '” excluído', 'Desfazer', function () {
+      loans = backup; render(); triggerSave();
+    });
+  }
+
   /* ── sheets ─────────────────────────────────────────── */
   let openSheetEl = null;
+  /* Quantas entradas de histórico as sheets empilharam. Contar aqui — em vez
+     de ler history.state — evita dois close() seguidos poparem duas entradas
+     e tirarem o usuário do app (pushState é síncrono, back() não é). */
+  let sheetHist = 0;
 
   function openSheet(node) {
     openSheetEl = node;
     node.classList.add('open');
     el.backdrop.classList.add('open');
     if (!isDesktop) {
-      try { history.pushState({ sheet: true }, ''); } catch (err) {}
+      try { history.pushState({ sheet: true }, ''); sheetHist++; } catch (err) {}
     }
   }
   function closeSheets(silent) {
     const was = openSheetEl;
     el.sheetForm.classList.remove('open');
     el.sheetSettings.classList.remove('open');
+    $('sheet-loan').classList.remove('open');
     el.backdrop.classList.remove('open');
     openSheetEl = null;
     editId = null;
-    if (was && !silent && !isDesktop && history.state && history.state.sheet) {
+    editLoanId = null;
+    if (was && !silent && !isDesktop && sheetHist > 0) {
+      sheetHist--;
       try { history.back(); } catch (err) {}
     }
   }
@@ -1032,6 +1391,7 @@
     el.mSi           = $('m-si');
     el.saveSt        = $('save-st');
     el.saveStD       = $('save-st-d');
+    el.saveStL       = $('save-st-l');
     el.sbFinal       = $('sb-final');
     el.sbFinalLabel  = $('sb-final-label');
     el.sbGrowth      = $('sb-growth');
@@ -1049,8 +1409,17 @@
     /* navegação por abas */
     el.navbar.addEventListener('click', function (ev) {
       const b = ev.target.closest('.navitem');
-      if (b) setTab(b.dataset.tab);
+      if (!b) return;
+      setScreen(b.dataset.tab === 'menu' ? 'menu' : screen);
     });
+
+    /* hub: escolher o módulo */
+    $('slot-hub').addEventListener('click', function (ev) {
+      const b = ev.target.closest('[data-go]');
+      if (b) setScreen(b.dataset.go);
+    });
+
+    $('btn-back').addEventListener('click', voltar);
 
     /* saldo inicial */
     [el.si, el.mSi].forEach(function (inp) {
@@ -1133,16 +1502,21 @@
     }, { passive: true });
 
     /* ações do cartão escuro */
-    ['btn-add', 'fab-add', 'm-btn-add'].forEach(function (id) {
+    ['btn-add', 'm-btn-add'].forEach(function (id) {
       const b = $(id);
       if (b) b.addEventListener('click', function () { openForm(null); });
+    });
+    // o botão central depende do módulo aberto
+    $('fab-add').addEventListener('click', function () {
+      if (screen === 'loans') openLoan(null);
+      else openForm(null);
     });
     ['btn-settings', 'm-btn-edit'].forEach(function (id) {
       const b = $(id);
       if (!b) return;
       b.addEventListener('click', function () {
         if (isDesktop) { fillExport(); openSheet(el.sheetSettings); }
-        else setTab('menu');
+        else setScreen('menu');
       });
     });
 
@@ -1169,8 +1543,29 @@
       if (ev.key === 'Escape' && openSheetEl) closeSheets();
     });
     window.addEventListener('popstate', function () {
+      if (sheetHist > 0) sheetHist--;
       if (openSheetEl) closeSheets(true);
     });
+
+    /* empréstimos */
+    $('lo-filters').addEventListener('click', function (ev) {
+      const b = ev.target.closest('.lo-chip');
+      if (!b) return;
+      loanFilter = b.dataset.f;
+      renderLoans();
+    });
+    $('lo-list').addEventListener('click', function (ev) {
+      const b = ev.target.closest('.lo-card');
+      if (b) openLoan(b.dataset.id);
+    });
+    $('lo-method').addEventListener('change', onLoanMethod);
+    ['lo-principal', 'lo-total', 'lo-installments', 'lo-installment-amount'].forEach(function (id) {
+      $(id).addEventListener('input', onLoanAmounts);
+    });
+    $('lo-save').addEventListener('click', saveLoan);
+    $('lo-del').addEventListener('click', delLoan);
+    $('lo-cancel').addEventListener('click', function () { closeSheets(); });
+    $('lo-back').addEventListener('click', function () { closeSheets(); });
 
     /* ajustes */
     $('btn-export').addEventListener('click', doExport);
@@ -1458,7 +1853,7 @@
     // desenha já com o que houver neste aparelho, sem esperar a rede
     const cached = Store.localState() || Store.legacyState();
     adoptState(cached || seedState());
-    applySI(); render();
+    applySI(); render(); setScreen('hub');
 
     const r = await Store.reconcile(Store.legacyState() || seedState());
     if (r.state) {
@@ -1468,7 +1863,7 @@
     }
 
     Store.startRealtime();
-    Store.retry(entries, saldoInicial);
+    Store.retry(entries, saldoInicial, loans);
   }
 
   function startLocalOnly() {
@@ -1477,7 +1872,7 @@
     $('password-card').hidden = true;
     const cached = Store.localState() || Store.legacyState();
     adoptState(cached || seedState());
-    applySI(); render();
+    applySI(); render(); setScreen('hub');
   }
 
   function init() {
@@ -1500,7 +1895,7 @@
     });
 
     // reenvia o que ficou pendente quando a conexão volta
-    window.addEventListener('online', function () { Store.retry(entries, saldoInicial); });
+    window.addEventListener('online', function () { Store.retry(entries, saldoInicial, loans); });
 
     if (!Store.init()) {
       startLocalOnly();

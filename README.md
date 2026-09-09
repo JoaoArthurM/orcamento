@@ -21,6 +21,42 @@ curva, entradas do mês escolhido e a tabela mês a mês — com uma barra flutu
 dois itens (**simulador** / **menu**) e um botão **+** central para nova entrada.
 A partir de 1024 px volta a grade completa de 12 colunas com coluna fixa.
 
+## Os dois módulos
+
+Ao abrir, uma tela de escolha (**hub**) com dois cartões e um atalho para os
+ajustes. Entrando num módulo, o topo ganha um botão de voltar e a barra de baixo
+aparece com o rótulo daquele módulo. No hub não há barra de baixo.
+
+```
+hub ──► economia   ──► [simulador] [+] [menu]
+    └─► empréstimos ──► [empréstimos] [+] [menu]
+```
+
+O **menu** é compartilhado (conta, senha, exportar/importar, apagar). A lista de
+entradas só aparece nele quando você chega pela economia.
+
+### Empréstimos
+
+Um registro por pessoa que te deve. **Os juros nunca são digitados nem
+guardados**: saem sempre de `a receber − emprestado`, para não haver como ficar
+inconsistente.
+
+| Campo | Observação |
+|---|---|
+| Quem está devendo | vira as iniciais do avatar |
+| Emprestado | o que saiu do seu bolso |
+| A receber | total com juros; nunca menor que o emprestado |
+| Já recebido | alimenta a barra de progresso e o status |
+| Emprestado em | data de saída |
+| Previsão de pagamento | vencida e não quitada ⇒ **Atrasado** |
+| Como vai pagar | à vista · parcelado (Nx) · mensalidade até juntar |
+
+Status derivado: **Quitado** (recebido ≥ a receber), **Atrasado** (venceu e não
+quitou), **Parcial** (recebeu algo), **Em aberto**. Os filtros no topo da lista
+usam os mesmos critérios.
+
+O cartão do topo soma tudo: a receber, juros embutidos, recebido e em aberto.
+
 ## Como funciona o cálculo
 
 Janela rolante de 12 meses a partir do mês atual. Seis tipos de entrada:
@@ -47,7 +83,8 @@ offline) e o **Supabase** é a cópia compartilhada entre os aparelhos. Toda
 alteração grava aqui na hora e sobe para a nuvem em seguida; sem rede, fica
 pendente e sobe sozinha quando a conexão volta.
 
-- Uma linha por entrada na tabela `entries` — editar uma entrada grava só ela.
+- Uma linha por entrada em `entries` e por empréstimo em `loans` — editar um
+  registro grava só ele.
 - Alteração feita no PC aparece no celular na hora (Realtime).
 - **Sem credenciais em `assets/js/config.js`, o app roda em modo local**, sem
   login, exatamente como antes — útil para testar ou usar num aparelho só.
@@ -56,10 +93,16 @@ pendente e sobe sozinha quando a conexão volta.
 
 ### Configurar o Supabase
 
-**1. Crie as tabelas.** No painel do Supabase → **SQL Editor** → cole o conteúdo
-de [`supabase/schema.sql`](supabase/schema.sql) e clique em **Run**. Isso cria
-`entries` e `settings`, liga o RLS e publica as tabelas no Realtime. É seguro
-rodar de novo.
+**1. Crie as tabelas.** No painel do Supabase → **SQL Editor** → cole e rode,
+nesta ordem:
+
+1. [`supabase/schema.sql`](supabase/schema.sql) — `entries` e `settings` (economia)
+2. [`supabase/schema-loans.sql`](supabase/schema-loans.sql) — `loans` (empréstimos)
+
+Os dois ligam o RLS e publicam no Realtime. É seguro rodar de novo.
+
+Se `loans` ainda não existir, o app não quebra: o módulo de empréstimos fica
+vazio e o resto sincroniza normalmente.
 
 **2. Aponte as credenciais.** Em `assets/js/config.js`, preencha `SUPABASE_URL`
 e `SUPABASE_ANON_KEY` com os valores de **Project Settings → Data API**.
@@ -163,7 +206,8 @@ assets/js/store.js         camada de dados: cache local, sync, realtime, auth
 assets/js/app.js           cálculo, render, formulário, tela de login
 assets/vendor/supabase.js  supabase-js 2.58 (vendorizado p/ funcionar offline)
 scripts/gen-icons.js       baixa os ícones da Iconoir e gera o sprite
-supabase/schema.sql        tabelas, RLS e realtime — rode no SQL Editor
+supabase/schema.sql        entries + settings, RLS e realtime
+supabase/schema-loans.sql  loans, RLS e realtime
 manifest.webmanifest       metadados do PWA
 sw.js                      service worker (app shell offline)
 assets/icons/              ícones 192/512/maskable/apple-touch
