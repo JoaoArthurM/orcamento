@@ -6,7 +6,7 @@
   'use strict';
 
   /* ── CONSTANTES ─────────────────────────────────────── */
-  const APP_VERSION = '1.3.2';
+  const APP_VERSION = '1.5.1';
 
   const MS = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
   const MS_FULL = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
@@ -30,6 +30,16 @@
     em: { bg:'var(--em-bg)', fg:'var(--em-fg)' },
     co: { bg:'var(--co-bg)', fg:'var(--co-fg)' },
   };
+  /* ícone da Iconoir por tipo de entrada */
+  const TYPE_ICON = {
+    fs: 'piggy-bank',   // poupança frequente
+    os: 'safe',         // poupança pontual
+    ci: 'coins',        // renda certa
+    ui: 'dice-five',    // renda incerta
+    em: 'hand-cash',    // empréstimo
+    co: 'bank',         // consórcio
+  };
+
   const DOT_COLOR = { fs:'#123A2C', os:'#93AA9B', ci:'#4A8A5F', ui:'#B58F3F', em:'#C05848', co:'#4A72B5' };
   const ICON_BG   = { fs:'#F1F6EE', os:'#F1F6EE', ci:'#E9F6D6', ui:'#FAF2DF', em:'#FEF0EE', co:'#EEF3FD' };
 
@@ -66,6 +76,9 @@
   let isDesktop    = false;
 
   const $  = (id) => document.getElementById(id);
+  /** Referência ao sprite de ícones embutido no index.html. */
+  const ico = (n, cls) => '<svg class="ico' + (cls ? ' ' + cls : '') +
+    '" aria-hidden="true"><use href="#i-' + n + '"/></svg>';
   const el = {};
 
   /* ══════════════════════════════════════════════════════
@@ -360,27 +373,31 @@
     const finalVal = acum[acum.length - 1];
 
     const kpis = [
-      { label:'Poupança', note:'12 meses de aportes', val: short(tot.out),
+      { label:'Poupança', note:'12 meses de aportes', val: short(tot.out), ico:'piggy-bank',
         bg:'#FFFFFF', fg:'#123A2C', labelFg:'#6F8C7C', noteFg:'#9CB2A4',
         tick:'#123A2C', tickBg:'#F1F6EE', dot:'#E4EDDF' },
-      { label:'Renda certa', note:'aportes anuais', val: short(tot.inC),
+      { label:'Renda certa', note:'aportes anuais', val: short(tot.inC), ico:'coins',
         bg:'#FFFFFF', fg:'#123A2C', labelFg:'#6F8C7C', noteFg:'#9CB2A4',
         tick:'#4A8A5F', tickBg:'#E9F6D6', dot:'#E4EDDF' },
       { label:'Renda incerta',
         note: optimistic ? 'considerada' : 'fora da projeção',
-        val: optimistic ? short(tot.inLO) : '0',
+        val: optimistic ? short(tot.inLO) : '0', ico:'dice-five',
         bg:'#FFFFFF', fg:'#8A6A24', labelFg:'#6F8C7C', noteFg:'#9CB2A4',
         tick:'#B58F3F', tickBg:'#FAF2DF', dot:'#EFE3C6' },
       { label:'Saldo do período',
         note:'cenário ' + (optimistic ? 'otimista' : 'pessimista'),
-        val: short(finalVal),
+        val: short(finalVal), ico:'wallet',
         bg:'var(--lime)', fg:'#123A2C', labelFg:'#4C6B3D', noteFg:'#557A44',
         tick:'#123A2C', tickBg:'rgba(255,255,255,.6)', dot:'rgba(18,58,44,.22)' },
     ];
 
     $('m-kpis').innerHTML = kpis.map(function (k) {
       return '<div class="m-kpi" style="background:' + k.bg + ';--kpi-dot:' + k.dot + '">' +
-        '<span class="m-kpi-lbl" style="color:' + k.labelFg + '">' + k.label + '</span>' +
+        '<span class="m-kpi-top">' +
+          '<span class="m-kpi-lbl" style="color:' + k.labelFg + '">' + k.label + '</span>' +
+          '<span class="m-kpi-ico" style="background:' + k.tickBg + ';color:' + k.tick + '">' +
+            ico(k.ico) + '</span>' +
+        '</span>' +
         '<span class="m-kpi-val-wrap">' +
           '<span class="m-kpi-pfx" style="color:' + k.noteFg + '">R$</span>' +
           '<span class="m-kpi-val" style="color:' + k.fg + '">' + k.val + '</span>' +
@@ -392,8 +409,8 @@
       return '<div class="kpi" style="background:' + k.bg + ';--kpi-dot:' + k.dot + '">' +
         '<div class="kpi-top">' +
           '<span class="kpi-label" style="color:' + k.labelFg + '">' + k.label + '</span>' +
-          '<span class="kpi-tick" style="background:' + k.tickBg + '">' +
-            '<span class="kpi-tick-dot" style="background:' + k.tick + '"></span></span>' +
+          '<span class="kpi-tick" style="background:' + k.tickBg + ';color:' + k.tick + '">' +
+            ico(k.ico, 'kpi-ico') + '</span>' +
         '</div>' +
         '<div class="kpi-val-wrap">' +
           '<span class="kpi-pfx" style="color:' + k.noteFg + '">R$</span>' +
@@ -425,8 +442,8 @@
     el.elist.innerHTML = filtered.map(function (e) {
       const T = TYPES[e.type];
       return '<div class="eitem' + (e.hidden ? ' dim' : '') + '">' +
-        '<span class="ei-icon" style="background:' + ICON_BG[e.type] + '">' +
-          '<span class="ei-dot" style="background:' + DOT_COLOR[e.type] + '"></span></span>' +
+        '<span class="ei-icon" style="background:' + ICON_BG[e.type] + ';color:' + DOT_COLOR[e.type] + '">' +
+          ico(TYPE_ICON[e.type], 'ei-ico') + '</span>' +
         '<span class="ei-body">' +
           '<span class="ei-name">' + esc(e.name) + '</span>' +
           '<span class="ei-meta">' + T.label + ' · ' + entryHint(e) + '</span>' +
@@ -486,8 +503,8 @@
         const ts = TYPE_STYLE[type];
         const valTxt = v.kind === 'range' ? num(v.lo) + '–' + num(v.hi) : num(v.val);
         linhas.push('<div class="m-erow">' +
-          '<span class="m-erow-icon" style="background:' + ICON_BG[type] + '">' +
-            '<span class="m-erow-dot" style="background:' + DOT_COLOR[type] + '"></span></span>' +
+          '<span class="m-erow-icon" style="background:' + ICON_BG[type] + ';color:' + DOT_COLOR[type] + '">' +
+            ico(TYPE_ICON[type], 'ei-ico') + '</span>' +
           '<span class="m-erow-body">' +
             '<span class="m-erow-name">' + esc(e.name) + '</span>' +
             '<span class="m-erow-grp">' + TYPES[type].section + '</span>' +
@@ -602,8 +619,8 @@
 
       h += '<div class="sec-hd" style="background:' + rowBg + '">' +
         '<div class="sec-hd-inner" style="background:' + rowBg + '">' +
-          '<span class="sec-icon" style="background:' + ICON_BG[type] + '">' +
-            '<span class="sec-dot" style="background:' + DOT_COLOR[type] + '"></span></span>' +
+          '<span class="sec-icon" style="background:' + ICON_BG[type] + ';color:' + DOT_COLOR[type] + '">' +
+            ico(TYPE_ICON[type], 'sec-ico') + '</span>' +
           '<span class="sec-lbl">' + TYPES[type].section + '</span>' +
         '</div><span class="sec-line"></span></div>';
 
@@ -988,27 +1005,10 @@
   function hideToast() { el.toast.classList.remove('on'); }
 
   /* ── ícones ─────────────────────────────────────────── */
-  function svgEye() {
-    return '<svg width="16" height="16" viewBox="0 0 14 14" fill="none" aria-hidden="true">' +
-      '<ellipse cx="7" cy="7" rx="5" ry="3.5" stroke="currentColor" stroke-width="1.2"/>' +
-      '<circle cx="7" cy="7" r="1.5" fill="currentColor"/></svg>';
-  }
-  function svgEyeOff() {
-    return '<svg width="16" height="16" viewBox="0 0 14 14" fill="none" aria-hidden="true">' +
-      '<path d="M2 2l10 10" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>' +
-      '<path d="M5.2 5.6A2.2 2.2 0 008.5 9M3.2 7C4.2 5.2 5.6 4.2 7 4.2c.5 0 1.1.2 1.7.5M10.8 7c-.4.8-1 1.5-1.8 2" ' +
-      'stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>';
-  }
-  function svgEdit() {
-    return '<svg width="15" height="15" viewBox="0 0 13 13" fill="none" aria-hidden="true">' +
-      '<path d="M9 2L11 4L5 10H3V8L9 2Z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/></svg>';
-  }
-  function svgTrash() {
-    return '<svg width="15" height="15" viewBox="0 0 13 13" fill="none" aria-hidden="true">' +
-      '<path d="M2.5 4.5h8M5 4.5V3.5C5 2.9 5.4 2.5 6 2.5h1c.6 0 1 .4 1 1V4.5M5.5 6.5v3M7.5 6.5v3' +
-      'M3.5 4.5l.5 6c0 .6.4 1 1 1h3c.6 0 1-.4 1-1l.5-6" ' +
-      'stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>';
-  }
+  function svgEye() { return ico('eye'); }
+  function svgEyeOff() { return ico('eye-closed'); }
+  function svgEdit() { return ico('edit-pencil'); }
+  function svgTrash() { return ico('trash'); }
 
   /* ══════════════════════════════════════════════════════
      BOOT
@@ -1294,6 +1294,9 @@
     if (raw.includes('user already registered'))     return 'Já existe uma conta com este e-mail. Tente entrar.';
     if (raw.includes('password should be at least')) return 'A senha precisa de pelo menos 6 caracteres.';
     if (raw.includes('unable to validate email'))    return 'E-mail inválido.';
+    if (raw.includes('should be different'))         return 'A nova senha precisa ser diferente da atual.';
+    if (raw.includes('reauthentication'))            return 'Por segurança, saia e entre de novo antes de trocar a senha.';
+    if (raw.includes('session') && raw.includes('missing')) return 'Sua sessão expirou. Entre de novo.';
     if (raw.includes('rate limit') || raw.includes('too many')) return 'Muitas tentativas seguidas. Espere um minuto.';
     if (raw.includes('failed to fetch') || raw.includes('network')) return 'Sem conexão com o servidor.';
     if (raw.includes('schema cache') || raw.includes('does not exist')) {
@@ -1373,7 +1376,8 @@
       const i = $('auth-pass');
       const show = i.type === 'password';
       i.type = show ? 'text' : 'password';
-      $('auth-eye').textContent = show ? 'Ocultar' : 'Mostrar';
+      $('auth-eye').innerHTML = ico(show ? 'eye-closed' : 'eye');
+      $('auth-eye').setAttribute('aria-label', show ? 'Ocultar senha' : 'Mostrar senha');
     });
 
     $('auth-remember').addEventListener('click', function () {
@@ -1382,6 +1386,46 @@
     setRemember(Store.remember);
 
     $('btn-signout').addEventListener('click', onSignOut);
+    $('btn-password').addEventListener('click', onChangePassword);
+    $('pw-confirm').addEventListener('keydown', function (ev) {
+      if (ev.key === 'Enter') onChangePassword();
+    });
+    $('pw-eye').addEventListener('click', function () {
+      const campos = [$('pw-new'), $('pw-confirm')];
+      const mostrar = campos[0].type === 'password';
+      campos.forEach(function (i) { i.type = mostrar ? 'text' : 'password'; });
+      $('pw-eye').innerHTML = ico(mostrar ? 'eye-closed' : 'eye');
+      $('pw-eye').setAttribute('aria-label', mostrar ? 'Ocultar senha' : 'Mostrar senha');
+    });
+  }
+
+  async function onChangePassword() {
+    const fb = $('password-fb');
+    const nova = $('pw-new').value;
+    const conf = $('pw-confirm').value;
+
+    const erro = (m) => { fb.className = 'fb err'; fb.textContent = m; };
+
+    if (nova.length < 6) { erro('A senha precisa de pelo menos 6 caracteres.'); $('pw-new').focus(); return; }
+    if (nova !== conf)   { erro('As duas senhas não coincidem.'); $('pw-confirm').focus(); return; }
+
+    const btn = $('btn-password');
+    btn.disabled = true;
+    fb.className = 'fb';
+    fb.textContent = 'Atualizando…';
+    try {
+      await Store.updatePassword(nova);
+      $('pw-new').value = '';
+      $('pw-confirm').value = '';
+      fb.className = 'fb ok';
+      fb.textContent = 'Senha atualizada.';
+      toast('Senha atualizada');
+      setTimeout(function () { if (fb.textContent === 'Senha atualizada.') fb.textContent = ''; }, 4000);
+    } catch (err) {
+      erro(authError(err));
+    } finally {
+      btn.disabled = false;
+    }
   }
 
   async function onSignOut() {
@@ -1399,6 +1443,7 @@
     Store.setUser(u);
     hideAuth();
     $('account-card').hidden = false;
+    $('password-card').hidden = false;
     $('account-email').textContent = u.email || '—';
 
     // iniciais a partir do e-mail, para o avatar do topo
@@ -1429,6 +1474,7 @@
   function startLocalOnly() {
     hideAuth();
     $('account-card').hidden = true;
+    $('password-card').hidden = true;
     const cached = Store.localState() || Store.legacyState();
     adoptState(cached || seedState());
     applySI(); render();

@@ -94,6 +94,15 @@ usando o simulador). A regra de reconciliação é:
 Entrando primeiro num aparelho vazio, a nuvem é semeada com as entradas
 originais — e aí o PC passaria a receber essa versão em vez de enviar a dele.
 
+### Trocar a senha
+
+**Menu → Trocar senha**, com a sessão ativa. Usa `auth.updateUser` — não pede a
+senha atual. Se você ligar *Secure password change* no painel do Supabase, passa
+a exigir login recente; o app avisa e pede para sair e entrar de novo.
+
+Esqueceu a senha e não consegue entrar? Aí é pelo **"Esqueci a senha"** da tela
+de login, que depende das *Redirect URLs* configuradas.
+
 ### "Lembrar"
 
 Marcado, a sessão fica no `localStorage` e sobrevive a fechar o app. Desmarcado,
@@ -118,6 +127,25 @@ caminhos são relativos, então subpasta funciona.
 Instalar no celular: Android/Chrome mostra o botão em *Menu → Instalar app*;
 no iOS, Compartilhar → *Adicionar à Tela de Início*.
 
+## Ícones
+
+[Iconoir](https://iconoir.com) (MIT). Como o service worker só cacheia
+same-origin, o CSS via CDN deixaria os ícones sumirem offline — então os
+ícones usados são **vendorizados** num sprite SVG embutido no `index.html`.
+
+```bash
+node scripts/gen-icons.js /caminho/sprite.svg   # baixa e regenera o sprite
+```
+
+Para usar um ícone novo: acrescente o nome à lista em `scripts/gen-icons.js`,
+rode o script e substitua o bloco `<svg class="ico-sprite">` no `index.html`.
+No markup: `<svg class="ico"><use href="#i-nome"/></svg>`. O ícone herda a cor
+do contexto (`currentColor`) e o tamanho vem do CSS.
+
+Cada tipo de entrada tem seu ícone (`TYPE_ICON` em `app.js`) — poupança
+frequente/pontual, renda certa/incerta, empréstimo e consórcio — usados na
+lista, na grade do desktop e na legenda.
+
 ## Ao publicar uma atualização
 
 Navegação é network-first, mas o CSS e os JS são cache-first no service worker.
@@ -134,6 +162,7 @@ assets/js/config.js        URL e chave do Supabase (vazio = modo local)
 assets/js/store.js         camada de dados: cache local, sync, realtime, auth
 assets/js/app.js           cálculo, render, formulário, tela de login
 assets/vendor/supabase.js  supabase-js 2.58 (vendorizado p/ funcionar offline)
+scripts/gen-icons.js       baixa os ícones da Iconoir e gera o sprite
 supabase/schema.sql        tabelas, RLS e realtime — rode no SQL Editor
 manifest.webmanifest       metadados do PWA
 sw.js                      service worker (app shell offline)
