@@ -63,6 +63,8 @@
   let tab          = 'resumo';
   let selMonth     = -1;         // índice na janela; -1 = janela inteira
   let horizonte    = 12;         // meses projetados — escolha do usuário
+  let compartilhadas = [];       // economia de quem me deu acesso — SÓ leitura
+  let verJunto     = true;       // um caixa só, ou o meu separado do dela
   let editId       = null;
   let selM         = [];         // meses marcados no formulário
   let w12          = get12M();
@@ -267,13 +269,62 @@
     return out;
   }
 
-  /** As entradas que o cálculo enxerga: as lançadas aqui mais as derivadas. */
+  /**
+   * A economia de outra pessoa, pelas mesmas quatro regras da minha.
+   *
+   * As funções de derivar leem `contas`, `loans` e `favores` do escopo de
+   * cima. Trocamos por baixo, chamamos, e devolvemos — em vez de duplicar
+   * quatro regras que já são sutis (o fs que pula o 1º mês, o ano carimbado,
+   * a mensalidade que anda). Duas cópias divergiriam na primeira correção.
+   */
+  function economiaDeOutro(p, w) {
+    const c0 = contas, l0 = loans, f0 = favores, a0 = alocacao;
+    try {
+      contas = p.accounts || [];
+      loans = p.loans || [];
+      favores = p.favors || [];
+      alocacao = Store.alocarFavores(p.favors || [], p.payments || []);
+      return (p.entries || [])
+        .concat(economiaComoFs())
+        .concat(emprestimosComoEntradas(w))
+        .concat(favoresComoEntradas(w));
+    } finally {
+      contas = c0; loans = l0; favores = f0; alocacao = a0;
+    }
+  }
+
+  /** Tudo que veio de fora, já marcado com dono e cor. */
+  function entradasCompartilhadas(w) {
+    const out = [];
+    compartilhadas.forEach(function (p) {
+      economiaDeOutro(p, w).forEach(function (e) {
+        e.id = 'shr:' + p.dono + ':' + e.id;
+        e.deOutro = true;
+        e.cor = p.color;
+        e.email = p.email;
+        out.push(e);
+      });
+    });
+    return out;
+  }
+
+  /** As entradas que o cálculo enxerga: as minhas, as derivadas e as de fora. */
   function entradasDoCalculo(win) {
     const w = win || get12M();
-    return entries
+    const minhas = entries
       .concat(economiaComoFs())
       .concat(emprestimosComoEntradas(w))
       .concat(favoresComoEntradas(w));
+    // separados: o de fora aparece na lista, mas não entra na conta
+    return verJunto ? minhas.concat(entradasCompartilhadas(w)) : minhas;
+  }
+
+  /** O saldo de partida: o meu, mais o de quem está no mesmo caixa. */
+  function saldoDePartida() {
+    if (!verJunto) return saldoInicial;
+    return compartilhadas.reduce(function (a, p) {
+      return a + (Number(p.saldoInicial) || 0);
+    }, saldoInicial);
   }
 
   /**
@@ -299,7 +350,10 @@
     });
     let cp = 0, co = 0;
     rows.forEach(function (r, i) {
-      if (i === 0) { r.netP += saldoInicial; r.netO += saldoInicial; }
+      if (i === 0) {
+        const s0 = saldoDePartida();
+        r.netP += s0; r.netO += s0;
+      }
       cp += r.netP; r.cumP = cp;
       co += r.netO; r.cumO = co;
     });
@@ -967,6 +1021,10 @@
 
     /* topo: voltar + título */
     $('btn-back').hidden = noHub;
+    /* A chave é da economia: é a única tela que se compartilha. Aparece
+       mesmo sem login — esconder um botão que o usuário procura é pior
+       que abrir a folha e explicar que compartilhar precisa de conta. */
+    $('btn-share').hidden = noHub || screen !== 'eco';
     $('appbar-title').textContent =
       noHub ? 'orçamento.' :
       tab === 'settings' ? 'ajustes.' :
@@ -997,6 +1055,11 @@
     lembrarTela();
 
     if (tab === 'tabelas') renderList();
+    /* Ao entrar na economia, rebusca o que é dos outros. Não é tempo real:
+       o Realtime escuta só as MINHAS linhas (filter user_id=eq.meu), e abrir
+       um canal por pessoa conectada seria caro para o ganho. Abrir a aba é
+       o momento natural de atualizar. */
+    if (screen === 'eco' && tab === 'main') recarregarCompartilhadas();
     if (alvo === 'view-sim' && lastRows) renderCurve(lastRows);
   }
 
@@ -1341,20 +1404,27 @@
     // agrupadas na ordem dos tipos, como no resto do app
     const linhas = [];
     ORDER.forEach(function (type) {
-      entradasDoCalculo().forEach(function (e) {
+      // separados: o de fora não entra na conta, mas continua à vista
+      entradasDoCalculo().concat(verJunto ? [] : entradasCompartilhadas(w12))
+        .forEach(function (e) {
         if (e.hidden || e.type !== type) return;
         const v = mv(e, mo.m, i === 0, mo.y);
         if (!v) return;
         const ts = TYPE_STYLE[type];
         const valTxt = v.kind === 'range' ? num(v.lo) + '–' + num(v.hi) : num(v.val);
-        linhas.push('<div class="m-erow' + (e.deContas ? ' de-contas' : '') + '">' +
-          '<span class="m-erow-icon" style="background:' + ICON_BG[type] + ';color:' + DOT_COLOR[type] + '">' +
+        const fora = e.deOutro ? ' de-outro cor-' + e.cor : '';
+        linhas.push('<div class="m-erow' + (e.deContas ? ' de-contas' : '') + fora + '">' +
+          '<span class="m-erow-icon' + (e.deOutro ? ' cor-' + e.cor : '') + '"' +
+            // a cor de quem compartilha vem da classe; a minha, do tipo
+            (e.deOutro ? '' : ' style="background:' + ICON_BG[type] +
+              ';color:' + DOT_COLOR[type] + '"') + '>' +
             ico(TYPE_ICON[type], 'ei-ico') + '</span>' +
           '<span class="m-erow-body">' +
             '<span class="m-erow-name">' + esc(e.name) + '</span>' +
             '<span class="m-erow-grp">' + TYPES[type].section +
-              // deixa claro que essa linha se edita no outro módulo
-              (e.deContas ? ' · de contas' : '') + '</span>' +
+              // deixa claro que essa linha se edita em outro lugar
+              (e.deContas ? ' · de contas' : '') +
+              (e.deOutro ? ' · ' + esc(e.email || 'compartilhado') : '') + '</span>' +
           '</span>' +
           '<span class="m-erow-amt"><span class="m-erow-pfx">R$</span>' +
             '<span class="m-erow-val" style="color:' + ts.fg + '">' + valTxt + '</span></span>' +
@@ -1567,6 +1637,105 @@
         '<span class="lo-cell-pfx">R$</span>' +
         '<span class="lo-cell-v' + (cls ? ' ' + cls : '') + '">' + num(v) + '</span>' +
       '</span></span>';
+  }
+
+  /* ══════════════════════════════════════════════════════
+     COMPARTILHAR A ECONOMIA
+     ══════════════════════════════════════════════════════ */
+
+  const CORES_PASTEL = ['rosa', 'azul', 'laranja', 'roxo', 'amarelo', 'verde'];
+
+  /** Recarrega quem está conectado e a economia de quem me deu acesso. */
+  async function recarregarCompartilhadas() {
+    if (Store.mode !== 'cloud') { compartilhadas = []; return; }
+    compartilhadas = await Store.compartilhadas();
+    const alguem = compartilhadas.length > 0;
+    $('m-junto').hidden = !alguem;
+    $('btn-share').classList.toggle('ligado', alguem);
+    render();
+  }
+
+  function verJuntos(v) {
+    verJunto = v;
+    $('m-junto-sim').classList.toggle('on', v);
+    $('m-junto-nao').classList.toggle('on', !v);
+    render();
+  }
+
+  async function abrirShare() {
+    openSheet($('sheet-share'));
+    if (Store.mode !== 'cloud') {
+      $('sh-codigo').textContent = '—';
+      $('sh-fb').className = 'fb err';
+      $('sh-fb').textContent = 'Compartilhar precisa de conta. Entre para gerar o seu código.';
+      $('sh-conexoes-bloco').hidden = true;
+      return;
+    }
+    $('sh-fb').textContent = '';
+    $('sh-entrada').value = '';
+    $('sh-codigo').textContent = '…';
+
+    const codigo = await Store.meuCodigo();
+    $('sh-codigo').textContent = codigo || 'sem código ainda';
+    await listarConexoes();
+  }
+
+  async function listarConexoes() {
+    const lista = await Store.conexoes();
+    $('sh-conexoes-bloco').hidden = !lista.length;
+    $('btn-share').classList.toggle('ligado', lista.length > 0);
+
+    $('sh-conexoes').innerHTML = lista.map(function (c) {
+      /* Só quem é dono escolhe a cor: ela pinta os lançamentos daquela
+         pessoa NA MINHA tela, então é decisão de quem olha. */
+      const cores = c.papel === 'espectador'
+        ? '<span class="sh-cores">' + CORES_PASTEL.map(function (k) {
+            return '<button class="sh-cor cor-' + k + (k === c.color ? ' on' : '') +
+              '" data-cor="' + k + '" data-share="' + c.id +
+              '" aria-label="Cor ' + k + '"></button>';
+          }).join('') + '</span>'
+        : '';
+
+      return '<div class="sh-pessoa">' +
+        '<span class="sh-pessoa-corpo">' +
+          '<span class="sh-pessoa-email">' + esc(c.email || '—') + '</span>' +
+          '<span class="sh-pessoa-papel">' +
+            (c.papel === 'espectador' ? 'vê a sua economia' : 'você vê a economia dela') +
+          '</span>' +
+        '</span>' + cores +
+        '<button class="sh-remover" data-remover="' + c.id + '" aria-label="Remover">' +
+          ico('trash') + '</button>' +
+      '</div>';
+    }).join('');
+  }
+
+  async function gerarCodigo() {
+    try {
+      $('sh-codigo').textContent = '…';
+      $('sh-codigo').textContent = await Store.gerarCodigo();
+      toast('Código novo — o anterior parou de valer');
+    } catch (e) {
+      $('sh-codigo').textContent = 'erro';
+      toast(e.message || 'Não deu para gerar o código');
+    }
+  }
+
+  async function usarCodigo() {
+    const fb = $('sh-fb');
+    const code = $('sh-entrada').value.trim();
+    if (!code) { $('sh-entrada').focus(); return; }
+    fb.className = 'fb'; fb.textContent = 'entrando…';
+    try {
+      const d = await Store.usarCodigo(code);
+      fb.className = 'fb ok';
+      fb.textContent = 'Pronto — você vê a economia de ' + (d ? d.owner_email : 'alguém') + '.';
+      $('sh-entrada').value = '';
+      await listarConexoes();
+      await recarregarCompartilhadas();
+    } catch (e) {
+      fb.className = 'fb err';
+      fb.textContent = e.message || 'Não deu para entrar.';
+    }
   }
 
   /* ── tela de contas ─────────────────────────────────── */
@@ -3027,6 +3196,7 @@
     $('sheet-pagamento').classList.remove('open');
     $('sheet-excluir').classList.remove('open');
     $('sheet-horizonte').classList.remove('open');
+    $('sheet-share').classList.remove('open');
     el.backdrop.classList.remove('open');
     openSheetEl = null;
     editId = null;
@@ -3243,7 +3413,7 @@
     const t = Date.now();
     if (!agora && t - contrasteUltimo < 60) return;   // no máximo ~16x por segundo
     contrasteUltimo = t;
-    ['btn-back', 'm-avatar'].forEach(function (id) {
+    ['btn-back', 'btn-share', 'm-avatar'].forEach(function (id) {
       const n = $(id);
       if (!n || n.hidden) return;
       n.classList.toggle('claro', ehEscuro(corAtras(n)));
@@ -3433,6 +3603,42 @@
     ligarArrasto();
 
     $('btn-back').addEventListener('click', voltar);
+
+    /* ── compartilhar ─────────────────────────────── */
+    $('btn-share').addEventListener('click', abrirShare);
+    $('sh-gerar').addEventListener('click', gerarCodigo);
+    $('sh-usar').addEventListener('click', usarCodigo);
+    $('sh-entrada').addEventListener('keydown', function (ev) {
+      if (ev.key === 'Enter') usarCodigo();
+    });
+    $('sh-copiar').addEventListener('click', function () {
+      const t = $('sh-codigo').textContent;
+      if (!t || t.indexOf(' ') >= 0) return;   // 'sem código ainda'
+      if (navigator.clipboard) navigator.clipboard.writeText(t);
+      toast('Código copiado');
+    });
+    $('sh-conexoes').addEventListener('click', async function (ev) {
+      const cor = ev.target.closest('[data-cor]');
+      if (cor) {
+        await Store.trocarCor(cor.dataset.share, cor.dataset.cor);
+        await listarConexoes();
+        await recarregarCompartilhadas();
+        return;
+      }
+      const rm = ev.target.closest('[data-remover]');
+      if (rm) {
+        await Store.removerConexao(rm.dataset.remover);
+        await listarConexoes();
+        await recarregarCompartilhadas();
+        toast('Conexão removida');
+      }
+    });
+    $('sh-fechar').addEventListener('click', function () { closeSheets(); });
+    $('sh-back').addEventListener('click', function () { closeSheets(); });
+
+    /* juntos ou separados */
+    $('m-junto-sim').addEventListener('click', function () { verJuntos(true); });
+    $('m-junto-nao').addEventListener('click', function () { verJuntos(false); });
 
     /* saldo inicial */
     [el.si, el.mSi].forEach(function (inp) {
@@ -3906,6 +4112,92 @@
       $('pw-eye').innerHTML = ico(mostrar ? 'eye-closed' : 'eye');
       $('pw-eye').setAttribute('aria-label', mostrar ? 'Ocultar senha' : 'Mostrar senha');
     });
+
+    $('btn-delete-account').addEventListener('click', onDeleteAccount);
+    $('del-password').addEventListener('keydown', function (ev) {
+      if (ev.key === 'Enter') onDeleteAccount();
+    });
+    $('del-eye').addEventListener('click', function () {
+      const campo = $('del-password');
+      const mostrar = campo.type === 'password';
+      campo.type = mostrar ? 'text' : 'password';
+      $('del-eye').innerHTML = ico(mostrar ? 'eye-closed' : 'eye');
+      $('del-eye').setAttribute('aria-label', mostrar ? 'Ocultar senha' : 'Mostrar senha');
+    });
+  }
+
+  /**
+   * Apagar a conta: senha, confirmação e só então o pedido.
+   *
+   * O botão arma antes de agir, como o "apagar dados salvos" — mas aqui
+   * a senha vem junto, porque um toque a mais não protege quem deixou o
+   * aparelho aberto, e isto não tem "desfazer".
+   *
+   * Nada é apagado deste lado antes da resposta: quem remove as linhas
+   * é o cascade de auth.users. Uma varredura tabela a tabela aqui
+   * esqueceria a próxima tabela que nascesse.
+   */
+  let contaArmada = false;
+  let contaTimer = null;
+
+  function desarmarConta() {
+    contaArmada = false;
+    clearTimeout(contaTimer);
+    $('btn-delete-account').innerHTML = ico('trash') + 'Apagar minha conta';
+  }
+
+  async function onDeleteAccount() {
+    const fb  = $('delete-account-fb');
+    const btn = $('btn-delete-account');
+    const senha = $('del-password').value;
+    const erro = function (m) { fb.className = 'fb err'; fb.textContent = m; };
+
+    if (!senha) {
+      desarmarConta();
+      erro('Digite sua senha para confirmar.');
+      $('del-password').focus();
+      return;
+    }
+
+    if (!contaArmada) {
+      contaArmada = true;
+      btn.innerHTML = ico('trash') + 'Confirmar — apagar para sempre';
+      erro('Isto apaga a conta e todos os dados, em todos os aparelhos. Toque de novo para confirmar.');
+      contaTimer = setTimeout(function () {
+        if (!contaArmada) return;
+        desarmarConta();
+        fb.textContent = '';
+      }, 8000);
+      return;
+    }
+
+    clearTimeout(contaTimer);
+    btn.disabled = true;
+    btn.innerHTML = ico('trash') + 'Apagando…';
+    fb.className = 'fb';
+    fb.textContent = 'Conferindo a senha…';
+
+    try {
+      await Store.deleteAccount(senha);
+    } catch (err) {
+      btn.disabled = false;
+      desarmarConta();
+      if (err && err.senhaErrada) {
+        erro('Senha incorreta. Nada foi apagado.');
+        $('del-password').select();
+      } else if (err && err.faltaMigracao) {
+        erro('O banco ainda não tem a função de apagar conta ' +
+             '(rode supabase/schema-apagar-conta.sql). Nada foi apagado.');
+      } else {
+        erro('Não deu para apagar agora. Nada foi apagado — verifique a conexão.');
+      }
+      return;
+    }
+
+    $('del-password').value = '';
+    fb.className = 'fb ok';
+    fb.textContent = 'Conta apagada.';
+    location.reload();
   }
 
   async function onChangePassword() {
@@ -3953,6 +4245,7 @@
     hideAuth();
     $('account-card').hidden = false;
     $('password-card').hidden = false;
+    $('delete-account-card').hidden = false;
     $('btn-signout').hidden = false;
     $('account-email').textContent = u.email || '—';
 
@@ -3988,12 +4281,17 @@
 
     Store.startRealtime();
     Store.retry(estadoAtual());
+
+    // a economia de quem me deu acesso entra depois do primeiro desenho:
+    // são consultas a mais, e a tela não deve esperar por elas
+    recarregarCompartilhadas();
   }
 
   function startLocalOnly() {
     hideAuth();
     $('account-card').hidden = true;
     $('password-card').hidden = true;
+    $('delete-account-card').hidden = true;
     $('btn-signout').hidden = true;
     const cached = Store.localState() || Store.legacyState();
     adoptState(cached || estadoInicial());

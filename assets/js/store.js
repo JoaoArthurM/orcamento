@@ -71,6 +71,16 @@
   function lsSet(key, val) {
     try { localStorage.setItem(key, val); return true; } catch (e) { return false; }
   }
+  /** Esquece tudo o que este aparelho guarda do usuário atual. */
+  function limparLocal() {
+    lsDel(kState());
+    lsDel(kSynced());
+    lsDel(LEGACY_V1);
+    lsDel(LEGACY_SIM);
+    synced = null;
+    dirty = false;
+  }
+
   function lsDel(key) {
     try { localStorage.removeItem(key); } catch (e) {}
   }
@@ -928,6 +938,88 @@
   }
 
   /* ══════════════════════════════════════════════════════
+     ECONOMIA COMPARTILHADA
+
+     O que vem de outra pessoa NUNCA entra nos arrays que o
+     diff envia. Fica num balde à parte, só de leitura — se
+     encostasse em `entries`, o próximo save tentaria gravar
+     a economia alheia na conta de quem está olhando.
+
+     Não há proteção no cliente contra edição: o RLS do banco
+     não tem política de escrita para dado de terceiro. Aqui
+     a separação é para o app não TENTAR, não para impedir.
+     ══════════════════════════════════════════════════════ */
+
+  /** Chama uma função do Postgres. Erro conhecido vira mensagem em português. */
+  async function rpc(nome, args) {
+    if (!client || !user) throw new Error('sem sessão');
+    const r = await client.rpc(nome, args || {});
+    if (r.error) {
+      const m = r.error.message || '';
+      if (/não encontrado/i.test(m)) throw new Error('Código não encontrado.');
+      if (/é o seu/i.test(m))        throw new Error('Esse código é o seu.');
+      if (/schema cache|does not exist|function/i.test(m)) {
+        throw new Error('Rode supabase/schema-compartilhar.sql no Supabase.');
+      }
+      throw new Error(m);
+    }
+    return r.data;
+  }
+
+  /**
+   * Puxa a economia de quem me deu acesso.
+   *
+   * Uma consulta por tabela para todos os donos de uma vez — o RLS já
+   * filtra o que eu posso ver, então pedir `in (donos)` é só para não
+   * trazer os meus próprios dados de volta.
+   */
+  async function puxarCompartilhadas(conexoes) {
+    const donos = (conexoes || [])
+      .filter(function (c) { return c.papel === 'dono'; })
+      .map(function (c) { return c.pessoa_id; });
+    if (!donos.length) return [];
+
+    async function tabela(nome, mapear) {
+      const r = await client.from(nome).select('*').in('user_id', donos);
+      if (r.error) {
+        if (/schema cache|does not exist/i.test(r.error.message || '')) return [];
+        throw r.error;
+      }
+      return r.data.map(function (row) {
+        const o = mapear(row);
+        o.__dono = row.user_id;      // de quem é, para colorir
+        return o;
+      });
+    }
+
+    const [entries, accounts, loans, favors, payments, settings] = await Promise.all([
+      tabela('entries', fromRow),
+      tabela('accounts', fromAccountRow),
+      tabela('loans', fromLoanRow),
+      tabela('favors', fromFavorRow),
+      tabela('favor_payments', fromPaymentRow),
+      client.from('settings').select('user_id, saldo_inicial').in('user_id', donos)
+        .then(function (r) { return r.error ? [] : r.data; }),
+    ]);
+
+    /* Um pacote por dono: a projeção precisa saber de quem é cada linha
+       para colorir, e o saldo inicial de cada um entra uma vez só. */
+    return donos.map(function (id) {
+      const c = (conexoes || []).find(function (x) { return x.pessoa_id === id; }) || {};
+      const st = settings.find(function (x) { return x.user_id === id; });
+      const meu = function (lista) {
+        return lista.filter(function (x) { return x.__dono === id; });
+      };
+      return {
+        dono: id, email: c.email || '', color: c.color || 'rosa',
+        saldoInicial: st ? (Number(st.saldo_inicial) || 0) : 0,
+        entries: meu(entries), accounts: meu(accounts),
+        loans: meu(loans), favors: meu(favors), payments: meu(payments),
+      };
+    });
+  }
+
+  /* ══════════════════════════════════════════════════════
      API PÚBLICA
      ══════════════════════════════════════════════════════ */
   const Store = {
@@ -1036,6 +1128,45 @@
       if (error) throw error;
     },
 
+    /**
+     * Apaga a conta inteira, depois de conferir a senha.
+     *
+     * A ordem importa: conferir ANTES de apagar. Apagar as tabelas
+     * primeiro e só então descobrir que a senha estava errada deixaria
+     * o pior dos mundos — dados perdidos e a conta ainda de pé.
+     *
+     * Quem apaga as linhas é o `on delete cascade` de auth.users, não o
+     * app: uma varredura tabela a tabela erra por omissão toda vez que
+     * nasce uma tabela nova. Ver supabase/schema-apagar-conta.sql.
+     */
+    async deleteAccount(password) {
+      if (this.mode !== 'cloud' || !user) throw new Error('sem conta para apagar');
+      const email = user.email;
+      if (!email) throw new Error('conta sem e-mail');
+
+      // a senha é conferida contra o servidor; erro aqui aborta tudo
+      const { error: authErr } = await client.auth.signInWithPassword({ email, password });
+      if (authErr) { const e = new Error('senha'); e.senhaErrada = true; throw e; }
+
+      const { error } = await client.rpc('delete_user');
+      if (error) {
+        /* A função não existe até alguém rodar o SQL. Sem esta
+           distinção o usuário lê "erro" e tenta de novo para sempre. */
+        if (/function|does not exist|schema cache/i.test(error.message || '')) {
+          const e = new Error('rpc');
+          e.faltaMigracao = true;
+          throw e;
+        }
+        throw error;
+      }
+
+      unsubscribe();
+      limparLocal();
+      try { await client.auth.signOut(); } catch (e) {}
+      user = null;
+      scope = 'local';
+    },
+
     async signOut() {
       unsubscribe();
       try { await client.auth.signOut(); } catch (e) {}
@@ -1127,12 +1258,7 @@
 
     /** Apaga os dados deste usuário — aqui e na nuvem. */
     async wipe() {
-      lsDel(kState());
-      lsDel(kSynced());
-      lsDel(LEGACY_V1);
-      lsDel(LEGACY_SIM);
-      synced = null;
-      dirty = false;
+      limparLocal();
       if (this.mode === 'cloud' && user) {
         try {
           await client.from('entries').delete().eq('user_id', user.id);
@@ -1147,6 +1273,48 @@
           if (window.console) console.warn('[orçamento] falha ao apagar na nuvem:', e.message || e);
           throw e;
         }
+      }
+    },
+
+    /* ── compartilhar a economia ─────────────────────── */
+
+    /** Cria ou troca o meu código. Trocar invalida o anterior. */
+    async gerarCodigo() { return rpc('gerar_codigo'); },
+
+    /** Entra na economia de alguém. Devolve { owner_id, owner_email }. */
+    async usarCodigo(code) {
+      const d = await rpc('usar_codigo', { p_code: String(code || '').trim().toUpperCase() });
+      return (d && d[0]) || null;
+    },
+
+    /** Quem vê a minha e de quem eu vejo. */
+    async conexoes() {
+      if (this.mode !== 'cloud' || !user) return [];
+      try { return (await rpc('minhas_conexoes')) || []; } catch (e) { return []; }
+    },
+
+    /** O meu código atual, ou null se ainda não gerei. */
+    async meuCodigo() {
+      if (this.mode !== 'cloud' || !user) return null;
+      const r = await client.from('settings').select('share_code')
+        .eq('user_id', user.id).maybeSingle();
+      return (!r.error && r.data) ? r.data.share_code : null;
+    },
+
+    async removerConexao(id) {
+      const r = await client.from('economy_shares').delete().eq('id', id);
+      if (r.error) throw r.error;
+    },
+
+    async trocarCor(id, cor) { return rpc('trocar_cor', { p_share: id, p_color: cor }); },
+
+    /** A economia de quem me deu acesso — só leitura. */
+    async compartilhadas() {
+      if (this.mode !== 'cloud' || !user) return [];
+      try { return await puxarCompartilhadas(await this.conexoes()); }
+      catch (e) {
+        if (window.console) console.warn('[orçamento] compartilhadas:', e.message || e);
+        return [];
       }
     },
 

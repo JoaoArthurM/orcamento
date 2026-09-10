@@ -108,6 +108,29 @@ primeira entrada: gravar vazio é o mesmo caminho de "apaguei tudo".
 A semente antiga tinha nomes e valores reais, e o repositório é público. Não
 reponha dados de pessoa nenhuma em teste, fixture ou placeholder.
 
+## Economia compartilhada: o RLS é a única barreira
+
+Quem entra com um código ganha **SELECT** nas tabelas da economia do dono. Não
+existe política de INSERT/UPDATE/DELETE para dado de terceiro — a ausência é a
+proteção. Nunca acrescente uma sem repensar isto.
+
+`pode_ver_economia()` é SECURITY DEFINER de propósito: uma política que
+consultasse `economy_shares` direto rodaria sob o RLS do espectador e voltaria
+vazia, sem erro. Toda função definer aqui tem `set search_path`.
+
+`loans` e `favors` compartilham **só o que tem `to_savings`** — o resto guarda
+nome e valor de terceiros que nada têm a ver com quem está olhando.
+
+O que vem de fora vive em `compartilhadas`, nunca em `entries`: se encostasse,
+o diff tentaria gravar a economia alheia na conta de quem olha.
+
+`economiaDeOutro()` troca `contas`/`loans`/`favores` por baixo e restaura no
+`finally`. É feio, mas evita duplicar quatro regras sutis que divergiriam na
+primeira correção.
+
+Não é tempo real: o canal do Realtime filtra `user_id=eq.meu`. A atualização
+acontece ao abrir a aba de economia.
+
 ## Três derivadas, e uma folha de alcance só
 
 `entradasDoCalculo(win)` soma `entries` + economia de contas + empréstimos +

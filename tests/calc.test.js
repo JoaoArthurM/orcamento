@@ -42,11 +42,13 @@ const check = (n, c, x) => { if (c) console.log('  ok   ' + n);
  * `entries`, `saldoInicial`, `contas` e `loans` são o que calc() lê do
  * escopo de cima no app.js; `Store.FREQ_MES` converte a frequência.
  */
-function motor(entries, saldoInicial, mesInicial, contas, loans, meses, favores, alocacao) {
-  const Store = { FREQ_MES: { mensal: 1, quinzenal: 2, semanal: 4.345, anual: 1 / 12, pontual: 0 } };
+function motor(entries, saldoInicial, mesInicial, contas, loans, meses, favores, alocacao, compartilhadas) {
+  const Store = { FREQ_MES: { mensal: 1, quinzenal: 2, semanal: 4.345, anual: 1 / 12, pontual: 0 },
+                  alocarFavores: function () { return { pago: {}, credito: {} }; } };
   const ctx = { entries: entries, saldoInicial: saldoInicial, contas: contas || [],
                 loans: loans || [], favores: favores || [],
-                alocacao: alocacao || { pago: {}, credito: {} }, Store: Store,
+                alocacao: alocacao || { pago: {}, credito: {} },
+                compartilhadas: compartilhadas || [], verJunto: true, Store: Store,
                 Math: Math, Number: Number, Array: Array, String: String };
   ctx.window = ctx;
   vm.createContext(ctx);
@@ -376,6 +378,58 @@ const E = (o) => Object.assign({ hidden: false, months: [] }, o);
     check('sem favor marcado o resultado é o de sempre',
       motor([E({ type: 'ci', amount: 100, months: [9] })], 0, 9, [], [], 12, []).cumP ===
       motor([E({ type: 'ci', amount: 100, months: [9] })], 0, 9).cumP);
+  }
+
+  /* 10: economia compartilhada — o caixa de duas pessoas */
+  {
+    const meu = [E({ type: 'ci', amount: 1000, months: [9] })];
+
+    // ela lançou 500 em setembro
+    const dela = { dono: 'u2', email: 'ela@x.com', color: 'rosa', saldoInicial: 0,
+      entries: [E({ id: 'x1', type: 'ci', amount: 500, months: [9] })],
+      accounts: [], loans: [], favors: [], payments: [] };
+
+    const juntos = motor(meu, 0, 9, [], [], 12, [], null, [dela]);
+    check('juntos, o lançamento dela soma', juntos[0].inC === 1500, juntos[0].inC);
+
+    const so = motor(meu, 0, 9, [], [], 12, [], null, []);
+    check('sem ninguém conectado, só o meu', so[0].inC === 1000, so[0].inC);
+
+    // o saldo inicial dela entra uma vez, no primeiro mês
+    const comSaldo = motor(meu, 300, 9, [], [], 12, [], null,
+      [Object.assign({}, dela, { saldoInicial: 700 })]);
+    check('os dois saldos iniciais entram', comSaldo[0].netP === 2500, comSaldo[0].netP);
+    check('e só no 1º mês', comSaldo[1].netP === 0, comSaldo[1].netP);
+
+    /* A economia dela segue as MESMAS quatro regras: o que ela cadastrou
+       em contas vira poupança frequente na conta conjunta também. */
+    const comConta = motor([], 0, 9, [], [], 12, [], null, [Object.assign({}, dela, {
+      entries: [], accounts: [{ id: 'c1', kind: 'economia', name: 'Reserva',
+        amount: 400, frequency: 'mensal' }] })]);
+    check('a economia de contas dela também atravessa',
+      comConta[0].out === 0 && comConta[1].out === 400,
+      [comConta[0].out, comConta[1].out]);
+
+    // e o empréstimo que ela marcou
+    const comEmp = motor([], 0, 9, [], [], 12, [], null, [Object.assign({}, dela, {
+      entries: [],
+      loans: [{ id: 'l1', person: 'Z', to_savings: true, method: 'avista',
+        received: 0, received_interest: 0, principal: 800, total_due: 800,
+        due_on: '2026-11-20' }] })]);
+    check('o empréstimo marcado dela atravessa', comEmp[2].inC === 800, comEmp[2].inC);
+
+    // duas pessoas conectadas somam as duas
+    const outra = Object.assign({}, dela, { dono: 'u3', color: 'azul',
+      entries: [E({ id: 'y1', type: 'ci', amount: 200, months: [9] })] });
+    const tres = motor(meu, 0, 9, [], [], 12, [], null, [dela, outra]);
+    check('duas pessoas conectadas somam as duas', tres[0].inC === 1700, tres[0].inC);
+
+    /* Os ids delas não podem colidir com os meus: as duas usam 'x1' aqui,
+       e um id repetido faria o React-menos-a-gente pisar num só. */
+    const mesmoId = Object.assign({}, dela, { dono: 'u3', color: 'azul' });
+    const colisao = motor([], 0, 9, [], [], 12, [], null, [dela, mesmoId]);
+    check('mesmo id de duas pessoas conta duas vezes',
+      colisao[0].inC === 1000, colisao[0].inC);
   }
 
   console.log(fails === 0 ? '\nTODOS OS TESTES DE CÁLCULO PASSARAM' : '\n' + fails + ' FALHA(S)');

@@ -140,6 +140,29 @@ A linha é derivada a cada desenho — não existe registro duplicado. Por isso 
 aparece marcada como "de contas" na lista do mês e não é editável ali: quem
 manda é o cadastro em contas.
 
+### Compartilhar a economia
+
+A chave no topo da economia abre o seu **código**. Quem digitar esse código
+passa a ver a sua economia — e só ela.
+
+| Vê | Não vê |
+|---|---|
+| seus lançamentos | contas, empréstimos e favores em geral |
+| suas economias de contas | qualquer outra aba |
+| empréstimos e favores **marcados** | qualquer coisa editável |
+
+**Só leitura.** Não existe política de escrita no banco para dado de terceiro,
+então não há o que burlar pela interface.
+
+Os lançamentos de cada pessoa aparecem numa **cor pastel**, escolhida por quem
+recebe. O botão **Juntos / Separados** decide se eles entram na sua projeção ou
+só aparecem na lista.
+
+Gerar um código novo desliga o anterior. Qualquer um dos dois lados desfaz a
+conexão.
+
+A atualização acontece ao abrir a aba de economia — não é tempo real.
+
 ### Favores
 
 Dinheiro emprestado **sem juros**, só para não esquecer. São três níveis:
@@ -309,6 +332,7 @@ nesta ordem:
 8. [`supabase/schema-loans-economia.sql`](supabase/schema-loans-economia.sql) — `loans.to_savings`
 9. [`supabase/schema-horizonte.sql`](supabase/schema-horizonte.sql) — `settings.horizon_months`
 10. [`supabase/schema-favors-economia.sql`](supabase/schema-favors-economia.sql) — `favors.to_savings`
+11. [`supabase/schema-compartilhar.sql`](supabase/schema-compartilhar.sql) — códigos, `economy_shares` e as políticas de leitura
 6. [`supabase/schema-loans-mensalidade.sql`](supabase/schema-loans-mensalidade.sql) — `received_interest` e a mensalidade que não quita
 
 Quem criou `accounts` antes do tipo `economia` precisa rodar também

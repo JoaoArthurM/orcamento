@@ -16,7 +16,7 @@ const ICONES = [
   'edit-pencil', 'graph-up', 'calendar', 'table-rows', 'search', 'trash',
   // tipos de entrada
   'piggy-bank', 'donate', 'safe', 'coins', 'dice-five', 'hand-cash', 'bank',
-  'info-circle',
+  'info-circle', 'share-android',
   // kpis / conta / ajustes
   'wallet', 'log-out', 'settings', 'refresh', 'repeat', 'user',
   // copiar a cobrança para mandar por mensagem
