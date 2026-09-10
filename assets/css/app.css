@@ -1351,20 +1351,6 @@ svg { display: block; flex: none; }
   border-radius: 99px; padding: 5px 12px;
   font-size: 11.5px; font-weight: 600; white-space: nowrap;
 }
-.m-hero-actions { width: 100%; display: flex; gap: 10px; padding-top: 20px; }
-.m-btn-edit, .m-btn-add {
-  display: flex; align-items: center; justify-content: center; gap: 7px;
-}
-.m-btn-edit .ico, .m-btn-add .ico { width: 17px; height: 17px; }
-.m-btn-edit, .m-btn-add {
-  flex: 1; min-height: 50px; border-radius: 99px;
-  font-size: 13.5px; transition: background 140ms;
-}
-.m-btn-edit { border: 1px solid #2E5A47; color: #fff; font-weight: 500; }
-.m-btn-edit:active, .m-btn-edit:hover { background: var(--dark3); }
-.m-btn-add { background: #fff; color: var(--dark); font-weight: 600; }
-.m-btn-add:active, .m-btn-add:hover { background: var(--lime); }
-
 .m-hero .save-st { right: 18px; bottom: 4px; }
 .m-hero .save-st.ok { color: var(--lime); }
 
@@ -2416,3 +2402,7 @@ svg { display: block; flex: none; }
    então ele vai para a direita, onde se espera a saída. */
 #sheet-excluir .ffoot { justify-content: flex-end; }
 #sheet-excluir .bcn { flex: none; min-width: 140px; }
+
+/* Linha que veio do módulo de contas: aparece no mês, mas se edita lá.
+   O tom mais claro é o aviso de que aqui ela é só reflexo. */
+.m-erow.de-contas .m-erow-grp { color: #7E9C88; font-style: italic; }

@@ -115,6 +115,41 @@
   }
 
   /**
+   * O que a pessoa guarda, cadastrado no módulo de contas, entra no
+   * simulador como POUPANÇA FREQUENTE — é o mesmo dinheiro visto do
+   * outro lado: lá ele sai do mês, aqui ele entra no acumulado.
+   *
+   * São linhas DERIVADAS, refeitas a cada desenho. Não viram registro em
+   * `entries`: se virassem, o diff as mandaria para o banco e a mesma
+   * economia passaria a existir duas vezes — uma editável em cada tela,
+   * livres para divergir.
+   *
+   * O id leva o prefixo 'eco:' para nunca colidir com um id de verdade.
+   */
+  function economiaComoFs() {
+    return (contas || []).filter(function (c) {
+      return c.kind === 'economia';
+    }).map(function (c) {
+      const fator = (window.Store && Store.FREQ_MES && Store.FREQ_MES[c.frequency] !== undefined)
+        ? Store.FREQ_MES[c.frequency] : 1;
+      return {
+        id: 'eco:' + c.id,
+        name: c.name,
+        type: 'fs',
+        hidden: false,
+        amount: (Number(c.amount) || 0) * fator,
+        // marca a origem: a tela de economia não deixa editar o que é de contas
+        deContas: true,
+      };
+    });
+  }
+
+  /** As entradas que o cálculo enxerga: as lançadas aqui mais as economias. */
+  function entradasDoCalculo() {
+    return entries.concat(economiaComoFs());
+  }
+
+  /**
    * Projeção dos 12 meses.
    * out  = poupança (fs + os) · inC = renda certa (ci + em + co)
    * inLP = piso da renda incerta (mantido por compatibilidade, não entra em nenhum total)
@@ -125,7 +160,7 @@
     const rows = [];
     win.forEach(function (mo, i) {
       let out = 0, inC = 0, inLP = 0, inLO = 0;
-      entries.filter(function (e) { return !e.hidden; }).forEach(function (e) {
+      entradasDoCalculo().filter(function (e) { return !e.hidden; }).forEach(function (e) {
         const v = mv(e, mo.m, i === 0);
         if (!v) return;
         if (e.type === 'fs' || e.type === 'os') out += v.val;
@@ -1122,18 +1157,20 @@
     // agrupadas na ordem dos tipos, como no resto do app
     const linhas = [];
     ORDER.forEach(function (type) {
-      entries.forEach(function (e) {
+      entradasDoCalculo().forEach(function (e) {
         if (e.hidden || e.type !== type) return;
         const v = mv(e, mo.m, i === 0);
         if (!v) return;
         const ts = TYPE_STYLE[type];
         const valTxt = v.kind === 'range' ? num(v.lo) + '–' + num(v.hi) : num(v.val);
-        linhas.push('<div class="m-erow">' +
+        linhas.push('<div class="m-erow' + (e.deContas ? ' de-contas' : '') + '">' +
           '<span class="m-erow-icon" style="background:' + ICON_BG[type] + ';color:' + DOT_COLOR[type] + '">' +
             ico(TYPE_ICON[type], 'ei-ico') + '</span>' +
           '<span class="m-erow-body">' +
             '<span class="m-erow-name">' + esc(e.name) + '</span>' +
-            '<span class="m-erow-grp">' + TYPES[type].section + '</span>' +
+            '<span class="m-erow-grp">' + TYPES[type].section +
+              // deixa claro que essa linha se edita no outro módulo
+              (e.deContas ? ' · de contas' : '') + '</span>' +
           '</span>' +
           '<span class="m-erow-amt"><span class="m-erow-pfx">R$</span>' +
             '<span class="m-erow-val" style="color:' + ts.fg + '">' + valTxt + '</span></span>' +
@@ -3156,11 +3193,9 @@
       pickMonth(next, true);
     }, { passive: true });
 
-    /* ações do cartão escuro */
-    ['btn-add', 'm-btn-add'].forEach(function (id) {
-      const b = $(id);
-      if (b) b.addEventListener('click', function () { openForm(null); });
-    });
+    /* ações do cartão escuro — só o desktop tem: no mobile o + da barra
+       abre a entrada, e a aba "tabelas" faz o que o "Editar" fazia */
+    $('btn-add').addEventListener('click', function () { openForm(null); });
     // o botão central depende do módulo aberto
     $('fab-add').addEventListener('click', function () {
       if (screen === 'loans') openLoan(null);
@@ -3168,13 +3203,9 @@
       else if (screen === 'favores') openFavor(null);
       else openForm(null);
     });
-    ['btn-settings', 'm-btn-edit'].forEach(function (id) {
-      const b = $(id);
-      if (!b) return;
-      b.addEventListener('click', function () {
-        if (isDesktop) openSheet(el.sheetSettings);
-        else setScreen('tabelas');
-      });
+    $('btn-settings').addEventListener('click', function () {
+      if (isDesktop) openSheet(el.sheetSettings);
+      else setScreen('tabelas');
     });
 
     /* formulário */

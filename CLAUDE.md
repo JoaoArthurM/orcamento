@@ -108,6 +108,20 @@ primeira entrada: gravar vazio é o mesmo caminho de "apaguei tudo".
 A semente antiga tinha nomes e valores reais, e o repositório é público. Não
 reponha dados de pessoa nenhuma em teste, fixture ou placeholder.
 
+## A economia de contas entra no cálculo, não em entries
+
+`economiaComoFs()` transforma as contas de `kind: economia` em entradas `fs`
+virtuais. Elas existem só durante o desenho — **nunca** viram linha em
+`entries`, senão o diff as mandaria ao banco e a mesma economia passaria a
+existir duas vezes, editável em cada tela.
+
+Só `calc()` e `renderMonthEntries` usam `entradasDoCalculo()`. `renderList`, a
+fonte da aba tabelas, `estadoAtual()` e todo o CRUD leem `entries` cru — mexer
+nisso é o que faria a linha virtual vazar para o banco ou abrir um formulário
+que não salva.
+
+O id derivado leva o prefixo `eco:` para não colidir com id de verdade.
+
 ## Valor derivado não se guarda
 
 `favors` não tem `paid`: quanto cada gasto recebeu sai de

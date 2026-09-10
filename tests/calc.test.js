@@ -38,11 +38,15 @@ const check = (n, c, x) => { if (c) console.log('  ok   ' + n);
 
 /**
  * Roda o motor com uma janela fixa, começando em setembro.
- * `entries` e `saldoInicial` são as duas variáveis que calc() lê do
- * escopo de cima no app.js.
+ *
+ * `entries`, `saldoInicial` e `contas` são o que calc() lê do escopo de
+ * cima no app.js; `Store.FREQ_MES` converte a frequência da conta.
  */
-function motor(entries, saldoInicial, mesInicial) {
-  const ctx = { entries: entries, saldoInicial: saldoInicial, window: {}, Math: Math, Number: Number, Array: Array };
+function motor(entries, saldoInicial, mesInicial, contas) {
+  const Store = { FREQ_MES: { mensal: 1, quinzenal: 2, semanal: 4.345, anual: 1 / 12, pontual: 0 } };
+  const ctx = { entries: entries, saldoInicial: saldoInicial, contas: contas || [],
+                Store: Store, Math: Math, Number: Number, Array: Array };
+  ctx.window = ctx;
   vm.createContext(ctx);
   vm.runInContext(fonte, ctx);
   // congela a janela: sem isto o resultado mudaria a cada mês do ano
@@ -164,6 +168,43 @@ const E = (o) => Object.assign({ hidden: false, months: [] }, o);
     check('só saldo inicial acumula sem sumir',
       soSaldo[0].cumP === 500 && soSaldo[11].cumP === 500,
       [soSaldo[0].cumP, soSaldo[11].cumP]);
+  }
+
+  /* 6: a economia cadastrada em contas entra como poupança frequente */
+  {
+    const C = (o) => Object.assign({ kind: 'economia', frequency: 'mensal' }, o);
+
+    const r = motor([], 0, 9, [C({ id: 'c1', name: 'Reserva', amount: 1250 })]);
+    check('economia não entra no 1º mês (é fs)', r[0].out === 0, r[0].out);
+    check('e entra em todos os outros', r[1].out === 1250 && r[11].out === 1250,
+      [r[1].out, r[11].out]);
+    check('acumula os 11 meses restantes', r[11].cumP === 1250 * 11, r[11].cumP);
+
+    // as outras contas não vão junto: só economia
+    const outras = motor([], 0, 9, [
+      C({ id: 'c1', name: 'Reserva', amount: 1250 }),
+      C({ id: 'c2', kind: 'fixa',       name: 'Luz',     amount: 200 }),
+      C({ id: 'c3', kind: 'renda',      name: 'Salário', amount: 5000 }),
+      C({ id: 'c4', kind: 'assinatura', name: 'Netflix', amount: 40 }),
+      C({ id: 'c5', kind: 'variavel',   name: 'Mercado', amount: 800 }),
+    ]);
+    check('só a economia atravessa', outras[1].out === 1250, outras[1].out);
+    check('e nada vira renda', outras[1].inC === 0, outras[1].inC);
+
+    // frequência vira valor mensal
+    const anual = motor([], 0, 9, [C({ id: 'c1', name: 'Reserva',
+      amount: 12000, frequency: 'anual' })]);
+    check('economia anual vira o mensal', Math.round(anual[1].out) === 1000, anual[1].out);
+
+    // soma com uma poupança lançada à mão
+    const junto = motor([E({ type: 'fs', amount: 300 })], 0, 9,
+      [C({ id: 'c1', name: 'Reserva', amount: 1250 })]);
+    check('soma com a poupança lançada na economia', junto[1].out === 1550, junto[1].out);
+
+    // e sem contas nenhuma, nada muda — as âncoras acima seguem válidas
+    check('sem economia cadastrada o resultado é o de sempre',
+      motor([E({ type: 'ci', amount: 100, months: [9] })], 0, 9, []).cumP ===
+      motor([E({ type: 'ci', amount: 100, months: [9] })], 0, 9).cumP);
   }
 
   console.log(fails === 0 ? '\nTODOS OS TESTES DE CÁLCULO PASSARAM' : '\n' + fails + ' FALHA(S)');

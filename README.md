@@ -92,6 +92,16 @@ Emprestou 2.500 a 300/mês. Ela paga duas mensalidades e depois devolve os
 Empréstimo de mensalidade **nunca aparece como atrasado**: o acerto final não
 tem prazo, e a data ali é só previsão.
 
+#### A economia atravessa para o simulador
+
+Toda conta de tipo **Economia** aparece no simulador como **poupança
+frequente**, repetindo todo mês. É o mesmo dinheiro visto dos dois lados: em
+contas ele sai da sobra, no simulador ele entra no acumulado.
+
+A linha é derivada a cada desenho — não existe registro duplicado. Por isso ela
+aparece marcada como "de contas" na lista do mês e não é editável ali: quem
+manda é o cadastro em contas.
+
 ### Favores
 
 Dinheiro emprestado **sem juros**, só para não esquecer. São três níveis:
