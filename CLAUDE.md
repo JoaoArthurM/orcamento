@@ -115,7 +115,13 @@ reponha dados de pessoa nenhuma em teste, fixture ou placeholder.
 justamente porque a divisão gravada envelhece — baixar o valor de um gasto, ou
 apagá-lo, deixaria a repartição de ontem errada e sem nada de onde refazê-la.
 
-Mesma razão para o deslize da parcela atrasada ser calculado, não gravado.
+Mesma razão para o deslize do favor vencido: `favorInfo` compara `due_on` com
+hoje e empurra mês a mês até cair no futuro. A data guardada não muda, então o
+app não reescreve o banco só porque o tempo passou.
+
+O deslize **não pode** vazar para `alocarFavores`: lá a ordem é a da dívida mais
+antiga (`lent_on`), e um favor atrasado continua sendo o mais antigo. Com a data
+deslizada, o pagamento cairia no favor errado.
 
 Contas de dinheiro na repartição são em **centavos inteiros**: um resto de
 ponto flutuante faz um favor quitado aparecer como aberto.

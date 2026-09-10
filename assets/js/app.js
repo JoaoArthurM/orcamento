@@ -211,7 +211,8 @@
       d.pago  += i.pago;
       if (i.atrasado) d.atrasados++;
       // o dia não tem prazo próprio: mostra o vencimento mais próximo
-      if (i.vence && (!d.vence || i.vence < d.vence)) d.vence = i.vence;
+      // ainda em aberto — o que já foi pago não é mais cobrança
+      if (i.vence && !i.quitado && (!d.vence || i.vence < d.vence)) d.vence = i.vence;
     });
     return Object.keys(mapa).sort().reverse().map(function (k) {
       const d = mapa[k];
@@ -238,7 +239,7 @@
       p.total += f.amount;
       p.pago  += i.pago;
       if (i.atrasado) p.atrasados++;
-      if (i.vence && (!p.vence || i.vence < p.vence)) p.vence = i.vence;
+      if (i.vence && !i.quitado && (!p.vence || i.vence < p.vence)) p.vence = i.vence;
       if (f.lent_on < p.desde) p.desde = f.lent_on;
     });
     return Object.keys(mapa).map(function (k) {

@@ -135,6 +135,18 @@ repartição do pagamento e o "quitar só este item" continuarem valendo sem
 nenhum caso especial. Pagamento não se repete: cada um é um lançamento
 avulso, do valor que de fato entrou.
 
+#### Prazo e atraso
+
+`due_on` guarda quando ela combinou de pagar — **nulo é normal** ("paga quando
+puder"), e sem prazo não existe atraso.
+
+Passou do prazo com dinheiro faltando, o favor fica **atrasado** e a cobrança
+escorrega para o mês seguinte: `venceu 05/jun — foi para 05/out`. O dia e a
+pessoa herdam o atraso dos seus itens, e quem tem favor atrasado sobe na lista.
+Favor quitado nunca atrasa, e o prazo dele deixa de contar.
+
+Na repetição, as duas datas andam juntas: cada mês ganha o seu vencimento.
+
 **Quanto falta e a % paga são derivados**, nunca guardados: editar o valor de
 um gasto ou apagá-lo recalcula tudo sozinho. Favores quitados aparecem
 riscados a lápis.
@@ -213,6 +225,7 @@ nesta ordem:
 3. [`supabase/schema-accounts.sql`](supabase/schema-accounts.sql) — `accounts` (contas)
 4. [`supabase/schema-favors.sql`](supabase/schema-favors.sql) — `favors` (favores)
 5. [`supabase/schema-favors-pagamentos.sql`](supabase/schema-favors-pagamentos.sql) — `favor_payments` e a migração do `paid`
+6. [`supabase/schema-favors-vencimento.sql`](supabase/schema-favors-vencimento.sql) — `favors.due_on`
 6. [`supabase/schema-loans-mensalidade.sql`](supabase/schema-loans-mensalidade.sql) — `received_interest` e a mensalidade que não quita
 
 Quem criou `accounts` antes do tipo `economia` precisa rodar também
