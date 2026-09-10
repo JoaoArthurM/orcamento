@@ -181,6 +181,18 @@ Gestos de toque precisam de `Touch`/`TouchEvent` reais — `PointerEvent`
 sintético pula a arbitragem de rolagem do navegador e aprova código que falha
 no dedo.
 
+Pela mesma razão, `el.click()` **não prova que dá para clicar**: ele ignora
+`pointer-events`, `z-index` e qualquer coisa por cima. O "Desfazer" do toast
+ficou inerte por um `pointer-events: none` que o `.on` não desfazia, e o teste
+passava.
+
+Para verificar de verdade, pergunte quem está no ponto:
+
+```js
+const r = botao.getBoundingClientRect();
+document.elementFromPoint(r.left + r.width/2, r.top + r.height/2) === botao
+```
+
 Para ver o app sem logar, esvazie `assets/js/config.js`, teste, e **restaure**.
 
 ## Layout: um DOM, dois shells

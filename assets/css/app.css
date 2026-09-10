@@ -716,7 +716,7 @@ svg { display: block; flex: none; }
   transition: opacity 200ms, transform 200ms;
   max-width: calc(100vw - 32px); text-align: center;
 }
-.toast.on { opacity: 1; transform: translate(-50%, 0); }
+.toast.on { opacity: 1; transform: translate(-50%, 0); pointer-events: auto; }
 #app.sem-navbar .toast { bottom: calc(var(--sab) + 18px); }
 
 /* ══════════════════════════════════════════════════════
@@ -2410,3 +2410,9 @@ svg { display: block; flex: none; }
 .ex-op.perigo:hover { background: #FBE9E5; }
 .ex-op.perigo .ex-op-tit { color: var(--danger); }
 .ex-op.perigo .ex-op-sub { color: #A8695C; }
+
+/* A folha de excluir não tem botão de confirmar: as três opções JÁ são a
+   confirmação. Sozinho à esquerda o Cancelar parecia o botão principal,
+   então ele vai para a direita, onde se espera a saída. */
+#sheet-excluir .ffoot { justify-content: flex-end; }
+#sheet-excluir .bcn { flex: none; min-width: 140px; }
