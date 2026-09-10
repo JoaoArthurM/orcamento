@@ -154,6 +154,8 @@
       received:  Math.max(0, Number(l.received) || 0),
       // mensalidades já recebidas: juro, acumula sem limite e não quita
       received_interest: Math.max(0, Number(l.received_interest) || 0),
+      // marcado: o que falta receber entra na projeção do simulador
+      to_savings: !!l.to_savings,
       lent_on:   dataOuNulo(l.lent_on) || hoje(),
       due_on:    dataOuNulo(l.due_on),
       method:    method,
@@ -498,6 +500,7 @@
       // sem isto, cada mensalidade nova geraria uma linha idêntica
       // à anterior e o diff nunca a enviaria
       received_interest: l.received_interest,
+      to_savings: l.to_savings,
       notes: l.notes,
       position: index,
     };
@@ -507,7 +510,7 @@
     return normalizeLoan({
       id: r.id, person: r.person,
       principal: r.principal, total_due: r.total_due, received: r.received,
-      received_interest: r.received_interest,
+      received_interest: r.received_interest, to_savings: r.to_savings,
       lent_on: r.lent_on, due_on: r.due_on,
       method: r.method, installments: r.installments,
       installment_amount: r.installment_amount, notes: r.notes,

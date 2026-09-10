@@ -39,13 +39,14 @@ const check = (n, c, x) => { if (c) console.log('  ok   ' + n);
 /**
  * Roda o motor com uma janela fixa, começando em setembro.
  *
- * `entries`, `saldoInicial` e `contas` são o que calc() lê do escopo de
- * cima no app.js; `Store.FREQ_MES` converte a frequência da conta.
+ * `entries`, `saldoInicial`, `contas` e `loans` são o que calc() lê do
+ * escopo de cima no app.js; `Store.FREQ_MES` converte a frequência.
  */
-function motor(entries, saldoInicial, mesInicial, contas) {
+function motor(entries, saldoInicial, mesInicial, contas, loans) {
   const Store = { FREQ_MES: { mensal: 1, quinzenal: 2, semanal: 4.345, anual: 1 / 12, pontual: 0 } };
   const ctx = { entries: entries, saldoInicial: saldoInicial, contas: contas || [],
-                Store: Store, Math: Math, Number: Number, Array: Array };
+                loans: loans || [], Store: Store,
+                Math: Math, Number: Number, Array: Array, String: String };
   ctx.window = ctx;
   vm.createContext(ctx);
   vm.runInContext(fonte, ctx);
@@ -204,6 +205,68 @@ const E = (o) => Object.assign({ hidden: false, months: [] }, o);
     // e sem contas nenhuma, nada muda — as âncoras acima seguem válidas
     check('sem economia cadastrada o resultado é o de sempre',
       motor([E({ type: 'ci', amount: 100, months: [9] })], 0, 9, []).cumP ===
+      motor([E({ type: 'ci', amount: 100, months: [9] })], 0, 9).cumP);
+  }
+
+  /* 7: empréstimo marcado como "vai para a economia" */
+  {
+    const L = (o) => Object.assign({ id: 'l1', person: 'Marina', to_savings: true,
+      method: 'avista', received: 0, received_interest: 0 }, o);
+
+    // à vista: uma linha no mês do vencimento, com o que falta receber
+    const vista = motor([], 0, 9, [], [L({ principal: 2000, total_due: 2400,
+      due_on: '2026-11-20' })]);
+    check('à vista entra no mês do vencimento', vista[2].inC === 2400, vista[2].inC);
+    check('e em nenhum outro mês',
+      vista.filter(function (r) { return r.inC > 0; }).length === 1,
+      vista.map(function (r) { return r.inC; }));
+
+    // o que já voltou não é dinheiro futuro
+    const parcial = motor([], 0, 9, [], [L({ principal: 2000, total_due: 2400,
+      received: 900, due_on: '2026-11-20' })]);
+    check('só o que falta receber entra', parcial[2].inC === 1500, parcial[2].inC);
+
+    const quitado = motor([], 0, 9, [], [L({ principal: 2000, total_due: 2400,
+      received: 2400, due_on: '2026-11-20' })]);
+    check('empréstimo quitado não projeta nada',
+      quitado.every(function (r) { return r.inC === 0; }), quitado.map(function (r) { return r.inC; }));
+
+    // sem marcar, não entra
+    const desmarcado = motor([], 0, 9, [], [L({ to_savings: false, principal: 2000,
+      total_due: 2400, due_on: '2026-11-20' })]);
+    check('sem marcar a caixinha, não entra',
+      desmarcado.every(function (r) { return r.inC === 0; }));
+
+    // vencimento fora da janela de 12 meses simplesmente não aparece
+    const fora = motor([], 0, 9, [], [L({ principal: 100, total_due: 100,
+      due_on: '2026-09-20' })]);
+    check('vencimento no mês corrente entra no 1º mês', fora[0].inC === 100, fora[0].inC);
+
+    /* Mensalidade: UMA por vez, no 1º mês da janela. Como a janela começa
+       no mês corrente, a linha anda sozinha na virada — é o "em outubro
+       entra 300, em novembro não; quando vira o mês, entra em novembro". */
+    const mensal = motor([], 0, 9, [], [L({ method: 'mensal', principal: 2500,
+      total_due: 2500, installment_amount: 300 })]);
+    check('mensalidade entra só no 1º mês', mensal[0].inC === 300, mensal[0].inC);
+    check('e não se repete pelos outros meses',
+      mensal.slice(1).every(function (r) { return r.inC === 0; }),
+      mensal.map(function (r) { return r.inC; }));
+
+    // a janela começando em outubro põe a mesma linha em outubro
+    const emOutubro = motor([], 0, 10, [], [L({ method: 'mensal', principal: 2500,
+      total_due: 2500, installment_amount: 300 })]);
+    check('virando o mês, a mensalidade vai junto',
+      emOutubro[0].inC === 300 && emOutubro[1].inC === 0, emOutubro[0].inC);
+
+    // mensalidade de empréstimo já devolvido para de projetar
+    const devolvido = motor([], 0, 9, [], [L({ method: 'mensal', principal: 2500,
+      total_due: 2500, received: 2500, installment_amount: 300 })]);
+    check('principal devolvido para de projetar mensalidade',
+      devolvido.every(function (r) { return r.inC === 0; }));
+
+    // as âncoras seguem válidas sem empréstimo nenhum
+    check('sem empréstimo marcado o resultado é o de sempre',
+      motor([E({ type: 'ci', amount: 100, months: [9] })], 0, 9, [], []).cumP ===
       motor([E({ type: 'ci', amount: 100, months: [9] })], 0, 9).cumP);
   }
 

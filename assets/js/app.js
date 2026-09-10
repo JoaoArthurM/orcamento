@@ -144,9 +144,60 @@
     });
   }
 
-  /** As entradas que o cálculo enxerga: as lançadas aqui mais as economias. */
-  function entradasDoCalculo() {
-    return entries.concat(economiaComoFs());
+  /**
+   * Empréstimo marcado como "vai para a economia" entra na projeção como
+   * renda do tipo empréstimo — o que ainda falta receber, não o total:
+   * o que já voltou não é dinheiro futuro.
+   *
+   * Também derivadas a cada desenho; ver economiaComoFs() acima.
+   *
+   * Os dois métodos entram de formas diferentes:
+   *
+   *   à vista / parcelado — o combinado tem data. Uma linha só, no mês
+   *     do vencimento. Fora da janela de 12 meses, simplesmente não
+   *     aparece, e nenhum caso especial é preciso.
+   *
+   *   mensalidade — não tem prazo: a pessoa paga o juro todo mês até
+   *     juntar o principal. Projetar os 12 meses seria inventar um fim
+   *     que ninguém combinou, então entra UMA mensalidade, no primeiro
+   *     mês da janela. Como a janela começa no mês corrente, a linha
+   *     anda sozinha na virada — sem nada guardado para isso.
+   */
+  function emprestimosComoEntradas(win) {
+    const out = [];
+    (loans || []).forEach(function (l) {
+      if (!l.to_savings) return;
+
+      const falta = Math.max(0, (Number(l.total_due) || 0) - (Number(l.received) || 0));
+
+      if (l.method === 'mensal') {
+        const mens = Number(l.installment_amount) || 0;
+        // empréstimo quitado pararia de render, mas continuaria projetando
+        if (mens <= 0 || falta <= 0) return;
+        out.push({
+          id: 'emp:' + l.id, name: l.person, type: 'em', hidden: false,
+          amount: mens, months: [win[0].m], deEmprestimo: true, mensal: true,
+        });
+        return;
+      }
+
+      if (falta <= 0 || !l.due_on) return;
+      out.push({
+        id: 'emp:' + l.id, name: l.person, type: 'em', hidden: false,
+        amount: falta,
+        // o número do mês, que é o que mv() compara
+        months: [Number(String(l.due_on).slice(5, 7))],
+        deEmprestimo: true,
+      });
+    });
+    return out;
+  }
+
+  /** As entradas que o cálculo enxerga: as lançadas aqui mais as derivadas. */
+  function entradasDoCalculo(win) {
+    return entries
+      .concat(economiaComoFs())
+      .concat(emprestimosComoEntradas(win || get12M()));
   }
 
   /**
@@ -160,7 +211,7 @@
     const rows = [];
     win.forEach(function (mo, i) {
       let out = 0, inC = 0, inLP = 0, inLO = 0;
-      entradasDoCalculo().filter(function (e) { return !e.hidden; }).forEach(function (e) {
+      entradasDoCalculo(win).filter(function (e) { return !e.hidden; }).forEach(function (e) {
         const v = mv(e, mo.m, i === 0);
         if (!v) return;
         if (e.type === 'fs' || e.type === 'os') out += v.val;
@@ -2534,6 +2585,7 @@
     $('lo-f-total').value    = l ? num(l.total_due) : '';
     $('lo-f-received').value = l ? num(l.received) : '';
     $('lo-received-interest').value = l && l.received_interest ? num(l.received_interest) : '';
+    $('lo-eco').setAttribute('aria-pressed', String(!!(l && l.to_savings)));
     $('lo-lent').value       = l ? l.lent_on : Store.hoje();
     $('lo-due').value        = l && l.due_on ? l.due_on : '';
     $('lo-method').value     = l ? l.method : 'avista';
@@ -2543,6 +2595,7 @@
 
     onLoanMethod();
     onLoanAmounts();
+    onLoanEco();
     openSheet($('sheet-loan'));
     if (!editLoanId) setTimeout(function () { $('lo-person').focus(); }, 320);
   }
@@ -2568,6 +2621,32 @@
   }
 
   /** Recalcula os juros e a dica de parcela enquanto o usuário digita. */
+  /** Diz o que marcar a caixinha vai fazer, que depende do método. */
+  function onLoanEco() {
+    const ligado = $('lo-eco').getAttribute('aria-pressed') === 'true';
+    const metodo = $('lo-method').value;
+    const box = $('lo-eco-sub');
+
+    if (!ligado) {
+      box.textContent = 'Fica só aqui, fora da projeção do simulador.';
+      return;
+    }
+    if (metodo === 'mensal') {
+      const mens = parseBRL($('lo-installment-amount').value) || 0;
+      box.textContent = mens > 0
+        ? 'Entra R$ ' + num(mens) + ' no mês corrente, e anda sozinho a cada ' +
+          'virada — até o principal voltar.'
+        : 'Cada mensalidade entra no mês corrente, uma por vez.';
+      return;
+    }
+    const falta = Math.max(0, (parseBRL($('lo-f-total').value) || 0) -
+                              (parseBRL($('lo-f-received').value) || 0));
+    const quando = $('lo-due').value;
+    box.textContent = falta > 0
+      ? 'Entra R$ ' + num(falta) + (quando ? ' em ' + dataCurta(quando) : ' na previsão de pagamento') + '.'
+      : 'Nada a receber — não entra na projeção.';
+  }
+
   function onLoanAmounts() {
     const principal = parseBRL($('lo-principal').value) || 0;
     const metodo    = $('lo-method').value;
@@ -2606,6 +2685,7 @@
       $('lo-parc-hint').textContent = (n > 0 && total > 0)
         ? n + 'x de R$ ' + num(total / n) : '';
       $('lo-parc-hint').hidden = !(n > 0 && total > 0);
+      onLoanEco();
     } else if (mensal) {
       $('lo-mensal-hint').textContent =
         'Entra todo mês e não abate a dívida. Ela quita quando devolver os R$ ' +
@@ -2613,6 +2693,7 @@
       $('lo-mensal-hint').hidden = false;
 
       const meses = mens > 0 ? Math.floor(jurosRec / mens) : 0;
+      onLoanEco();
       $('lo-juros-rec-hint').textContent = jurosRec > 0
         ? (meses ? meses + (meses === 1 ? ' mês' : ' meses') + ' de mensalidade · ' : '') +
           'total que já entrou: R$ ' + num(jurosRec + (parseBRL($('lo-f-received').value) || 0))
@@ -2644,6 +2725,7 @@
       total_due: parseBRL($('lo-f-total').value) || principal,
       received: parseBRL($('lo-f-received').value) || 0,
       received_interest: parseBRL($('lo-received-interest').value) || 0,
+      to_savings: $('lo-eco').getAttribute('aria-pressed') === 'true',
       lent_on: $('lo-lent').value,
       due_on: $('lo-due').value,
       method: method,
@@ -3314,6 +3396,12 @@
      'lo-f-received', 'lo-received-interest'].forEach(function (id) {
       $(id).addEventListener('input', onLoanAmounts);
     });
+    $('lo-eco').addEventListener('click', function () {
+      const b = $('lo-eco');
+      b.setAttribute('aria-pressed', b.getAttribute('aria-pressed') === 'true' ? 'false' : 'true');
+      onLoanEco();
+    });
+    $('lo-due').addEventListener('change', onLoanEco);
     $('lo-save').addEventListener('click', saveLoan);
     $('lo-send').addEventListener('click', function () {
       const l = loans.find(function (x) { return x.id === editLoanId; });

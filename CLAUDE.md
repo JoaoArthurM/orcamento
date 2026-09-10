@@ -108,6 +108,20 @@ primeira entrada: gravar vazio é o mesmo caminho de "apaguei tudo".
 A semente antiga tinha nomes e valores reais, e o repositório é público. Não
 reponha dados de pessoa nenhuma em teste, fixture ou placeholder.
 
+## Duas fontes derivadas alimentam o cálculo
+
+`entradasDoCalculo(win)` = `entries` + `economiaComoFs()` + `emprestimosComoEntradas(win)`.
+Ambas as derivadas seguem a mesma regra: existem só durante o desenho.
+
+Empréstimo com `to_savings` vira entrada `em` com o que FALTA receber
+(`total_due − received`), não o total. À vista e parcelado: uma linha no mês do
+`due_on`. Mensalidade: UMA linha em `win[0].m` — o mês corrente — porque o
+combinado não tem fim; ela anda sozinha na virada, sem nada guardado.
+
+As derivadas moram **dentro** do bloco que o `calc.test.js` extrai por marcador
+de texto, e não podem chamar nada de fora dele (`loanInfo` fica fora — daí o
+`total_due − received` calculado ali mesmo).
+
 ## A economia de contas entra no cálculo, não em entries
 
 `economiaComoFs()` transforma as contas de `kind: economia` em entradas `fs`

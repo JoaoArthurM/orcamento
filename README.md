@@ -92,6 +92,22 @@ Emprestou 2.500 a 300/mês. Ela paga duas mensalidades e depois devolve os
 Empréstimo de mensalidade **nunca aparece como atrasado**: o acerto final não
 tem prazo, e a data ali é só previsão.
 
+#### Empréstimo pode entrar na projeção
+
+No formulário do empréstimo, **"Essa receita vai para a economia?"** faz o que
+falta receber aparecer no simulador como renda do tipo empréstimo:
+
+| Método | Como entra |
+|---|---|
+| À vista / parcelado | uma vez, no mês do vencimento |
+| Mensalidade | uma mensalidade por vez, no mês corrente |
+
+A mensalidade não tem prazo, então projetar os 12 meses inventaria um fim que
+ninguém combinou. Entra uma só, e ela **anda sozinha** a cada virada de mês.
+
+Entra o que falta (`a receber − já recebido`), não o total: o que já voltou não
+é dinheiro futuro. Empréstimo quitado para de projetar.
+
 #### A economia atravessa para o simulador
 
 Toda conta de tipo **Economia** aparece no simulador como **poupança
@@ -268,6 +284,7 @@ nesta ordem:
 5. [`supabase/schema-favors-pagamentos.sql`](supabase/schema-favors-pagamentos.sql) — `favor_payments` e a migração do `paid`
 6. [`supabase/schema-favors-vencimento.sql`](supabase/schema-favors-vencimento.sql) — `favors.due_on`
 7. [`supabase/schema-favors-serie.sql`](supabase/schema-favors-serie.sql) — `favors.series_id`
+8. [`supabase/schema-loans-economia.sql`](supabase/schema-loans-economia.sql) — `loans.to_savings`
 6. [`supabase/schema-loans-mensalidade.sql`](supabase/schema-loans-mensalidade.sql) — `received_interest` e a mensalidade que não quita
 
 Quem criou `accounts` antes do tipo `economia` precisa rodar também
