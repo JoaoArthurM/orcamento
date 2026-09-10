@@ -6,7 +6,7 @@
 const { execFileSync } = require('child_process');
 const path = require('path');
 
-const SUITES = ['markup.test.js', 'store.test.js', 'loans.test.js', 'accounts.test.js'];
+const SUITES = ['markup.test.js', 'store.test.js', 'loans.test.js', 'accounts.test.js', 'favors.test.js'];
 
 let falhou = false;
 

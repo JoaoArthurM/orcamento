@@ -196,6 +196,44 @@ const L2 = 'bbbbbbbb-2222-4222-8222-222222222222';
       r.source === 'uploaded' || r.source === 'cloud', r.source);
   }
 
+  /* 8: na mensalidade, o total a receber é derivado */
+  {
+    const S = load([]).Store;
+
+    const m = S.normalizeLoan({ person: 'X', principal: 2500, total_due: 0,
+      method: 'mensal', installment_amount: 300 });
+    check('mensal: total = emprestado + mensalidade', m.total_due === 2800, m.total_due);
+    check('mensal: a mensalidade vira o juro', m.total_due - m.principal === 300);
+
+    // mesmo se vier um total errado de fora, o cálculo manda
+    const forcado = S.normalizeLoan({ person: 'X', principal: 2500, total_due: 9999,
+      method: 'mensal', installment_amount: 300 });
+    check('mensal: total digitado é ignorado', forcado.total_due === 2800, forcado.total_due);
+
+    // sem mensalidade, não há juro
+    const zero = S.normalizeLoan({ person: 'X', principal: 1000, total_due: 5000,
+      method: 'mensal', installment_amount: 0 });
+    check('mensal sem mensalidade: juro zero', zero.total_due === 1000, zero.total_due);
+
+    // os outros métodos continuam com o total digitado
+    const vista = S.normalizeLoan({ person: 'X', principal: 150, total_due: 200, method: 'avista' });
+    check('à vista mantém o total digitado', vista.total_due === 200, vista.total_due);
+
+    const parc = S.normalizeLoan({ person: 'X', principal: 1000, total_due: 1200,
+      method: 'parcelado', installments: 4 });
+    check('parcelado mantém o total digitado', parc.total_due === 1200, parc.total_due);
+  }
+
+  /* 9: o progresso acompanha o que já foi recebido */
+  {
+    const S = load([]).Store;
+    const l = S.normalizeLoan({ person: 'X', principal: 2500, total_due: 0,
+      method: 'mensal', installment_amount: 300, received: 1400 });
+    check('mensal guarda o recebido', l.received === 1400);
+    check('em aberto = total − recebido', l.total_due - l.received === 1400,
+      l.total_due - l.received);
+  }
+
   console.log(fails === 0 ? '\nTODOS OS TESTES DE EMPRÉSTIMOS PASSARAM' : '\n' + fails + ' FALHA(S)');
   process.exit(fails ? 1 : 0);
 })();

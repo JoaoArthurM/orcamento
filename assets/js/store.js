@@ -162,6 +162,9 @@
       out.installments = Math.min(360, Math.max(1, parseInt(l.installments, 10) || 1));
     } else if (method === 'mensal') {
       out.installment_amount = Math.max(0, Number(l.installment_amount) || 0);
+      // aqui a mensalidade É o juro: o total a receber sai de
+      // emprestado + mensalidade, e nunca é digitado à mão
+      out.total_due = principal + out.installment_amount;
     }
     return out;
   }
@@ -203,6 +206,30 @@
       out.avg_amount = isFinite(m) && m >= 0 ? m : out.amount;
     }
     return out;
+  }
+
+  function validFavor(f) {
+    return !!f && typeof f === 'object'
+      && typeof f.person === 'string' && f.person.trim() !== ''
+      && isFinite(Number(f.amount));
+  }
+
+  /**
+   * Favor: dinheiro emprestado sem juros, só para não esquecer.
+   * Quanto falta e a % paga são derivados — nunca guardados.
+   */
+  function normalizeFavor(f) {
+    const amount = Math.max(0, Number(f.amount) || 0);
+    return {
+      id:      isUuid(f.id) ? f.id : newId(),
+      person:  String(f.person).trim().slice(0, 120),
+      reason:  String(f.reason || '').trim().slice(0, 200) || 'sem motivo',
+      amount:  amount,
+      // não dá para ter pago mais do que deve
+      paid:    Math.min(amount, Math.max(0, Number(f.paid) || 0)),
+      lent_on: dataOuNulo(f.lent_on) || hoje(),
+      notes:   f.notes ? String(f.notes).slice(0, 500) : null,
+    };
   }
 
   /* ── mapeamento app ⇄ banco ─────────────────────────── */
@@ -283,6 +310,27 @@
     });
   }
 
+  function toFavorRow(f, index) {
+    return {
+      id: f.id, user_id: user.id,
+      person: f.person, reason: f.reason,
+      amount: f.amount, paid: f.paid,
+      lent_on: f.lent_on, notes: f.notes,
+      position: index,
+    };
+  }
+
+  function fromFavorRow(r) {
+    return normalizeFavor({
+      id: r.id, person: r.person, reason: r.reason,
+      amount: r.amount, paid: r.paid, lent_on: r.lent_on, notes: r.notes,
+    });
+  }
+
+  function sameFavorRow(a, b) {
+    return JSON.stringify(toFavorRow(a, a.__pos)) === JSON.stringify(toFavorRow(b, b.__pos));
+  }
+
   function sameAccountRow(a, b) {
     return JSON.stringify(toAccountRow(a, a.__pos)) === JSON.stringify(toAccountRow(b, b.__pos));
   }
@@ -301,6 +349,7 @@
     { chave: 'entries',  tabela: 'entries',  toRow: toRow,        same: sameRow },
     { chave: 'loans',    tabela: 'loans',    toRow: toLoanRow,    same: sameLoanRow },
     { chave: 'accounts', tabela: 'accounts', toRow: toAccountRow, same: sameAccountRow },
+    { chave: 'favors',   tabela: 'favors',   toRow: toFavorRow,   same: sameFavorRow },
   ];
 
   /* ── cache local ────────────────────────────────────── */
@@ -315,6 +364,7 @@
             saldoInicial: Number(d.saldoInicial) || 0,
             loans: Array.isArray(d.loans) ? d.loans.filter(validLoan).map(normalizeLoan) : [],
             accounts: Array.isArray(d.accounts) ? d.accounts.filter(validAccount).map(normalizeAccount) : [],
+            favors: Array.isArray(d.favors) ? d.favors.filter(validFavor).map(normalizeFavor) : [],
             hubOrder: Array.isArray(d.hubOrder) ? d.hubOrder : null,
           };
         }
@@ -332,7 +382,8 @@
         if (!d || !Array.isArray(d.entries)) continue;
         const clean = d.entries.filter(validEntry).map(normalize);
         if (!clean.length && d.entries.length) continue;   // blob corrompido
-        return { entries: clean, saldoInicial: Number(d.saldoInicial) || 0, loans: [], accounts: [] };
+        return { entries: clean, saldoInicial: Number(d.saldoInicial) || 0,
+                 loans: [], accounts: [], favors: [] };
       } catch (e) {}
     }
     return null;
@@ -345,6 +396,7 @@
       saldoInicial: state.saldoInicial,
       loans: state.loans || [],
       accounts: state.accounts || [],
+      favors: state.favors || [],
       hubOrder: state.hubOrder || null,
       savedAt: Date.now(),
     }));
@@ -400,14 +452,16 @@
 
     const loans    = await opcional('loans',    fromLoanRow,    'supabase/schema-loans.sql');
     const accounts = await opcional('accounts', fromAccountRow, 'supabase/schema-accounts.sql');
+    const favors   = await opcional('favors',   fromFavorRow,   'supabase/schema-favors.sql');
 
-    if (!er.data.length && !sr.data && !loans.length && !accounts.length) return null;
+    if (!er.data.length && !sr.data && !loans.length && !accounts.length && !favors.length) return null;
     return {
       entries: er.data.map(fromRow),
       saldoInicial: sr.data ? (Number(sr.data.saldo_inicial) || 0) : 0,
       hubOrder: (sr.data && Array.isArray(sr.data.hub_order)) ? sr.data.hub_order : null,
       loans: loans,
       accounts: accounts,
+      favors: favors,
     };
   }
 
@@ -553,6 +607,8 @@
     validLoan: validLoan,
     normalizeAccount: normalizeAccount,
     validAccount: validAccount,
+    normalizeFavor: normalizeFavor,
+    validFavor: validFavor,
     FREQ_MES: FREQ_MES,
     hoje: hoje,
 
@@ -687,14 +743,15 @@
         const local = readLocal() || localFallback;
         const temAlgo = local && (local.entries.length
           || (local.loans && local.loans.length)
-          || (local.accounts && local.accounts.length));
+          || (local.accounts && local.accounts.length)
+          || (local.favors && local.favors.length));
         if (temAlgo) {
           // synced zerado força o diff a enviar tudo
-          writeSynced({ entries: [], saldoInicial: null, loans: [], accounts: [], hubOrder: null });
+          writeSynced({ entries: [], saldoInicial: null, loans: [], accounts: [], favors: [], hubOrder: null });
           await push(local);
           return { state: local, source: 'uploaded' };
         }
-        writeSynced({ entries: [], saldoInicial: 0, loans: [], accounts: [], hubOrder: null });
+        writeSynced({ entries: [], saldoInicial: 0, loans: [], accounts: [], favors: [], hubOrder: null });
         return { state: null, source: 'empty' };
       } catch (err) {
         status('offline — usando dados deste aparelho', 'readonly');
@@ -704,10 +761,10 @@
     },
 
     /** O app chama isto a cada mudança, sempre com o estado completo. */
-    save(entries, saldoInicial, loans, accounts, hubOrder) {
+    save(entries, saldoInicial, loans, accounts, hubOrder, favors) {
       const state = { entries: entries, saldoInicial: saldoInicial,
                       loans: loans || [], accounts: accounts || [],
-                      hubOrder: hubOrder || null };
+                      favors: favors || [], hubOrder: hubOrder || null };
       const ok = writeLocal(state);
       if (this.mode !== 'cloud' || !user) {
         status(ok ? 'salvo ✓' : 'erro ao salvar', ok ? 'ok' : 'err');
@@ -718,10 +775,11 @@
     },
 
     /** Reenvia o que ficou pendente (volta da conexão, app reaberto). */
-    retry(entries, saldoInicial, loans, accounts, hubOrder) {
+    retry(entries, saldoInicial, loans, accounts, hubOrder, favors) {
       if (this.mode !== 'cloud' || !user || !dirty) return;
       push({ entries: entries, saldoInicial: saldoInicial,
-             loans: loans || [], accounts: accounts || [], hubOrder: hubOrder || null });
+             loans: loans || [], accounts: accounts || [],
+             favors: favors || [], hubOrder: hubOrder || null });
     },
 
     /** Apaga os dados deste usuário — aqui e na nuvem. */
@@ -736,11 +794,11 @@
         try {
           await client.from('entries').delete().eq('user_id', user.id);
           await client.from('settings').delete().eq('user_id', user.id);
-          for (const t of ['loans', 'accounts']) {
+          for (const t of ['loans', 'accounts', 'favors']) {
             const r = await client.from(t).delete().eq('user_id', user.id);
             if (r.error && !/schema cache|does not exist/i.test(r.error.message || '')) throw r.error;
           }
-          writeSynced({ entries: [], saldoInicial: 0, loans: [], accounts: [], hubOrder: null });
+          writeSynced({ entries: [], saldoInicial: 0, loans: [], accounts: [], favors: [], hubOrder: null });
         } catch (e) {
           if (window.console) console.warn('[orçamento] falha ao apagar na nuvem:', e.message || e);
           throw e;

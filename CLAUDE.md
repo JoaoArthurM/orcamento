@@ -40,6 +40,17 @@ Três pontos parecem bug e são intencionais:
 Regressão rápida (semente + saldo 1933.71): `cumP` = **34691.21**,
 `cumO` = **44895.11**.
 
+## Ids no index.html
+
+`getElementById` devolve o **primeiro** que casar. Um id repetido não dá erro:
+o código passa a ler e escrever no elemento errado, em silêncio. Já aconteceu
+com `lo-total`/`lo-received`, que existiam no resumo e no formulário — o
+formulário de empréstimo gravava `a receber` no lugar errado e todo empréstimo
+saía com juros zero.
+
+`node tests/markup.test.js` verifica duplicatas, se todo id lido com `.value`
+é mesmo um campo, e se todo ícone referenciado existe no sprite.
+
 ## Testar no navegador
 
 Redimensione para ~400px antes: acima de 1024px o app troca para o layout

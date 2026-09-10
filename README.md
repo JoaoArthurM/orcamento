@@ -31,6 +31,7 @@ aparece com o rótulo daquele módulo. No hub não há barra de baixo.
 hub ──► economia    ──► [simulador]   [+] [tabelas]
     ├─► empréstimos ──► [empréstimos] [+] [tabelas]
     ├─► contas      ──► [contas]      [+] [tabelas]
+    ├─► favores     ──► [favores]     [+] [tabelas]
     └─► ajustes (conta, senha, exportar/importar, apagar)
 ```
 
@@ -57,11 +58,32 @@ inconsistente.
 | Previsão de pagamento | vencida e não quitada ⇒ **Atrasado** |
 | Como vai pagar | à vista · parcelado (Nx) · mensalidade até juntar |
 
+**Na mensalidade o "a receber" é calculado, não digitado:** a mensalidade é o
+próprio juro, então `a receber = emprestado + mensalidade`. Emprestar 2.500 com
+mensalidade de 300 dá 2.800 a receber, 12% de juros. O campo fica somente-leitura
+e a barra de progresso segue o quanto já foi recebido.
+
 Status derivado: **Quitado** (recebido ≥ a receber), **Atrasado** (venceu e não
 quitou), **Parcial** (recebeu algo), **Em aberto**. Os filtros no topo da lista
 usam os mesmos critérios.
 
 O cartão do topo soma tudo: a receber, juros embutidos, recebido e em aberto.
+
+### Favores
+
+Dinheiro emprestado **sem juros**, só para não esquecer. Uma linha por favor em
+`favors`; a tela agrupa por pessoa em acordeão.
+
+| Campo | Observação |
+|---|---|
+| Quem te deve | agrupa os favores da mesma pessoa |
+| Por que te deve | o motivo, mostrado ao abrir a pessoa |
+| Valor total | quanto foi emprestado |
+| Já pagou | quanto já voltou |
+
+**Quanto falta e a % paga são derivados**, nunca guardados: deve 900 e pagou
+500 ⇒ falta 400, 55,6% pago. Pagar mais que o total é limitado ao total.
+Favores quitados aparecem riscados a lápis.
 
 ### Contas
 
@@ -133,6 +155,7 @@ nesta ordem:
 1. [`supabase/schema.sql`](supabase/schema.sql) — `entries` e `settings` (economia)
 2. [`supabase/schema-loans.sql`](supabase/schema-loans.sql) — `loans` (empréstimos)
 3. [`supabase/schema-accounts.sql`](supabase/schema-accounts.sql) — `accounts` (contas)
+4. [`supabase/schema-favors.sql`](supabase/schema-favors.sql) — `favors` (favores)
 
 Quem criou `accounts` antes do tipo `economia` precisa rodar também
 [`supabase/schema-accounts-economia.sql`](supabase/schema-accounts-economia.sql).
@@ -267,6 +290,7 @@ scripts/gen-icons.js       baixa os ícones da Iconoir e gera o sprite
 supabase/schema.sql        entries + settings, RLS e realtime
 supabase/schema-loans.sql  loans, RLS e realtime
 supabase/schema-accounts.sql accounts, RLS e realtime
+supabase/schema-favors.sql   favors, RLS e realtime
 manifest.webmanifest       metadados do PWA
 sw.js                      service worker (app shell offline)
 assets/icons/              ícones 192/512/maskable/apple-touch

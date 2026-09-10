@@ -6,7 +6,7 @@
   'use strict';
 
   /* ── CONSTANTES ─────────────────────────────────────── */
-  const APP_VERSION = '3.1.2';
+  const APP_VERSION = '3.3.1';
 
   const MS = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
   const MS_FULL = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
@@ -70,6 +70,9 @@
   let contas       = [];
   let editContaId  = null;
   let hubOrder     = null;   // ordem dos módulos no hub, vinda da conta
+  let favores      = [];
+  let editFavorId  = null;
+  let pessoaAberta = null;   // qual pessoa está expandida na lista
   let saldoInicial = 0;
   let screen       = 'hub';     // hub · eco · loans
   let loanFilter   = 'todos';   // todos · aberto · atrasados · quitados
@@ -157,6 +160,54 @@
       co += r.netO; r.cumO = co;
     });
     return rows;
+  }
+
+  /* ══════════════════════════════════════════════════════
+     FAVORES
+     Dinheiro emprestado sem juros. O registro é por favor;
+     a tela agrupa por pessoa.
+     ══════════════════════════════════════════════════════ */
+
+  /** Quanto falta e a % paga saem sempre destes dois valores. */
+  function favorInfo(f) {
+    const falta = Math.max(0, f.amount - f.paid);
+    const pct   = f.amount > 0 ? (f.paid / f.amount) * 100 : 0;
+    return { falta: falta, pct: pct, quitado: falta === 0 && f.amount > 0 };
+  }
+
+  /** Agrupa por pessoa, somando total, pago e falta. */
+  function porPessoa() {
+    const mapa = {};
+    favores.forEach(function (f) {
+      const chave = f.person.toLowerCase();
+      if (!mapa[chave]) {
+        mapa[chave] = { nome: f.person, itens: [], total: 0, pago: 0, desde: f.lent_on };
+      }
+      const p = mapa[chave];
+      p.itens.push(f);
+      p.total += f.amount;
+      p.pago  += f.paid;
+      if (f.lent_on < p.desde) p.desde = f.lent_on;
+    });
+    return Object.keys(mapa).map(function (k) {
+      const p = mapa[k];
+      p.falta = Math.max(0, p.total - p.pago);
+      p.pct = p.total > 0 ? (p.pago / p.total) * 100 : 0;
+      p.quitado = p.falta === 0 && p.total > 0;
+      // quem deve mais aparece primeiro
+      return p;
+    }).sort(function (a, b) { return b.falta - a.falta; });
+  }
+
+  function favoresResumo() {
+    const total = favores.reduce(function (a, f) { return a + f.amount; }, 0);
+    const pago  = favores.reduce(function (a, f) { return a + f.paid; }, 0);
+    const pessoas = porPessoa().filter(function (p) { return !p.quitado; }).length;
+    return {
+      total: total, pago: pago, falta: Math.max(0, total - pago),
+      pct: total > 0 ? (pago / total) * 100 : 0,
+      pessoas: pessoas, favores: favores.length,
+    };
   }
 
   /* ══════════════════════════════════════════════════════
@@ -335,6 +386,7 @@
     'lo-principal', 'lo-f-total', 'lo-f-received',
     'lo-installment-amount',                             // empréstimos
     'ct-amount', 'ct-avg',                               // contas
+    'fv-amount', 'fv-paid',                              // favores
   ];
 
   /**
@@ -421,7 +473,7 @@
 
   function setStatus(txt, cls) {
     clearTimeout(statusTimer);
-    [el.saveSt, el.saveStD, el.saveStL, el.saveStC].forEach(function (n) {
+    [el.saveSt, el.saveStD, el.saveStL, el.saveStC, el.saveStF].forEach(function (n) {
       if (!n) return;
       n.textContent = txt || '';
       n.className = 'save-st' + (txt ? ' vis ' + (cls || '') : '');
@@ -433,7 +485,7 @@
   function triggerSave() {
     clearTimeout(saveTimer);
     saveTimer = setTimeout(function () {
-      Store.save(entries, saldoInicial, loans, contas, hubOrder);
+      Store.save(entries, saldoInicial, loans, contas, hubOrder, favores);
     }, 500);
   }
 
@@ -443,6 +495,7 @@
     saldoInicial = state.saldoInicial;
     loans        = state.loans || [];
     contas       = state.accounts || [];
+    favores      = state.favors || [];
     if (Array.isArray(state.hubOrder)) hubOrder = state.hubOrder;
   }
 
@@ -452,6 +505,7 @@
       saldoInicial: SEED_SALDO,
       loans: [],
       accounts: [],
+      favors: [],
     };
   }
 
@@ -495,9 +549,10 @@
     eco:    { titulo: 'economia.',    navLbl: 'simulador',   navIco: 'piggy-bank',      view: 'view-sim' },
     loans:  { titulo: 'empréstimos.', navLbl: 'empréstimos', navIco: 'hand-cash',       view: 'view-loans' },
     contas: { titulo: 'contas.',      navLbl: 'contas',      navIco: 'wallet',          view: 'view-contas' },
+    favores:{ titulo: 'favores.',     navLbl: 'favores',     navIco: 'donate',          view: 'view-favores' },
   };
 
-  const VIEWS = ['view-hub', 'view-sim', 'view-loans', 'view-contas', 'view-tabelas', 'view-settings'];
+  const VIEWS = ['view-hub', 'view-sim', 'view-loans', 'view-contas', 'view-favores', 'view-tabelas', 'view-settings'];
 
   /* Onde o usuário estava. sessionStorage: o reload mantém, uma aba nova
      começa do hub. */
@@ -516,7 +571,7 @@
   }
 
   /* Ordem dos módulos no hub — o usuário reordena arrastando. */
-  const ORDEM_PADRAO = ['loans', 'eco', 'contas'];
+  const ORDEM_PADRAO = ['loans', 'eco', 'contas', 'favores'];
   const ORDEM_KEY = 'orcamento:hub-ordem';
 
   function lerOrdem() {
@@ -634,6 +689,7 @@
     renderMonthTable(rows);
     renderLoans();
     renderContas();
+    renderFavores();
     renderHub(rows);
     if (isDesktop) renderTable(rows);
   }
@@ -766,6 +822,23 @@
           icoNome: 'hand-cash', icoBg: i.sbg, icoFg: i.sfg,
           nome: l.person, sub: i.status + ' · ' + Math.round(i.pct * 100) + '% pago',
           valor: numRaw(l.total_due), tag: i.status, tagBg: i.sbg, tagFg: i.sfg,
+        };
+      },
+    },
+    favores: {
+      titulo: 'Favores',
+      itens: () => favores,
+      procura: (f) => f.person + ' ' + f.reason,
+      abrir: (id) => openFavor(id),
+      linha: function (f) {
+        const i = favorInfo(f);
+        return {
+          icoNome: 'donate',
+          icoBg: i.quitado ? '#E9F6D6' : '#EEF3FD',
+          icoFg: i.quitado ? '#2F6142' : '#2E5A8C',
+          nome: f.person,
+          sub: f.reason + ' · ' + (i.quitado ? 'quitado' : 'falta R$ ' + num(i.falta)),
+          valor: numRaw(f.amount),
         };
       },
     },
@@ -1254,8 +1327,88 @@
       '<span>' + titulo + ' — ' + sub + '</span></div>';
   }
 
+  /* ── tela de favores ────────────────────────────────── */
+  function renderFavores() {
+    const r = favoresResumo();
+
+    // o destaque é o que falta receber, não o que já foi emprestado
+    $('fv-total').textContent = num(r.falta);
+    $('fv-pago-note').textContent = r.pago > 0
+      ? 'de R$ ' + num(r.total) + ' · ' + Math.round(r.pct) + '% já pago'
+      : (r.total > 0 ? 'de R$ ' + num(r.total) + ' · nada pago ainda' : 'nada emprestado ainda');
+
+    $('fv-pessoas').textContent = r.pessoas;
+    $('fv-favores-note').textContent = r.favores
+      ? r.favores + (r.favores === 1 ? ' favor no total' : ' favores no total')
+      : 'nenhum favor';
+
+    const pessoas = porPessoa();
+    if (!pessoas.length) {
+      $('fv-lista').innerHTML =
+        '<div class="empty-list">' +
+          '<span class="empty-dots"></span>' +
+          '<span class="empty-title">Ninguém te deve nada</span>' +
+          '<span class="empty-sub">Toque no + para anotar um favor.</span>' +
+        '</div>';
+      return;
+    }
+
+    $('fv-lista').innerHTML = pessoas.map(function (p) {
+      const ai = avatarIdx(p.nome);
+      const aberta = pessoaAberta === p.nome.toLowerCase();
+      const cor = p.quitado ? 'var(--ok)' : 'var(--lime)';
+
+      const itens = p.itens.map(function (f) {
+        const i = favorInfo(f);
+        return '<button class="fv-item' + (i.quitado ? ' quitado' : '') +
+          '" data-fid="' + f.id + '">' +
+          '<span class="fv-faixa" style="background:' +
+            (i.quitado ? 'var(--ok)' : (f.paid > 0 ? '#B58F3F' : '#C6D5CB')) + '"></span>' +
+          '<span class="fv-item-corpo">' +
+            '<span class="fv-motivo">' + esc(f.reason) + '</span>' +
+            '<span class="fv-quando">pego em ' + dataCurta(f.lent_on) + '</span>' +
+          '</span>' +
+          '<span class="fv-item-val">' +
+            '<span class="fv-item-total">R$' + num(f.amount) + '</span>' +
+            '<span class="fv-item-falta ' + (i.quitado ? 'quitado' : 'aberto') + '">' +
+              (i.quitado ? 'quitado' : 'falta R$ ' + num(i.falta)) + '</span>' +
+          '</span>' +
+        '</button>';
+      }).join('');
+
+      return '<div class="fv-pessoa' + (aberta ? ' aberta' : '') + '" data-pessoa="' +
+          esc(p.nome.toLowerCase()) + '">' +
+        '<button class="fv-cab" data-abrir="' + esc(p.nome.toLowerCase()) + '">' +
+          '<span class="fv-avatar" style="background:' + AVATAR_BG[ai] + ';color:' + AVATAR_FG[ai] + '">' +
+            esc(iniciais(p.nome)) + '</span>' +
+          '<span class="fv-quem">' +
+            '<span class="fv-nome">' + esc(p.nome) + '</span>' +
+            '<span class="fv-meta">' + p.itens.length +
+              (p.itens.length === 1 ? ' favor' : ' favores') +
+              ' · desde ' + dataCurta(p.desde) + '</span>' +
+          '</span>' +
+          '<span class="fv-valor"><span class="fv-valor-pfx">R$</span>' +
+            '<span class="fv-valor-v">' + num(p.quitado ? p.total : p.falta) + '</span></span>' +
+          '<span class="fv-seta" aria-hidden="true"></span>' +
+        '</button>' +
+        '<span class="fv-barra-linha">' +
+          '<span class="fv-barra"><span style="width:' + Math.min(100, p.pct).toFixed(1) +
+            '%;background:' + cor + '"></span></span>' +
+          '<span class="fv-barra-lbl">' + Math.round(p.pct) + '% pago</span>' +
+        '</span>' +
+        '<div class="fv-itens">' + itens + '</div>' +
+      '</div>';
+    }).join('');
+  }
+
   /* ── cartões do hub ─────────────────────────────────── */
   function renderHub(rows) {
+    const rf = favoresResumo();
+    $('hub-favores-val').textContent = num(rf.falta);
+    $('hub-favores-note').textContent = rf.favores
+      ? rf.pessoas + (rf.pessoas === 1 ? ' pessoa te devendo' : ' pessoas te devendo')
+      : 'ninguém te deve';
+
     const r = loansResumo();
     $('hub-loans-val').textContent = num(r.emAberto);
     $('hub-loans-note').textContent = loans.length
@@ -1543,6 +1696,104 @@
     toast(wasEdit ? 'Entrada atualizada' : 'Entrada adicionada');
   }
 
+  /* ── formulário de favor ────────────────────────────── */
+  function openFavor(id, pessoaSugerida) {
+    editFavorId = id || null;
+    $('fv-ftitle').textContent = editFavorId ? 'Editar favor' : 'Novo favor';
+    $('fv-del').hidden = !editFavorId;
+
+    // sugere quem já está na lista, para não haver "Ana" e "ana"
+    const nomes = [];
+    porPessoa().forEach(function (p) { nomes.push(p.nome); });
+    $('fv-pessoas-lista').innerHTML = nomes.map(function (n) {
+      return '<option value="' + esc(n) + '"></option>';
+    }).join('');
+
+    const f = editFavorId ? favores.find(function (x) { return x.id === editFavorId; }) : null;
+    $('fv-person').value = f ? f.person : (pessoaSugerida || '');
+    $('fv-reason').value = f ? f.reason : '';
+    $('fv-amount').value = f ? num(f.amount) : '';
+    $('fv-paid').value   = f ? num(f.paid) : '';
+    $('fv-date').value   = f ? f.lent_on : Store.hoje();
+    $('fv-notes').value  = f && f.notes ? f.notes : '';
+
+    onFavorAmounts();
+    openSheet($('sheet-favor'));
+    if (!editFavorId) {
+      setTimeout(function () { $(pessoaSugerida ? 'fv-reason' : 'fv-person').focus(); }, 320);
+    }
+  }
+
+  /** Mostra quanto falta e a porcentagem paga enquanto digita. */
+  function onFavorAmounts() {
+    const total = parseBRL($('fv-amount').value) || 0;
+    const pago  = parseBRL($('fv-paid').value) || 0;
+    const box = $('fv-saldo');
+
+    if (pago > total && total > 0) {
+      box.className = 'fv-saldo erro';
+      box.textContent = 'Pagou mais do que deve — será ajustado para R$ ' + num(total) + '.';
+      return;
+    }
+    const falta = Math.max(0, total - pago);
+    const pct = total > 0 ? (pago / total) * 100 : 0;
+
+    if (total > 0 && falta === 0) {
+      box.className = 'fv-saldo quitado';
+      box.textContent = 'Quitado — nada a receber.';
+    } else {
+      box.className = 'fv-saldo';
+      box.textContent = 'Falta receber: R$ ' + num(falta) +
+        (total > 0 ? '  ·  ' + pct.toLocaleString('pt-BR', { maximumFractionDigits: 1 }) + '% pago' : '');
+    }
+  }
+
+  function saveFavor() {
+    const person = $('fv-person').value.trim();
+    if (!person) { $('fv-person').focus(); toast('Diga quem te deve'); return; }
+
+    const reason = $('fv-reason').value.trim();
+    if (!reason) { $('fv-reason').focus(); toast('Diga por que te deve'); return; }
+
+    const amount = parseBRL($('fv-amount').value) || 0;
+    if (amount <= 0) { $('fv-amount').focus(); toast('Informe o valor'); return; }
+
+    const f = Store.normalizeFavor({
+      id: editFavorId || undefined,
+      person: person,
+      reason: reason,
+      amount: amount,
+      paid: parseBRL($('fv-paid').value) || 0,
+      lent_on: $('fv-date').value,
+      notes: $('fv-notes').value.trim() || null,
+    });
+
+    const era = !!editFavorId;
+    if (era) {
+      const idx = favores.findIndex(function (x) { return x.id === editFavorId; });
+      if (idx >= 0) favores[idx] = f;
+    } else {
+      favores.push(f);
+    }
+    // deixa aberta a pessoa que acabou de mexer
+    pessoaAberta = f.person.toLowerCase();
+    closeSheets();
+    render(); triggerSave();
+    toast(era ? 'Favor atualizado' : 'Favor anotado');
+  }
+
+  function delFavor() {
+    const f = favores.find(function (x) { return x.id === editFavorId; });
+    if (!f) return;
+    const backup = JSON.parse(JSON.stringify(favores));
+    favores = favores.filter(function (x) { return x.id !== editFavorId; });
+    closeSheets();
+    render(); triggerSave();
+    toast('Favor de “' + f.person + '” excluído', 'Desfazer', function () {
+      favores = backup; render(); triggerSave();
+    });
+  }
+
   /* ── formulário de conta ────────────────────────────── */
   function openConta(id) {
     editContaId = id || null;
@@ -1692,17 +1943,34 @@
     const m = $('lo-method').value;
     $('lo-parc-field').hidden   = m !== 'parcelado';
     $('lo-mensal-field').hidden = m !== 'mensal';
+
+    // na mensalidade o total a receber é calculado, não digitado
+    const derivado = m === 'mensal';
+    const campo = $('lo-f-total');
+    campo.readOnly = derivado;
+    campo.classList.toggle('fi-derivado', derivado);
+    $('lo-total-lbl').textContent = derivado ? 'A receber (calculado)' : 'A receber (R$)';
+
     onLoanAmounts();
   }
 
   /** Recalcula os juros e a dica de parcela enquanto o usuário digita. */
   function onLoanAmounts() {
     const principal = parseBRL($('lo-principal').value) || 0;
+    const metodo    = $('lo-method').value;
+
+    // mensalidade: o total é emprestado + mensalidade, sempre
+    if (metodo === 'mensal') {
+      const mens = parseBRL($('lo-installment-amount').value) || 0;
+      $('lo-f-total').value = (principal + mens)
+        ? num(principal + mens) : '';
+    }
+
     const total     = parseBRL($('lo-f-total').value) || 0;
     const juros     = total - principal;
 
     const box = $('lo-juros');
-    if (juros < 0) {
+    if (juros < 0 && metodo !== 'mensal') {
       box.className = 'lo-juros neg';
       box.textContent = 'O valor a receber está abaixo do emprestado — será ajustado ao salvar.';
     } else {
@@ -1712,18 +1980,19 @@
         (principal > 0 ? '  (' + pct.toLocaleString('pt-BR', { maximumFractionDigits: 1 }) + '%)' : '');
     }
 
-    const m = $('lo-method').value;
-    if (m === 'parcelado') {
+    if (metodo === 'parcelado') {
       const n = parseInt($('lo-installments').value, 10);
       $('lo-parc-hint').textContent = (n > 0 && total > 0)
         ? n + 'x de R$ ' + num(total / n) : '';
       $('lo-parc-hint').hidden = !(n > 0 && total > 0);
-    } else if (m === 'mensal') {
+    } else if (metodo === 'mensal') {
       const v = parseBRL($('lo-installment-amount').value) || 0;
       const meses = v > 0 ? Math.ceil(total / v) : 0;
       $('lo-mensal-hint').textContent = meses
-        ? 'Quita em cerca de ' + meses + (meses === 1 ? ' mês' : ' meses') : '';
-      $('lo-mensal-hint').hidden = !meses;
+        ? 'A receber vira R$ ' + num(total) + ' — quita em cerca de ' +
+          meses + (meses === 1 ? ' mês' : ' meses')
+        : 'A mensalidade entra como juro e soma ao emprestado.';
+      $('lo-mensal-hint').hidden = false;
     }
   }
 
@@ -1739,13 +2008,15 @@
       $('lo-installments').focus(); toast('Informe o número de parcelas'); return;
     }
     if (method === 'mensal' && !(parseBRL($('lo-installment-amount').value) > 0)) {
-      $('lo-installment-amount').focus(); toast('Informe o valor da mensalidade'); return;
+      $('lo-installment-amount').focus();
+      toast('Informe a mensalidade — ela é o juro do empréstimo'); return;
     }
 
     const l = Store.normalizeLoan({
       id: editLoanId || undefined,
       person: person,
       principal: principal,
+      // no mensal o Store recalcula; aqui vai o que está na tela
       total_due: parseBRL($('lo-f-total').value) || principal,
       received: parseBRL($('lo-f-received').value) || 0,
       lent_on: $('lo-lent').value,
@@ -1801,11 +2072,13 @@
     el.sheetSettings.classList.remove('open');
     $('sheet-loan').classList.remove('open');
     $('sheet-conta').classList.remove('open');
+    $('sheet-favor').classList.remove('open');
     el.backdrop.classList.remove('open');
     openSheetEl = null;
     editId = null;
     editLoanId = null;
     editContaId = null;
+    editFavorId = null;
     if (was && !silent && !isDesktop && sheetHist > 0) {
       sheetHist--;
       try { history.back(); } catch (err) {}
@@ -2093,6 +2366,7 @@
     el.saveStD       = $('save-st-d');
     el.saveStL       = $('save-st-l');
     el.saveStC       = $('save-st-c');
+    el.saveStF       = $('save-st-f');
     el.sbFinal       = $('sb-final');
     el.sbFinalLabel  = $('sb-final-label');
     el.sbGrowth      = $('sb-growth');
@@ -2157,8 +2431,9 @@
       if (b.dataset.act === 'edit') { spec.abrir(id); return; }
       if (b.dataset.act === 'tog')  { tog(id); return; }
       if (b.dataset.act === 'del') {
-        if (screen === 'loans')       { editLoanId = id; delLoan(); }
-        else if (screen === 'contas') { editContaId = id; delConta(); }
+        if (screen === 'loans')        { editLoanId = id; delLoan(); }
+        else if (screen === 'contas')  { editContaId = id; delConta(); }
+        else if (screen === 'favores') { editFavorId = id; delFavor(); }
         else                          { del(id); }
       }
     });
@@ -2222,6 +2497,7 @@
     $('fab-add').addEventListener('click', function () {
       if (screen === 'loans') openLoan(null);
       else if (screen === 'contas') openConta(null);
+      else if (screen === 'favores') openFavor(null);
       else openForm(null);
     });
     ['btn-settings', 'm-btn-edit'].forEach(function (id) {
@@ -2259,6 +2535,25 @@
       if (sheetHist > 0) sheetHist--;
       if (openSheetEl) closeSheets(true);
     });
+
+    /* favores */
+    $('fv-lista').addEventListener('click', function (ev) {
+      const item = ev.target.closest('[data-fid]');
+      if (item) { openFavor(item.dataset.fid); return; }
+      const cab = ev.target.closest('[data-abrir]');
+      if (cab) {
+        const chave = cab.dataset.abrir;
+        pessoaAberta = (pessoaAberta === chave) ? null : chave;
+        renderFavores();
+      }
+    });
+    ['fv-amount', 'fv-paid'].forEach(function (id) {
+      $(id).addEventListener('input', onFavorAmounts);
+    });
+    $('fv-save').addEventListener('click', saveFavor);
+    $('fv-del').addEventListener('click', delFavor);
+    $('fv-cancel').addEventListener('click', function () { closeSheets(); });
+    $('fv-back').addEventListener('click', function () { closeSheets(); });
 
     /* contas */
     ['ct-rendas', 'ct-fixas', 'ct-variaveis', 'ct-subs'].forEach(function (id) {
@@ -2612,7 +2907,7 @@
     }
 
     Store.startRealtime();
-    Store.retry(entries, saldoInicial, loans, contas, hubOrder);
+    Store.retry(entries, saldoInicial, loans, contas, hubOrder, favores);
   }
 
   function startLocalOnly() {
@@ -2652,7 +2947,7 @@
     });
 
     // reenvia o que ficou pendente quando a conexão volta
-    window.addEventListener('online', function () { Store.retry(entries, saldoInicial, loans, contas, hubOrder); });
+    window.addEventListener('online', function () { Store.retry(entries, saldoInicial, loans, contas, hubOrder, favores); });
 
     if (!Store.init()) {
       startLocalOnly();
