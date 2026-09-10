@@ -385,6 +385,40 @@
     return f && f.due_on ? f.due_on : '9999-12-31';
   }
 
+  /**
+   * Percentuais inteiros de uma divisão, somando exatamente 100.
+   *
+   * Arredondar cada fatia por conta própria dá 99 ou 101 — num gráfico de
+   * composição a diferença aparece como sobra ou corte na ponta, e a
+   * legenda deixa de fechar. Método do maior resto: todo mundo leva o
+   * piso, e os pontos que faltam vão para quem tem a maior parte
+   * fracionária (empate, o de menor índice, para a saída ser estável).
+   *
+   * Valor negativo ou não numérico conta como zero. Soma zero devolve
+   * zeros — não há divisão para descrever.
+   */
+  function pctInteiros(valores) {
+    const vals = (valores || []).map(function (v) {
+      const n = Number(v);
+      return isFinite(n) && n > 0 ? n : 0;
+    });
+    const soma = vals.reduce(function (a, v) { return a + v; }, 0);
+    if (soma <= 0) return vals.map(function () { return 0; });
+
+    const exatos = vals.map(function (v) { return (v / soma) * 100; });
+    const out = exatos.map(Math.floor);
+    let faltam = 100 - out.reduce(function (a, v) { return a + v; }, 0);
+
+    const porResto = exatos
+      .map(function (v, i) { return { i: i, frac: v - Math.floor(v) }; })
+      .sort(function (a, b) { return (b.frac - a.frac) || (a.i - b.i); });
+
+    for (let k = 0; k < porResto.length && faltam > 0; k++, faltam--) {
+      out[porResto[k].i]++;
+    }
+    return out;
+  }
+
   function alocarFavores(favors, payments) {
     /* Ordem em que o dinheiro entra: vence antes, enche antes — a mesma
        ordem que a tela mostra. Se as duas discordassem, o pagamento cairia
@@ -1045,6 +1079,7 @@
     validPayment: validPayment,
     alocarFavores: alocarFavores,
     ordemFavor: ordemFavor,
+    pctInteiros: pctInteiros,
     favoresDaExclusao: favoresDaExclusao,
     estadoVazio: estadoVazio,
     FREQ_MES: FREQ_MES,

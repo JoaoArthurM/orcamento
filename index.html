@@ -36,6 +36,7 @@
 <symbol id="i-nav-arrow-left" viewBox="0 0 24 24"><path d="M15 6L9 12L15 18" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/></symbol>
 <symbol id="i-drag" viewBox="0 0 24 24"><path d="M12 12L4 4M4 4V8M4 4H8" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/><path d="M12 12L20 4M20 4V8M20 4H16" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/><path d="M12 12L4 20M4 20V16M4 20H8" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/><path d="M12 12L20 20M20 20V16M20 20H16" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/></symbol>
 <symbol id="i-nav-arrow-right" viewBox="0 0 24 24"><path d="M9 6L15 12L9 18" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+<symbol id="i-nav-arrow-down" viewBox="0 0 24 24"><path d="M6 9L12 15L18 9" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/></symbol>
 <symbol id="i-check" viewBox="0 0 24 24"><path d="M5 13L9 17L19 7" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/></symbol>
 <symbol id="i-edit-pencil" viewBox="0 0 24 24"><path d="M14.3632 5.65156L15.8431 4.17157C16.6242 3.39052 17.8905 3.39052 18.6716 4.17157L20.0858 5.58579C20.8668 6.36683 20.8668 7.63316 20.0858 8.41421L18.6058 9.8942M14.3632 5.65156L4.74749 15.2672C4.41542 15.5993 4.21079 16.0376 4.16947 16.5054L3.92738 19.2459C3.87261 19.8659 4.39148 20.3848 5.0115 20.33L7.75191 20.0879C8.21972 20.0466 8.65806 19.8419 8.99013 19.5099L18.6058 9.8942M14.3632 5.65156L18.6058 9.8942" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/></symbol>
 <symbol id="i-graph-up" viewBox="0 0 24 24"><path d="M20 20H4V4" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 16.5L12 9L15 12L19.5 7.5" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/></symbol>
@@ -72,13 +73,16 @@
   <div class="auth-inner">
 
     <header class="auth-top">
+      <!-- só fora do signin: é ele a raiz, e não há para onde voltar -->
+      <button class="auth-back" type="button" id="auth-back" hidden aria-label="Voltar">
+        <svg class="ico" aria-hidden="true"><use href="#i-nav-arrow-left"/></svg>
+      </button>
       <span class="wordmark auth-wordmark">orçamento.</span>
-      <span class="auth-badge" aria-hidden="true">R$</span>
     </header>
 
     <div class="auth-greet">
       <span class="auth-eyebrow" id="auth-eyebrow">Olá de novo,</span>
-      <h1 class="auth-title" id="auth-title">Bem-vindo!</h1>
+      <h1 class="auth-title" id="auth-title">Bem-vindo(a)!</h1>
       <span class="auth-sub" id="auth-sub">Entre para ver suas projeções</span>
     </div>
 
@@ -127,8 +131,8 @@
 
       <p class="auth-msg" id="auth-msg" role="status" aria-live="polite"></p>
 
+      <!-- só a ação primária: a secundária vive no rodapé, e uma só -->
       <div class="auth-actions" id="auth-actions">
-        <button class="auth-secondary" type="button" id="auth-secondary">Criar conta</button>
         <button class="auth-primary" type="submit" id="auth-submit">Entrar</button>
       </div>
     </form>
@@ -169,51 +173,51 @@
 
         <div class="hub-cards" id="hub-cards">
         <button class="hub-card hub-loans" data-go="loans" data-mod="loans">
-          <span class="hub-card-top">
-            <span class="hub-ico"><svg class="ico" aria-hidden="true"><use href="#i-hand-cash"/></svg></span>
-            <span class="hub-arrow"><svg class="ico" aria-hidden="true"><use href="#i-nav-arrow-right"/></svg></span>
+          <span class="hub-ico"><svg class="ico" aria-hidden="true"><use href="#i-hand-cash"/></svg></span>
+          <span class="hub-body">
+            <span class="hub-name">Empréstimos</span>
+            <span class="hub-val-wrap">
+              <span class="hub-pfx">R$</span><span class="hub-val" id="hub-loans-val">0</span>
+            </span>
+            <span class="hub-note" id="hub-loans-note">nada emprestado ainda</span>
           </span>
-          <span class="hub-name">Empréstimos</span>
-          <span class="hub-val-wrap">
-            <span class="hub-pfx">R$</span><span class="hub-val" id="hub-loans-val">0</span>
-          </span>
-          <span class="hub-note" id="hub-loans-note">nada emprestado ainda</span>
+          <span class="hub-arrow"><svg class="ico" aria-hidden="true"><use href="#i-nav-arrow-right"/></svg></span>
         </button>
 
         <button class="hub-card hub-eco" data-go="eco" data-mod="eco">
-          <span class="hub-card-top">
-            <span class="hub-ico"><svg class="ico" aria-hidden="true"><use href="#i-piggy-bank"/></svg></span>
-            <span class="hub-arrow"><svg class="ico" aria-hidden="true"><use href="#i-nav-arrow-right"/></svg></span>
+          <span class="hub-ico"><svg class="ico" aria-hidden="true"><use href="#i-piggy-bank"/></svg></span>
+          <span class="hub-body">
+            <span class="hub-name">Economia</span>
+            <span class="hub-val-wrap">
+              <span class="hub-pfx">R$</span><span class="hub-val" id="hub-eco-val">0</span>
+            </span>
+            <span class="hub-note" id="hub-eco-note">nenhuma entrada ainda</span>
           </span>
-          <span class="hub-name">Economia</span>
-          <span class="hub-val-wrap">
-            <span class="hub-pfx">R$</span><span class="hub-val" id="hub-eco-val">0</span>
-          </span>
-          <span class="hub-note" id="hub-eco-note">acumulado em 12 meses</span>
+          <span class="hub-arrow"><svg class="ico" aria-hidden="true"><use href="#i-nav-arrow-right"/></svg></span>
         </button>
 
         <button class="hub-card hub-contas" data-go="contas" data-mod="contas">
-          <span class="hub-card-top">
-            <span class="hub-ico"><svg class="ico" aria-hidden="true"><use href="#i-wallet"/></svg></span>
-            <span class="hub-arrow"><svg class="ico" aria-hidden="true"><use href="#i-nav-arrow-right"/></svg></span>
+          <span class="hub-ico"><svg class="ico" aria-hidden="true"><use href="#i-wallet"/></svg></span>
+          <span class="hub-body">
+            <span class="hub-name">Contas</span>
+            <span class="hub-val-wrap">
+              <span class="hub-pfx">R$</span><span class="hub-val" id="hub-contas-val">0</span>
+            </span>
+            <span class="hub-note" id="hub-contas-note">nenhuma conta cadastrada</span>
           </span>
-          <span class="hub-name">Contas</span>
-          <span class="hub-val-wrap">
-            <span class="hub-pfx">R$</span><span class="hub-val" id="hub-contas-val">0</span>
-          </span>
-          <span class="hub-note" id="hub-contas-note">sobra no mês</span>
+          <span class="hub-arrow"><svg class="ico" aria-hidden="true"><use href="#i-nav-arrow-right"/></svg></span>
         </button>
 
         <button class="hub-card hub-favores" data-go="favores" data-mod="favores">
-          <span class="hub-card-top">
-            <span class="hub-ico"><svg class="ico" aria-hidden="true"><use href="#i-donate"/></svg></span>
-            <span class="hub-arrow"><svg class="ico" aria-hidden="true"><use href="#i-nav-arrow-right"/></svg></span>
+          <span class="hub-ico"><svg class="ico" aria-hidden="true"><use href="#i-donate"/></svg></span>
+          <span class="hub-body">
+            <span class="hub-name">Favores</span>
+            <span class="hub-val-wrap">
+              <span class="hub-pfx">R$</span><span class="hub-val" id="hub-favores-val">0</span>
+            </span>
+            <span class="hub-note" id="hub-favores-note">ninguém te deve</span>
           </span>
-          <span class="hub-name">Favores</span>
-          <span class="hub-val-wrap">
-            <span class="hub-pfx">R$</span><span class="hub-val" id="hub-favores-val">0</span>
-          </span>
-          <span class="hub-note" id="hub-favores-note">ninguém te deve</span>
+          <span class="hub-arrow"><svg class="ico" aria-hidden="true"><use href="#i-nav-arrow-right"/></svg></span>
         </button>
         </div>
 
@@ -245,7 +249,6 @@
             </span>
             <span class="fv-box-note" id="fv-favores-note">nenhum favor</span>
           </div>
-          <span class="save-st" id="save-st-f" role="status" aria-live="polite"></span>
         </div>
 
         <div class="fv-lista" id="fv-lista"></div>
@@ -265,7 +268,12 @@
           </div>
         </div>
 
-        <div class="m-hero ct-hero">
+        <!-- Um cartão só: a sobra e o destino do dinheiro são a mesma
+             conta vista de dois lados. Com a sobra virando fatia, a rosca
+             fecha 100% da renda e a tela passa a ter UMA base de
+             percentual — antes o hero dividia pela renda e a rosca pelos
+             gastos, e a mesma economia aparecia como 25% e 60%. -->
+        <div class="m-hero ct-hero" id="ct-pizza-card">
           <span class="m-hero-k">Sobra no mês</span>
           <span class="m-hero-val-wrap">
             <span class="m-hero-pfx">R$</span>
@@ -273,20 +281,12 @@
           </span>
           <span class="m-hero-period" id="ct-sobra-note">0% da renda não comprometida</span>
 
-          <div class="ct-bar" id="ct-bar" role="img" aria-label="Composição da renda"></div>
-          <div class="ct-legend" id="ct-legend"></div>
-          <span class="save-st" id="save-st-c" role="status" aria-live="polite"></span>
-        </div>
-
-        <div class="card m-card ct-pizza-card" id="ct-pizza-card">
-          <div class="ct-pizza-hd">
-            <span class="ct-pizza-t">Para onde vai o dinheiro</span>
-            <span class="ct-pizza-s" id="ct-pizza-total">R$ 0,00 por mês</span>
-          </div>
-          <div class="ct-pizza-body">
+          <div class="ct-fluxo">
             <div class="ct-pizza-svg" id="ct-pizza"></div>
             <div class="ct-pizza-leg" id="ct-pizza-leg"></div>
           </div>
+          <span class="ct-fluxo-base" id="ct-pizza-total">de R$ 0,00 de renda</span>
+
         </div>
 
         <div class="m-sel-hd">
@@ -364,7 +364,6 @@
               </span>
             </div>
           </div>
-          <span class="save-st" id="save-st-l" role="status" aria-live="polite"></span>
         </div>
 
         <div class="lo-pessoas" id="lo-pessoas" role="tablist" aria-label="Filtrar por pessoa"></div>
@@ -398,29 +397,41 @@
           </div>
         </div>
 
-        <!-- seletor de mês: fica ANTES do cartão escuro, porque é o
-             filtro dele — o número grande responde ao mês escolhido -->
+        <!-- Controles do número, todos juntos e ANTES dele: cenário,
+             horizonte, quem entra na conta e o recorte de mês. Antes o
+             cenário e o horizonte moravam dentro do cartão escuro e o
+             "Juntos/Separados" ficava lá embaixo, então três filtros do
+             mesmo valor apareciam em três lugares da tela. -->
+        <div class="m-ctrl">
+          <div class="m-seg" role="group" aria-label="Cenário">
+            <button id="bp-m" class="on" data-view="p" aria-pressed="true">Pessimista</button>
+            <button id="bo-m" data-view="o" aria-pressed="false">Otimista</button>
+          </div>
+          <button class="m-ctrl-hz" id="m-growth" aria-haspopup="true"
+                  aria-label="Trocar o horizonte da projeção">
+            <span id="m-growth-lbl">12 meses</span>
+            <svg class="ico" aria-hidden="true"><use href="#i-nav-arrow-down"/></svg>
+          </button>
+        </div>
+
+        <!-- só aparece quando há economia compartilhada em jogo -->
+        <div class="m-seg m-junto" id="m-junto" role="tablist" hidden>
+          <button id="m-junto-sim" class="on" role="tab">Juntos</button>
+          <button id="m-junto-nao" role="tab">Separados</button>
+        </div>
+
+        <!-- o recorte fecha a faixa de controles, colado no cartão que ele filtra -->
         <div class="m-months" id="m-months" role="tablist" aria-label="Meses"></div>
 
-        <!-- acumulado + cenário + ações -->
+        <!-- o cartão escuro ficou só com o resultado -->
         <div class="m-hero">
-          <div class="m-hero-top">
-            <span class="m-hero-k">Acumulado</span>
-            <div class="m-vtog" role="group" aria-label="Cenário">
-              <button id="bp-m" class="on" data-view="p" aria-pressed="true">Pes.</button>
-              <button id="bo-m" data-view="o" aria-pressed="false">Otim.</button>
-            </div>
-          </div>
+          <span class="m-hero-k">Acumulado</span>
           <span class="m-hero-val-wrap">
             <span class="m-hero-pfx">R$</span>
             <span class="m-hero-val" id="m-acum-val">0</span>
             <span class="m-hero-period" id="m-acum-period">em 12 meses</span>
           </span>
-          <div class="m-hero-meta">
-            <button class="m-hero-growth" id="m-growth" aria-haspopup="true"
-                    aria-label="Trocar o horizonte da projeção">12 meses</button>
-          </div>
-          <span class="save-st" id="save-st" role="status" aria-live="polite"></span>
+          <span class="m-hero-pct" id="m-acum-pct" hidden></span>
         </div>
 
         <!-- KPIs em faixa rolante -->
@@ -440,11 +451,6 @@
         <div class="m-sel-hd">
           <span class="m-sel-lbl"><svg class="ico" aria-hidden="true"><use href="#i-calendar"/></svg><span id="m-sel-lbl">—</span></span>
           <span class="m-sel-saldo" id="m-sel-saldo">saldo R$0</span>
-        </div>
-        <!-- só aparece quando há economia compartilhada em jogo -->
-        <div class="m-junto" id="m-junto" role="tablist" hidden>
-          <button id="m-junto-sim" class="on" role="tab">Juntos</button>
-          <button id="m-junto-nao" role="tab">Separados</button>
         </div>
 
         <div class="card m-card" id="m-entries"></div>
@@ -555,7 +561,6 @@
         <button class="btn-edit" id="btn-settings">Ajustes</button>
         <button class="btn-add" id="btn-add">+ Entrada</button>
       </div>
-      <span class="save-st" id="save-st-d" role="status" aria-live="polite"></span>
     </div>
   </div>
 

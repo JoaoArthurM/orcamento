@@ -373,17 +373,6 @@ svg { display: block; flex: none; }
 .btn-add  { background: #fff; color: var(--dark); font-weight: 600; }
 .btn-add:active, .btn-add:hover { background: var(--lime); }
 
-.save-st {
-  position: absolute; right: 16px; bottom: 6px;
-  font-size: 10px; font-weight: 500; letter-spacing: .06em;
-  opacity: 0; transition: opacity .3s;
-}
-.save-st.vis { opacity: 1; }
-.save-st.saving   { color: #8FAE9C; }
-.save-st.ok       { color: var(--lime); }
-.save-st.readonly { color: #E5C173; }
-.save-st.err      { color: #F1948A; }
-
 /* ── KPIs ───────────────────────────────────────────── */
 .kpi-grid {
   display: grid;
@@ -742,6 +731,15 @@ svg { display: block; flex: none; }
   max-width: calc(100vw - 32px); text-align: center;
 }
 .toast.on { opacity: 1; transform: translate(-50%, 0); pointer-events: auto; }
+
+/* status de gravação: mesma pílula, sem receber clique — não tem nada
+   para clicar e cobriria o que está atrás. As cores são as que o aviso
+   usava dentro dos cartões, e valem aqui porque o fundo é o mesmo --dark. */
+.toast.status { pointer-events: none; }
+.toast.status.saving   { color: #8FAE9C; }
+.toast.status.ok       { color: var(--lime); }
+.toast.status.readonly { color: #E5C173; }
+.toast.status.err      { color: #F1948A; }
 #app.sem-navbar .toast { bottom: calc(var(--sab) + 18px); }
 
 /* ══════════════════════════════════════════════════════
@@ -1039,17 +1037,25 @@ svg { display: block; flex: none; }
 }
 
 .auth-top {
-  display: flex; align-items: center; justify-content: space-between;
+  display: flex; align-items: center; gap: 10px;
   flex: none;
 }
 .auth-wordmark { font-size: 21px; flex: none; }
-.auth-badge {
-  width: 40px; height: 40px; border-radius: 50%;
-  background: #fff; flex: none;
+
+/* mesma pastilha do .appbar-back, sem o jogo de claro/escuro:
+   aqui o fundo é sempre claro */
+.auth-back {
+  width: 36px; height: 36px;
+  border-radius: 50%; flex: none;
   display: flex; align-items: center; justify-content: center;
-  font-size: 12px; font-weight: 700; color: var(--dark);
-  box-shadow: 0 2px 12px rgba(18,58,44,.08);
+  background: var(--dark); color: #fff;
+  box-shadow: 0 8px 26px rgba(18,58,44,.28);
+  transition: background 140ms, transform 140ms;
 }
+.auth-back .ico { width: 21px; height: 21px; }
+.auth-back:active { transform: scale(.94); }
+.auth-back:hover { background: var(--dark3); }
+.auth-back[hidden] { display: none; }
 
 .auth-greet {
   padding-top: 26px; flex: none;
@@ -1200,18 +1206,8 @@ svg { display: block; flex: none; }
 .auth-msg.err { color: #F1948A; }
 .auth-msg.ok  { color: var(--lime); }
 
-/* ── botões sobrepostos ─────────────────────────────── */
-.auth-actions { display: flex; align-items: center; gap: 10px; padding: 22px 6px 0; }
-
-.auth-secondary {
-  flex: 1; height: 52px;
-  border: 1px solid #2F5B48; border-radius: 99px;
-  background: transparent; color: #fff;
-  font-size: 13.5px; font-weight: 500; letter-spacing: -.01em;
-  transition: background 140ms;
-}
-.auth-secondary:active, .auth-secondary:hover { background: var(--dark3); }
-.auth-secondary[hidden] { display: none; }
+/* ── ação primária ──────────────────────────────────── */
+.auth-actions { display: flex; align-items: center; padding: 22px 6px 0; }
 
 .auth-primary {
   position: relative; z-index: 1;
@@ -1224,9 +1220,6 @@ svg { display: block; flex: none; }
 }
 .auth-primary:active, .auth-primary:hover { background: var(--lime); }
 .auth-primary[disabled] { opacity: .65; pointer-events: none; }
-
-/* botão único ocupa a linha inteira */
-.auth-actions.solo { gap: 0; }
 
 /* ── rodapé ─────────────────────────────────────────── */
 .auth-foot {
@@ -1327,37 +1320,61 @@ svg { display: block; flex: none; }
 }
 .m-hero > * { position: relative; }
 
-.m-hero-top {
-  width: 100%;
-  display: flex; align-items: center; justify-content: space-between; gap: 12px;
-}
 .m-hero-k { font-size: 12px; color: #8FAE9C; }
 
-.m-vtog {
-  display: flex; gap: 4px;
-  background: var(--dark3); border-radius: 99px; padding: 3px;
-  flex: none;
+/* ── controles do número (fundo claro, antes do cartão) ──
+   Cenário, horizonte e juntos/separados dividem o mesmo desenho: são
+   todos filtros do mesmo valor, e antes cada um tinha o seu. */
+/* Espaçamento com hierarquia: 6px entre os controles, que são um grupo,
+   e 18px depois do último, separando controle de resultado. Com a mesma
+   folga em toda parte, os quatro blocos não se agrupavam. */
+.m-ctrl {
+  display: flex; align-items: center; gap: 8px;
+  margin: 4px calc(var(--page-x) + var(--sal)) 6px;
 }
-.m-vtog button {
-  border-radius: 99px; padding: 7px 13px;
-  font-size: 11px; font-weight: 500;
-  color: #8FAE9C; background: transparent;
+
+.m-seg {
+  display: flex; gap: 3px; padding: 3px;
+  border-radius: 99px; background: #EDF3E8;
+  flex: 1; min-width: 0;
+}
+.m-seg button {
+  flex: 1; min-width: 0;
+  border-radius: 99px; padding: 8px 10px;
+  font-size: 11.5px; font-weight: 600;
+  /* --tx-m dava 3.25 sobre a trilha #EDF3E8 */
+  color: #4C6B5B; background: transparent;
   transition: background 140ms, color 140ms;
-  white-space: nowrap;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
-.m-vtog button.on { background: var(--lime); color: var(--dark); font-weight: 600; }
+.m-seg button.on { background: var(--dark); color: #fff; }
+
+.m-ctrl-hz {
+  display: inline-flex; align-items: center; gap: 4px;
+  flex: none;
+  background: var(--dark); color: #fff;
+  border-radius: 99px; padding: 9px 12px 9px 14px;
+  font-size: 11.5px; font-weight: 600; white-space: nowrap;
+  min-height: 38px;
+}
+.m-ctrl-hz .ico { width: 14px; height: 14px; color: var(--lime); }
+.m-ctrl-hz:active { transform: scale(.97); }
+
+/* o juntos/separados ocupa a linha toda, e some quando não há com quem */
+.m-junto { margin: 0 calc(var(--page-x) + var(--sal)) 6px; }
+.m-junto[hidden] { display: none; }
 
 .m-hero-val-wrap {
   display: flex; align-items: baseline; gap: 4px;
   flex-wrap: wrap;                 /* valores longos quebram sem cortar */
   padding-top: 14px;
 }
-.m-hero-meta {
-  width: 100%;
-  display: flex; align-items: center; gap: 10px;
-  flex-wrap: wrap;
-  padding-top: 10px;
+/* a variação saiu do botão de horizonte: é resultado, não controle */
+.m-hero-pct {
+  font-size: 11.5px; font-weight: 600; color: var(--lime);
+  padding-top: 8px;
 }
+.m-hero-pct[hidden] { display: none; }
 .m-hero-pfx {
   font-size: 13px; font-weight: 500; color: #C6DDCD;
   align-self: flex-start; padding-top: 5px;
@@ -1370,15 +1387,6 @@ svg { display: block; flex: none; }
   font-size: 11.5px; color: #8FAE9C;
   margin-left: 6px; white-space: nowrap;
 }
-.m-hero-growth {
-  display: inline-flex; align-items: center; gap: 6px;
-  background: var(--lime); color: var(--dark);
-  border-radius: 99px; padding: 5px 12px;
-  font-size: 11.5px; font-weight: 600; white-space: nowrap;
-}
-.m-hero .save-st { right: 18px; bottom: 4px; }
-.m-hero .save-st.ok { color: var(--lime); }
-
 /* ── faixas rolantes (KPIs e meses) ─────────────────── */
 .m-kpis, .m-months {
   display: flex; overflow-x: auto;
@@ -1421,7 +1429,9 @@ svg { display: block; flex: none; }
 /* align-items: center para o mês escolhido crescer sozinho — em
    stretch os outros acompanhariam a altura dele */
 .m-months {
-  gap: 8px; margin-top: 16px; align-items: center;
+  /* fecha o grupo de controles: 6px para o de cima (é do mesmo grupo) e,
+     somado aos 12px do .m-hero, 18px para o resultado lá embaixo */
+  gap: 8px; margin: 0 0 6px; align-items: center;
   scroll-snap-type: x proximity;
 }
 .m-chip {
@@ -1530,7 +1540,8 @@ svg { display: block; flex: none; }
 /* ── tabela mês a mês ───────────────────────────────── */
 .m-table { overflow: hidden; }
 .m-thead, .m-trow {
-  display: grid; grid-template-columns: 74px 1fr 1fr;
+  /* 74px não cabia "Ago/2027" */
+  display: grid; grid-template-columns: 92px 1fr 1fr;
   align-items: center;
   padding: 10px 14px;
 }
@@ -1550,11 +1561,20 @@ svg { display: block; flex: none; }
 .m-trow:last-child { border-bottom: none; }
 .m-trow.on { background: #EDF6DF; }
 .m-trow-m {
-  display: flex; align-items: center; gap: 7px;
+  /* sem `gap`: ele separaria o ano do mês junto com o ponto. O respiro
+     fica só no ponto, e "Set/2026" se lê como uma coisa só */
+  display: flex; align-items: baseline;
   font-size: 12.5px; font-weight: 500;
 }
 .m-trow.on .m-trow-m { font-weight: 700; }
-.m-trow-dot { width: 5px; height: 5px; border-radius: 50%; flex: none; }
+/* o ano em tom mais leve: a coluna continua sendo varrida pelo mês, e o
+   ano só desempata quando o horizonte passa de 12 meses. #577564 passa AA
+   nos dois fundos da linha — o branco e o #EDF6DF da selecionada */
+.m-trow-y { font-size: 11px; font-weight: 400; color: #577564; }
+.m-trow-dot {
+  width: 5px; height: 5px; border-radius: 50%; flex: none;
+  margin-right: 7px; align-self: center;
+}
 .m-trow-saldo, .m-trow-acum {
   font-size: 12.5px; letter-spacing: -.02em; text-align: right;
   font-variant-numeric: tabular-nums;
@@ -1636,71 +1656,81 @@ svg { display: block; flex: none; }
 .hub-eyebrow { font-size: 13.5px; color: #577766; }
 .hub-title { font-size: 32px; font-weight: 600; letter-spacing: -.05em; line-height: 1.05; }
 
+/* Ícone à esquerda, texto ao lado: em coluna os quatro cartões passavam
+   de 690px e o último ficava sempre abaixo da dobra a 824px de altura.
+   As alturas têm de continuar IGUAIS entre si — `ligarArrasto` calcula
+   `passo` a partir da altura de um cartão e desloca os vizinhos por
+   múltiplos dela. */
 .hub-card {
   position: relative;
-  display: flex; flex-direction: column; align-items: flex-start; gap: 2px;
+  display: flex; flex-direction: row; align-items: center; gap: 14px;
   border-radius: 24px;
-  padding: 18px 20px 20px;
+  /* o vertical vem de caber quatro em 768px; o gap de 14px entre eles NÃO
+     pode mudar sem mudar o `passo` de ligarArrasto, que o soma à altura */
+  padding: 12px 18px;
   overflow: hidden;
   text-align: left;
   transition: transform 140ms;
 }
 .hub-card:active { transform: scale(.985); }
-.hub-card::after {
+/* a trama de pontos ficou só no cartão escuro: nos quatro ela deixava de
+   ser acento e virava fundo. Fica no canto de baixo e para antes da
+   seta — cruzando o `>`, ela suja a única referência clicável do cartão */
+.hub-loans::after {
   content: '';
-  position: absolute; right: -26px; bottom: -30px;
-  width: 150px; height: 120px;
+  position: absolute; right: -34px; bottom: -34px;
+  width: 108px; height: 82px;
   background-size: 12px 12px;
-  -webkit-mask-image: linear-gradient(305deg, #000 6%, transparent 62%);
-  mask-image: linear-gradient(305deg, #000 6%, transparent 62%);
+  background-image: radial-gradient(rgba(201,232,142,.45) 2px, transparent 2px);
+  -webkit-mask-image: linear-gradient(310deg, #000 2%, transparent 46%);
+  mask-image: linear-gradient(310deg, #000 2%, transparent 46%);
   pointer-events: none;
 }
 .hub-card > * { position: relative; }
 
+.hub-body {
+  flex: 1; min-width: 0;
+  display: flex; flex-direction: column; align-items: flex-start;
+}
+
 .hub-loans { background: var(--dark); color: #fff; }
-.hub-loans::after { background-image: radial-gradient(rgba(201,232,142,.45) 2px, transparent 2px); }
 .hub-eco { background: var(--lime); color: var(--dark); }
-.hub-eco::after { background-image: radial-gradient(rgba(18,58,44,.20) 2px, transparent 2px); }
 .hub-contas { background: #EFE0BC; color: #4A3A14; }
-.hub-contas::after { background-image: radial-gradient(rgba(120,92,30,.26) 2px, transparent 2px); }
 .hub-contas .hub-ico { background: rgba(255,255,255,.6); color: #8A6A24; }
 .hub-contas .hub-arrow { color: #9A7C36; }
 .hub-contas .hub-name { color: #7A5F22; }
 .hub-contas .hub-pfx  { color: #7A5F22; }
-.hub-contas .hub-note { color: #86682A; }
+.hub-contas .hub-note { color: #755A1E; }
 
-.hub-card-top {
-  width: 100%;
-  display: flex; align-items: center; justify-content: space-between;
-  padding-bottom: 12px;
-}
 .hub-ico {
   width: 42px; height: 42px; border-radius: 14px;
   display: flex; align-items: center; justify-content: center;
+  flex: none;
 }
 .hub-ico .ico { width: 21px; height: 21px; }
 .hub-loans .hub-ico { background: var(--dark3); color: var(--lime); }
 .hub-eco   .hub-ico { background: rgba(255,255,255,.55); color: var(--dark); }
 
+.hub-arrow { flex: none; }
 .hub-arrow .ico { width: 20px; height: 20px; }
 .hub-loans .hub-arrow { color: #8FAE9C; }
-.hub-eco   .hub-arrow { color: #5C7A4A; }
+.hub-eco   .hub-arrow { color: #4C6B3D; }
 
 .hub-name { font-size: 12.5px; font-weight: 500; }
 .hub-loans .hub-name { color: #8FAE9C; }
-.hub-eco   .hub-name { color: #4C6B3D; }
+.hub-eco   .hub-name { color: #455F35; }
 
-.hub-val-wrap { display: flex; align-items: baseline; gap: 4px; padding-top: 2px; }
+.hub-val-wrap { display: flex; align-items: baseline; gap: 4px; padding-top: 1px; }
 .hub-pfx { font-size: 12.5px; font-weight: 500; align-self: flex-start; padding-top: 5px; }
 .hub-loans .hub-pfx { color: #C6DDCD; }
-.hub-eco   .hub-pfx { color: #4C6B3D; }
+.hub-eco   .hub-pfx { color: #455F35; }
 .hub-val {
   font-size: 28px; font-weight: 600; letter-spacing: -.045em; line-height: 1;
   font-variant-numeric: tabular-nums;
 }
 .hub-note { font-size: 11.5px; padding-top: 3px; }
 .hub-loans .hub-note { color: #8FAE9C; }
-.hub-eco   .hub-note { color: #557A44; }
+.hub-eco   .hub-note { color: #455F35; }
 
 .hub-link {
   display: flex; align-items: center; justify-content: center; gap: 8px;
@@ -1880,26 +1910,6 @@ svg { display: block; flex: none; }
 
 .ct-hero .m-hero-val-wrap { padding-top: 4px; }
 
-/* barra empilhada: contas · assinaturas · variáveis · livre */
-.ct-bar {
-  position: relative;
-  width: 100%; display: flex; height: 8px;
-  border-radius: 99px; overflow: hidden;
-  margin-top: 14px; background: var(--dark3);
-}
-.ct-bar span { display: block; transition: width 220ms; }
-
-.ct-legend {
-  position: relative;
-  width: 100%; display: flex; flex-wrap: wrap;
-  gap: 9px 14px; padding-top: 9px;
-}
-.ct-leg {
-  display: flex; align-items: center; gap: 6px;
-  font-size: 10.5px; color: #C6DDCD;
-}
-.ct-leg i { width: 6px; height: 6px; border-radius: 50%; display: block; flex: none; }
-
 /* listas em cartão individual (fixas e variáveis) */
 .ct-cards { display: flex; flex-direction: column; gap: 8px; margin-top: 10px; }
 .ct-card {
@@ -1978,8 +1988,10 @@ svg { display: block; flex: none; }
   display: flex; flex-direction: column; align-items: center; gap: 4px;
 }
 .ct-meta-pct { font-size: 15px; font-weight: 700; letter-spacing: -.02em; }
-.ct-meta-v-wrap { display: flex; align-items: baseline; gap: 2px; }
-.ct-meta-pfx { font-size: 9px; align-self: flex-start; padding-top: 1px; }
+/* R$ centrado na altura do número — nesta escala (número de 12px) o
+   sobrescrito do hero, que tem 28px, só faz o prefixo parecer solto */
+.ct-meta-v-wrap { display: flex; align-items: center; gap: 3px; }
+.ct-meta-pfx { font-size: 9px; }
 .ct-meta-v { font-size: 12px; font-weight: 600; font-variant-numeric: tabular-nums; }
 .ct-meta-lbl { font-size: 9.5px; }
 
@@ -2000,7 +2012,9 @@ svg { display: block; flex: none; }
 }
 
 /* ── hub: cartões reordenáveis ──────────────────────── */
-.hub-cards { display: flex; flex-direction: column; gap: 14px; }
+/* o margin-bottom é só o piso do vão até a linha; o resto da folga é
+   absorvido pelos próprios cartões (regra do flex mais abaixo) */
+.hub-cards { display: flex; flex-direction: column; gap: 14px; margin-bottom: 10px; }
 
 .hub-card {
   touch-action: manipulation;
@@ -2019,10 +2033,50 @@ svg { display: block; flex: none; }
 }
 .hub-card.deslocando { transition: transform 180ms ease; }
 
+/* A altura sobrando vira altura de cartão, não vão morto abaixo do último
+   — em qualquer tela, sem media query calibrada a dedo. Onde o conteúdo
+   já não cabe, não há folga para distribuir e o slot rola: correto, e é
+   por isso que o padding base é curto.
+   `min-height: auto` (padrão do flex) impede encolher abaixo do conteúdo,
+   e os quatro mantêm a MESMA altura, que é o que `ligarArrasto` pressupõe
+   ao somar `passo` = altura + gap. */
+#slot-hub > .hub-cards { flex: 1 1 auto; }
+.hub-cards > .hub-card { flex: 1 1 auto; }
+
+/* ── trama de pontos do fundo ────────────────────────
+   Vem da tela de entrada (.auth-dots), mas no ALTO e só à direita: no pé
+   ela caía atrás do "Ajustes e conta", um botão branco de largura cheia,
+   e o vão abaixo dele ficava vazio de qualquer jeito. Aqui ela preenche o
+   vazio ao lado do título, que é o único espaço livre de verdade.
+   Presa à VIEW e não ao #slot-hub de propósito — o slot rola, e ali ela
+   subiria junto com o conteúdo. */
+#view-hub { position: relative; overflow: hidden; }
+#view-hub > .view-scroll { position: relative; z-index: 1; }
+#view-hub::after {
+  content: '';
+  position: absolute; z-index: 0;
+  top: calc(var(--sat) + var(--appbar-h) - 20px);
+  right: 0; width: 136px; height: 108px;
+  background-size: 15px 15px;
+  background-image: radial-gradient(#CFE3C0 2.4px, transparent 2.4px);
+  -webkit-mask-image: linear-gradient(215deg, #000 4%, transparent 64%);
+  mask-image: linear-gradient(215deg, #000 4%, transparent 64%);
+  pointer-events: none;
+}
+
+/* A folga sobrante vai para cima do par dica + botão, que descem até o pé
+   — soltos no meio da tela eles pareciam flutuar. O `auto` fica só na
+   dica, que vem primeiro: nos dois, eles dividiriam o espaço e o botão
+   pararia no meio.
+   A linha divisória é o border-top DELA, e não um border-bottom dos
+   cartões: assim a folga variável fica acima da linha, e o ritmo abaixo
+   dela (16px até a dica, 14px até o botão) é fixo em qualquer tela. */
 .hub-dica {
+  margin-top: auto;
+  border-top: 1px solid #D3E3C6;
   font-size: 11px; color: var(--tx-d);
   display: flex; align-items: center; justify-content: center; gap: 6px;
-  padding: 2px 0;
+  padding: 16px 0 2px;
 }
 .hub-dica .ico { width: 14px; height: 14px; }
 
@@ -2034,15 +2088,16 @@ svg { display: block; flex: none; }
   font-size: 10px; font-weight: 600; white-space: nowrap;
 }
 
-/* ── contas: rosca dos gastos ────────────────────────── */
-.ct-pizza-card { margin-top: 20px; padding: 16px 16px 18px; }
-.ct-pizza-hd { display: flex; flex-direction: column; gap: 2px; }
-.ct-pizza-t { font-size: 13.5px; font-weight: 600; letter-spacing: -.02em; }
-.ct-pizza-s { font-size: 11.5px; color: var(--tx-d); }
-
-.ct-pizza-body {
+/* ── contas: rosca da renda, dentro do cartão escuro ───
+   Fundida ao hero da sobra: as duas coisas são a mesma conta, e com a
+   sobra virando fatia o círculo fecha 100% da renda. Todas as cores aqui
+   são para fundo escuro. */
+.ct-fluxo {
+  position: relative;
+  width: 100%;
   display: flex; align-items: center; gap: 16px;
-  padding-top: 14px;
+  margin-top: 16px; padding-top: 16px;
+  border-top: 1px solid var(--dark3);
 }
 .ct-pizza-svg { width: 118px; height: 118px; flex: none; position: relative; }
 .ct-pizza-svg svg { width: 100%; height: 100%; display: block; transform: rotate(-90deg); }
@@ -2052,25 +2107,52 @@ svg { display: block; flex: none; }
   display: flex; flex-direction: column; align-items: center; justify-content: center;
   gap: 1px; pointer-events: none;
 }
-.ct-pizza-pct { font-size: 19px; font-weight: 700; letter-spacing: -.03em; line-height: 1; }
-.ct-pizza-cap { font-size: 9px; color: var(--tx-d); text-align: center; line-height: 1.2; }
+/* o miolo é a fatia livre, o assunto do cartão — lime, como ela */
+.ct-pizza-pct {
+  font-size: 21px; font-weight: 700; letter-spacing: -.03em; line-height: 1;
+  color: var(--lime);
+}
+.ct-pizza-cap { font-size: 9.5px; color: #A9C4B5; text-align: center; line-height: 1.2; }
 
-.ct-pizza-leg { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 9px; }
+.ct-pizza-leg { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 8px; }
 .ct-pz {
   display: flex; align-items: center; gap: 8px;
-  font-size: 11.5px; min-width: 0;
+  font-size: 11.5px; min-width: 0; color: #fff;
 }
 .ct-pz i { width: 9px; height: 9px; border-radius: 3px; flex: none; }
-.ct-pz-nome { flex: 1; min-width: 0; color: var(--tx-m); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ct-pz-nome { flex: 1; min-width: 0; color: #A9C4B5; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ct-pz-val { font-weight: 600; letter-spacing: -.02em; white-space: nowrap; font-variant-numeric: tabular-nums; }
-.ct-pz-pct { font-size: 10px; color: var(--tx-d); width: 30px; text-align: right; flex: none; }
+/* a barra separa o valor da porcentagem. É border-left e não um "|" no
+   texto: assim ela acompanha a altura da linha e não é lida em voz alta
+   junto com o número */
+.ct-pz-pct {
+  font-size: 10px; color: #A9C4B5;
+  /* Texto à ESQUERDA, colado na barra: alinhado à direita, "3%" ficava a
+     23px dela dentro da caixa. A largura fixa é o que mantém as barras
+     das quatro linhas na mesma coluna; ela cabe até "100%".
+     O -3px come parte do gap de 8px da linha, do outro lado da barra. */
+  width: 35px; text-align: left; flex: none;
+  border-left: 1px solid rgba(255,255,255,.18);
+  margin-left: -3px; padding-left: 8px;
+}
+/* a linha da sobra é a que o número grande do cartão repete */
+.ct-pz.livre .ct-pz-nome, .ct-pz.livre .ct-pz-pct { color: var(--lime); }
+.ct-pz.livre .ct-pz-val { color: var(--lime); }
 
-/* sem gastos: a rosca sai e a mensagem ocupa o cartão inteiro */
-.ct-pizza-card.vazio .ct-pizza-svg { display: none; }
-.ct-pizza-card.vazio .ct-pizza-body { padding-top: 10px; }
-.ct-pizza-card.vazio .ct-pz-nome {
+/* a base do percentual, por extenso: uma só para todo o cartão */
+.ct-fluxo-base {
+  position: relative;
+  width: 100%;
+  font-size: 10.5px; color: #8FB0A0;
+  padding-top: 12px;
+}
+
+/* sem renda nem gastos: a rosca sai e a frase ocupa a faixa inteira */
+.ct-hero.vazio .ct-pizza-svg,
+.ct-hero.vazio .ct-fluxo-base { display: none; }
+.ct-hero.vazio .ct-pz-nome {
   white-space: normal; overflow: visible; text-overflow: clip;
-  line-height: 1.5;
+  line-height: 1.5; color: #A9C4B5;
 }
 
 /* ══════════════════════════════════════════════════════
@@ -2360,12 +2442,11 @@ svg { display: block; flex: none; }
 
 /* cartão do hub */
 .hub-favores { background: #DCEBF6; color: #14405C; }
-.hub-favores::after { background-image: radial-gradient(rgba(20,64,92,.20) 2px, transparent 2px); }
 .hub-favores .hub-ico { background: rgba(255,255,255,.6); color: #2E5A8C; }
-.hub-favores .hub-arrow { color: #6E93AF; }
+.hub-favores .hub-arrow { color: #4A7291; }
 .hub-favores .hub-name { color: #33607F; }
 .hub-favores .hub-pfx  { color: #33607F; }
-.hub-favores .hub-note { color: #476F8C; }
+.hub-favores .hub-note { color: #3F6683; }
 
 @media (min-width: 1024px) {
   #view-favores { display: none !important; }
@@ -2618,19 +2699,8 @@ svg { display: block; flex: none; }
 .m-erow.de-outro .m-erow-name { font-weight: 600; }
 .m-erow.de-outro .m-erow-grp  { font-style: italic; }
 
-/* ── juntos ou separados ─────────────────────────────── */
-.m-junto {
-  display: flex; gap: 4px; padding: 3px;
-  border-radius: 99px; background: #EDF3E8;
-  margin: 0 calc(var(--page-x) + var(--sal)) 10px;
-}
-.m-junto[hidden] { display: none; }
-.m-junto button {
-  flex: 1; padding: 8px 10px; border-radius: 99px;
-  font-size: 11.5px; font-weight: 600; color: var(--tx-m);
-  transition: background 140ms, color 140ms;
-}
-.m-junto button.on { background: var(--dark); color: #fff; }
+/* o "juntos ou separados" agora é um .m-seg como os outros controles,
+   estilizado junto com eles lá em cima */
 
 /* ── folha de confirmação ────────────────────────────── */
 .cf-msg { margin: 0; font-size: 13px; line-height: 1.55; color: var(--tx); }

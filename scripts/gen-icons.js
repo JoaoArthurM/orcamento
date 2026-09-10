@@ -11,7 +11,7 @@ const ICONES = [
   // login
   'mail', 'lock', 'eye', 'eye-closed', 'shield-check',
   // navegação
-  'plus', 'nav-arrow-left', 'drag', 'nav-arrow-right', 'check',
+  'plus', 'nav-arrow-left', 'drag', 'nav-arrow-right', 'nav-arrow-down', 'check',
   // cabeçalhos e ações
   'edit-pencil', 'graph-up', 'calendar', 'table-rows', 'search', 'trash',
   // tipos de entrada

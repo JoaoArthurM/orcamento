@@ -562,11 +562,10 @@
     // guardar é um destino do dinheiro como outro qualquer: sai da sobra
     const comprometido = fixas + variaveis + assinaturas + economia;
     const sobra = renda - comprometido;
-    const pct = (v) => (renda > 0 ? Math.max(0, (v / renda) * 100) : 0);
     return {
       renda, fixas, variaveis, varMedia, assinaturas, economia, comprometido, sobra,
-      pctFixas: pct(fixas), pctSubs: pct(assinaturas), pctVar: pct(variaveis),
-      pctEco: pct(economia),
+      // as fatias por categoria saíram com a barra empilhada; a rosca
+      // calcula as suas com Store.pctInteiros, sobre o total que sai
       pctSobra: renda > 0 ? Math.max(0, (sobra / renda) * 100) : 0,
       fontes: doTipo('renda').length,
       emAberto: doTipo('fixa').filter(function (c) { return !estaPaga(c); }).length,
@@ -856,13 +855,26 @@
   let saveTimer = null;
   let statusTimer = null;
 
+  /**
+   * Status de gravação na pílula acima da navbar, não mais dentro dos
+   * cartões — lá ele caía sobre o texto do próprio cartão, em cinco telas
+   * diferentes.
+   *
+   * Um toast com ação ("Desfazer") NUNCA é substituído por status: excluir
+   * dispara triggerSave, então o "sincronizando…" chegaria por cima do
+   * botão e levaria embora a única chance de desfazer.
+   */
   function setStatus(txt, cls) {
     clearTimeout(statusTimer);
-    [el.saveSt, el.saveStD, el.saveStL, el.saveStC, el.saveStF].forEach(function (n) {
-      if (!n) return;
-      n.textContent = txt || '';
-      n.className = 'save-st' + (txt ? ' vis ' + (cls || '') : '');
-    });
+
+    if (!txt) {
+      // só apaga se o que está na tela for status meu
+      if (el.toast.classList.contains('status')) hideToast();
+      return;
+    }
+    if (toastComAcao) return;
+
+    toastStatus(txt, cls);
     if (cls === 'ok') statusTimer = setTimeout(function () { setStatus(''); }, 2000);
   }
 
@@ -1169,7 +1181,13 @@
       ? 'em ' + MS[w12[w12.length - 1].m - 1].toLowerCase() + ' ' +
         String(w12[w12.length - 1].y).slice(2)
       : 'até ' + MS[mo.m - 1].toLowerCase() + ' ' + String(mo.y).slice(2);
-    $('m-growth').textContent = pct ? pct + ' no período' : rotuloHorizonte();
+    /* O controle diz sempre o que ele faz. Antes trocava o rótulo pela
+       porcentagem quando havia saldo inicial, e quem abrisse a tela nesse
+       estado não tinha como saber que ali se troca o horizonte. */
+    $('m-growth-lbl').textContent = rotuloHorizonte();
+    const pctEl = $('m-acum-pct');
+    pctEl.hidden = !pct;
+    if (pct) pctEl.textContent = pct + ' no período';
 
     const txt = 'Cenário ' + (view === 'p' ? 'pessimista' : 'otimista');
     if (el.scenarioTab) el.scenarioTab.textContent = txt;
@@ -1366,11 +1384,14 @@
 
   /* ── seletor de mês (mobile) ────────────────────────── */
   function renderMonthStrip() {
-    // o cartão da janela inteira abre a faixa: é o resumo de tudo
+    /* O cartão da janela inteira abre a faixa: é o resumo de tudo.
+       Dizia "24 meses", igualzinho ao botão de horizonte logo acima — dois
+       controles com o mesmo rótulo e funções diferentes (um recorta, o
+       outro reconfigura a janela). "Tudo" diz o que ele faz. */
     const todos = '<button class="m-chip tudo' + (selMonth < 0 ? ' on' : '') +
       '" data-mi="-1" role="tab" aria-selected="' + (selMonth < 0) + '">' +
-      '<span class="mn">' + horizonte + '</span>' +
-      '<span class="yr">meses</span>' +
+      '<span class="mn">Tudo</span>' +
+      '<span class="yr">' + horizonte + 'm</span>' +
     '</button>';
 
     $('m-months').innerHTML = todos + w12.map(function (mo, i) {
@@ -1479,7 +1500,9 @@
       return '<button class="m-trow' + (on ? ' on' : '') + '" data-mi="' + i + '">' +
         '<span class="m-trow-m">' +
           '<span class="m-trow-dot" style="background:' + dot + '"></span>' +
-          MS[mo.m - 1] + '</span>' +
+          // o ano não é enfeite: numa janela de 24 meses ou mais o mesmo
+          // mês aparece duas vezes, e sem ele as duas linhas ficam iguais
+          MS[mo.m - 1] + '<span class="m-trow-y">/' + mo.y + '</span></span>' +
         '<span class="m-trow-saldo' + (net < 0 ? ' neg' : '') + '">' + num(net) + '</span>' +
         '<span class="m-trow-acum">' + num(acum[i]) + '</span>' +
       '</button>';
@@ -1853,22 +1876,10 @@
       ? Math.round(r.pctSobra) + '% da renda não comprometida'
       : 'cadastre uma renda para ver a sobra';
 
-    /* barra empilhada — só desenha o que existe */
-    const faixas = [
-      { pct: r.pctFixas, cor: '#B58F3F', nome: 'Contas' },
-      { pct: r.pctSubs,  cor: '#93AA9B', nome: 'Assinaturas' },
-      { pct: r.pctVar,   cor: '#D98F62', nome: 'Variáveis' },
-      { pct: r.pctEco,   cor: '#2F6142', nome: 'Economia' },
-      { pct: r.pctSobra, cor: 'var(--lime)', nome: 'Livre' },
-    ];
-    $('ct-bar').innerHTML = faixas.map(function (f) {
-      return '<span style="width:' + Math.min(100, f.pct).toFixed(1) + '%;background:' + f.cor + '"></span>';
-    }).join('');
-    $('ct-legend').innerHTML = faixas.map(function (f) {
-      return '<span class="ct-leg"><i style="background:' + f.cor + '"></i>' +
-        f.nome + ' ' + Math.round(f.pct) + '%</span>';
-    }).join('');
-
+    /* A barra empilhada que ficava aqui saiu: repetia a decomposição da
+       rosca abaixo, e a faixa de Economia (#2F6142 sobre o cartão escuro)
+       tinha contraste 1.74 — a segunda maior fatia, invisível. O "Livre"
+       que só ela mostrava já está escrito no ct-sobra-note. */
     renderPizza(r);
 
     /* rendas */
@@ -1947,25 +1958,38 @@
     }).join('');
   }
 
-  /** Rosca dos gastos: fixas, variáveis e assinaturas. */
+  /**
+   * Rosca da renda inteira: para onde vai, e o que sobra.
+   *
+   * A sobra é uma fatia como as outras — é isso que faz o círculo fechar
+   * 100% da RENDA e dá à tela uma única base de percentual. Enquanto a
+   * rosca dividia só os gastos, a mesma economia era 25% no hero e 60%
+   * aqui, a 100px de distância.
+   *
+   * As cores são para o fundo ESCURO do cartão (contraste 3.84 a 9.25
+   * sobre --dark), com luminâncias escalonadas para as fatias se
+   * distinguirem entre si e não só do fundo.
+   */
   function renderPizza(r) {
     const fatias = [
-      { nome: 'Contas fixas', v: r.fixas,       cor: '#B58F3F' },
-      { nome: 'Variáveis',    v: r.variaveis,   cor: '#D98F62' },
-      { nome: 'Assinaturas',  v: r.assinaturas, cor: '#93AA9B' },
-      // guardar também é destino do dinheiro — mesma cor da faixa lá em cima
-      { nome: 'Economia',     v: r.economia,    cor: '#2F6142' },
+      { nome: 'Contas fixas', v: r.fixas,       cor: '#D9B166' },
+      { nome: 'Variáveis',    v: r.variaveis,   cor: '#DE9468' },
+      { nome: 'Assinaturas',  v: r.assinaturas, cor: '#B2C9BA' },
+      // guardar é destino do dinheiro como outro qualquer
+      { nome: 'Economia',     v: r.economia,    cor: '#5E9B72' },
+      // e o que não foi para nenhum deles fecha a volta
+      { nome: 'Livre',        v: Math.max(0, r.sobra), cor: '#C9E88E' },
     ].filter(function (f) { return f.v > 0; });
 
     const total = fatias.reduce(function (a, f) { return a + f.v; }, 0);
-    $('ct-pizza-total').textContent = 'R$ ' + num(total) + ' por mês';
-
     const cartao = $('ct-pizza-card');
+
     if (!total) {
       cartao.classList.add('vazio');
       $('ct-pizza').innerHTML = '';
+      $('ct-pizza-total').textContent = '';
       $('ct-pizza-leg').innerHTML =
-        '<span class="ct-pz-nome">Cadastre uma conta ou uma economia ' +
+        '<span class="ct-pz-nome">Cadastre uma renda e uma conta ' +
         'para ver para onde vai o seu dinheiro.</span>';
       return;
     }
@@ -1983,27 +2007,32 @@
       return arco;
     }).join('');
 
-    // a maior fatia é a que o miolo destaca
-    const maior = fatias.slice().sort(function (a, b) { return b.v - a.v; })[0];
-    const pctMaior = Math.round((maior.v / total) * 100);
+    // percentuais inteiros que somam exatamente 100 (ver Store.pctInteiros)
+    const pcts = Store.pctInteiros(fatias.map(function (f) { return f.v; }));
+    const iLivre = fatias.findIndex(function (f) { return f.nome === 'Livre'; });
 
+    /* O miolo é a fatia livre — o assunto do cartão, que se chama "Sobra
+       no mês". Antes destacava a maior fatia, então o número grande
+       trocava de assunto sozinho quando outra categoria passava à frente. */
     $('ct-pizza').innerHTML =
-      '<svg viewBox="0 0 118 118" role="img" aria-label="Divisão dos gastos do mês">' +
-        '<circle cx="59" cy="59" r="' + R_ + '" fill="none" stroke="#F1F5EE" stroke-width="17"></circle>' +
+      '<svg viewBox="0 0 118 118" role="img" aria-label="Divisão da renda do mês">' +
+        '<circle cx="59" cy="59" r="' + R_ + '" fill="none" stroke="rgba(255,255,255,.07)" stroke-width="17"></circle>' +
         arcos +
       '</svg>' +
       '<span class="ct-pizza-centro">' +
-        '<span class="ct-pizza-pct" style="color:' + maior.cor + '">' + pctMaior + '%</span>' +
-        '<span class="ct-pizza-cap">' + maior.nome.toLowerCase() + '</span>' +
+        '<span class="ct-pizza-pct">' + (iLivre >= 0 ? pcts[iLivre] : 0) + '%</span>' +
+        '<span class="ct-pizza-cap">livre</span>' +
       '</span>';
 
-    $('ct-pizza-leg').innerHTML = fatias.map(function (f) {
-      const pct = Math.round((f.v / total) * 100);
-      return '<span class="ct-pz">' +
+    // a base do percentual, dita por extenso: agora é uma só
+    $('ct-pizza-total').textContent = 'de R$ ' + num(r.renda) + ' de renda';
+
+    $('ct-pizza-leg').innerHTML = fatias.map(function (f, i) {
+      return '<span class="ct-pz' + (f.nome === 'Livre' ? ' livre' : '') + '">' +
         '<i style="background:' + f.cor + '"></i>' +
         '<span class="ct-pz-nome">' + f.nome + '</span>' +
         '<span class="ct-pz-val">R$ ' + num(f.v) + '</span>' +
-        '<span class="ct-pz-pct">' + pct + '%</span>' +
+        '<span class="ct-pz-pct">' + pcts[i] + '%</span>' +
       '</span>';
     }).join('');
   }
@@ -2214,30 +2243,44 @@
   }
 
   /* ── cartões do hub ─────────────────────────────────── */
+  /**
+   * Os quatro números não são a mesma espécie de grandeza — dois são "a
+   * receber", um é projeção e um é sobra do mês. Sem dizer isso, quatro
+   * valores de peso igual convidam a somar o que não se soma: por isso
+   * cada nota abre com a natureza do número e só depois detalha.
+   *
+   * Sem centavos aqui: é tela de visão geral, e "26.764" pesa dois
+   * dígitos menos que "26.764,00" sem perder nada que importe. O centavo
+   * continua dentro de cada módulo.
+   */
   function renderHub(rows) {
+    const pessoas = function (n) { return n + (n === 1 ? ' pessoa' : ' pessoas'); };
+
     const rf = favoresResumo();
-    $('hub-favores-val').textContent = num(rf.falta);
+    $('hub-favores-val').textContent = num(rf.falta, 0);
     $('hub-favores-note').textContent = rf.favores
-      ? rf.pessoas + (rf.pessoas === 1 ? ' pessoa te devendo' : ' pessoas te devendo')
+      ? 'a receber · ' + pessoas(rf.pessoas)
       : 'ninguém te deve';
 
     const r = loansResumo();
-    $('hub-loans-val').textContent = num(r.emAberto);
+    $('hub-loans-val').textContent = num(r.emAberto, 0);
     $('hub-loans-note').textContent = loans.length
-      ? (r.ativos + (r.ativos === 1 ? ' pessoa devendo' : ' pessoas devendo') +
+      ? ('a receber · ' + pessoas(r.ativos) +
          (r.atrasados ? ' · ' + r.atrasados + ' em atraso' : ''))
       : 'nada emprestado ainda';
 
     const acum = acumOf(rows);
     const rc = contasResumo();
-    $('hub-contas-val').textContent = num(rc.sobra);
+    $('hub-contas-val').textContent = num(rc.sobra, 0);
     $('hub-contas-note').textContent = contas.length
-      ? 'sobra no mês · ' + (rc.emAberto ? rc.emAberto + ' conta(s) em aberto' : 'tudo pago')
+      ? 'sobra do mês · ' + (rc.emAberto ? rc.emAberto + ' em aberto' : 'tudo pago')
       : 'nenhuma conta cadastrada';
 
-    $('hub-eco-val').textContent = num(acum[acum.length - 1]);
+    $('hub-eco-val').textContent = num(acum[acum.length - 1], 0);
+    // o horizonte é escolha do usuário (12/24/36/48): '12 meses' fixo
+    // mentia em toda janela que não fosse a padrão
     $('hub-eco-note').textContent = entries.length
-      ? entries.length + (entries.length === 1 ? ' entrada' : ' entradas') + ' · 12 meses'
+      ? 'projetado · ' + rotuloHorizonte()
       : 'nenhuma entrada ainda';
   }
 
@@ -3358,6 +3401,8 @@
 
   /* ── toast ──────────────────────────────────────────── */
   let toastTimer = null;
+  /* Enquanto um toast oferece ação, o status não encosta nele. */
+  let toastComAcao = false;
   /* ── cobrança em texto ──────────────────────────────
      O que vai para a área de transferência é a mesma conta que a tela
      mostra: tudo sai de loanInfo()/alocacao, nunca dos campos crus. Em
@@ -3440,11 +3485,30 @@
       });
       t.appendChild(b);
     }
-    t.classList.add('on');
+    toastComAcao = !!(actionLabel && actionFn);
+    t.className = 'toast on';
     clearTimeout(toastTimer);
     toastTimer = setTimeout(hideToast, actionLabel ? 5000 : 2400);
   }
-  function hideToast() { el.toast.classList.remove('on'); }
+
+  /**
+   * Mesma pílula, em modo aviso: não recebe clique (senão cobriria o que
+   * está atrás dela) e leva a classe de cor do estado.
+   */
+  function toastStatus(msg, cls) {
+    const t = el.toast;
+    t.innerHTML = '';
+    t.appendChild(document.createTextNode(msg));
+    t.className = 'toast on status' + (cls ? ' ' + cls : '');
+    clearTimeout(toastTimer);
+    // 'saving' fica até o resultado chegar; o resto se apaga sozinho
+    toastTimer = cls === 'saving' ? null : setTimeout(hideToast, 2400);
+  }
+
+  function hideToast() {
+    toastComAcao = false;
+    el.toast.className = 'toast';
+  }
 
   /* ── ícones ─────────────────────────────────────────── */
   function svgEye() { return ico('eye'); }
@@ -3670,11 +3734,6 @@
     el.esearch       = $('esearch');
     el.si            = $('si');
     el.mSi           = $('m-si');
-    el.saveSt        = $('save-st');
-    el.saveStD       = $('save-st-d');
-    el.saveStL       = $('save-st-l');
-    el.saveStC       = $('save-st-c');
-    el.saveStF       = $('save-st-f');
     el.sbFinal       = $('sb-final');
     el.sbFinalLabel  = $('sb-final-label');
     el.sbGrowth      = $('sb-growth');
@@ -4063,29 +4122,29 @@
 
   const AUTH_COPY = {
     signin: {
-      eyebrow: 'Olá de novo,', title: 'Bem-vindo!', sub: 'Entre para ver suas projeções',
-      submit: 'Entrar', secondary: 'Criar conta', secondaryTo: 'signup',
+      eyebrow: 'Olá de novo,', title: 'Bem-vindo(a)!', sub: 'Entre para ver suas projeções',
+      submit: 'Entrar', back: null,
       pass: 'Senha', ac: 'current-password',
       email: true, options: true, hint: false,
       footText: 'Não tem conta? ', footLink: 'Criar agora', footTo: 'signup',
     },
     signup: {
       eyebrow: 'Vamos começar,', title: 'Criar conta', sub: 'Suas projeções em todos os aparelhos',
-      submit: 'Criar conta', secondary: 'Voltar', secondaryTo: 'signin',
+      submit: 'Criar conta', back: 'signin',
       pass: 'Senha', ac: 'new-password',
       email: true, options: false, hint: true,
       footText: 'Já tem conta? ', footLink: 'Entrar', footTo: 'signin',
     },
     reset: {
       eyebrow: 'Sem problema,', title: 'Recuperar', sub: 'Enviamos um link para o seu e-mail',
-      submit: 'Enviar link', secondary: 'Voltar', secondaryTo: 'signin',
+      submit: 'Enviar link', back: 'signin',
       pass: null, ac: null,
       email: true, options: false, hint: false,
       footText: 'Lembrou a senha? ', footLink: 'Entrar', footTo: 'signin',
     },
     recovery: {
       eyebrow: 'Quase lá,', title: 'Nova senha', sub: 'Escolha uma senha para a sua conta',
-      submit: 'Salvar senha', secondary: null, secondaryTo: null,
+      submit: 'Salvar senha', back: null,
       pass: 'Nova senha', ac: 'new-password',
       email: false, options: false, hint: true,
       footText: '', footLink: '', footTo: null,
@@ -4110,10 +4169,7 @@
     $('auth-options').hidden   = !c.options;
 
     $('auth-submit').textContent = c.submit;
-    const sec = $('auth-secondary');
-    sec.hidden = !c.secondary;
-    if (c.secondary) sec.textContent = c.secondary;
-    $('auth-actions').classList.toggle('solo', !c.secondary);
+    $('auth-back').hidden = !c.back;
 
     const foot = $('auth-foot');
     if (c.footTo) {
@@ -4216,8 +4272,8 @@
   function bindAuth() {
     $('auth-form').addEventListener('submit', onAuthSubmit);
 
-    $('auth-secondary').addEventListener('click', function () {
-      setAuthMode(AUTH_COPY[authMode].secondaryTo);
+    $('auth-back').addEventListener('click', function () {
+      setAuthMode(AUTH_COPY[authMode].back);
     });
     $('auth-foot-btn').addEventListener('click', function () {
       setAuthMode(AUTH_COPY[authMode].footTo);

@@ -244,6 +244,40 @@ const A2 = 'dddddddd-2222-4222-8222-222222222222';
     check('e a ordem não vai junto', st && !('hub_order' in st.rows));
   }
 
+  /* percentuais de composição fecham 100 */
+  {
+    const S = load([]).Store;
+    const soma = (a) => a.reduce((x, v) => x + v, 0);
+
+    // o caso que motivou a função: arredondar cada um dá 33+33+33=99
+    const tres = S.pctInteiros([1, 1, 1]);
+    check('três iguais somam 100', soma(tres) === 100, tres);
+    check('e a sobra vai para o primeiro', tres[0] === 34 && tres[1] === 33, tres);
+
+    // 1/6 cada: piso 16 seis vezes = 96, faltam 4 pontos
+    const seis = S.pctInteiros([1, 1, 1, 1, 1, 1]);
+    check('seis iguais somam 100', soma(seis) === 100, seis);
+
+    // caso real da tela: fixas, variáveis, assinaturas, economia
+    const real = S.pctInteiros([707.78, 0, 126.90, 1250]);
+    check('composição real soma 100', soma(real) === 100, real);
+    check('fatia zerada fica em 0%', real[1] === 0, real);
+
+    // proporções exatas não devem ganhar ponto de esmola
+    const meio = S.pctInteiros([50, 25, 25]);
+    check('divisão exata não é ajustada', String(meio) === '50,25,25', meio);
+
+    // negativo e lixo contam como zero, e sem total não há divisão
+    const sujo = S.pctInteiros([10, -5, null, undefined, 'x', 10]);
+    check('negativo e lixo viram zero', String(sujo) === '50,0,0,0,0,50', sujo);
+    check('soma zero devolve zeros', String(S.pctInteiros([0, 0])) === '0,0');
+    check('lista vazia não quebra', String(S.pctInteiros([])) === '');
+
+    // uma fatia dominante não deve zerar as pequenas por arredondamento
+    const desigual = S.pctInteiros([9990, 5, 5]);
+    check('fatia dominante soma 100', soma(desigual) === 100, desigual);
+  }
+
   console.log(fails === 0 ? '\nTODOS OS TESTES DE CONTAS PASSARAM' : '\n' + fails + ' FALHA(S)');
   process.exit(fails ? 1 : 0);
 })();
