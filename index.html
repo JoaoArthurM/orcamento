@@ -57,6 +57,7 @@
 <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M21.8883 13.5C21.1645 18.3113 17.013 22 12 22C6.47715 22 2 17.5228 2 12C2 6.47715 6.47715 2 12 2C16.1006 2 19.6248 4.46819 21.1679 8" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/><path d="M17 8H21.4C21.7314 8 22 7.73137 22 7.4V3" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/></symbol>
 <symbol id="i-repeat" viewBox="0 0 24 24"><path d="M17 17H8C6.33333 17 3 16 3 12C3 8 6.33333 7 8 7H16C17.6667 7 21 8 21 12C21 13.4943 20.5348 14.57 19.865 15.3312" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/><path d="M14.5 14.5L17 17L14.5 19.5" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/></symbol>
 <symbol id="i-user" viewBox="0 0 24 24"><path d="M5 20V19C5 15.134 8.13401 12 12 12V12C15.866 12 19 15.134 19 19V20" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/><path d="M12 12C14.2091 12 16 10.2091 16 8C16 5.79086 14.2091 4 12 4C9.79086 4 8 5.79086 8 8C8 10.2091 9.79086 12 12 12Z" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+<symbol id="i-send-diagonal" viewBox="0 0 24 24"><path d="M22.1525 3.55321L11.1772 21.0044L9.50686 12.4078L2.00002 7.89795L22.1525 3.55321Z" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/><path d="M9.45557 12.4436L22.1524 3.55321" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/></symbol>
 </svg>
 
 
@@ -719,6 +720,7 @@
     <div class="fhd">
       <button class="bbk" id="lo-back" aria-label="Voltar"><svg class="ico" aria-hidden="true"><use href="#i-nav-arrow-left"/></svg></button>
       <div class="ftitle" id="lo-ftitle">Novo empréstimo</div>
+      <button class="bbk ib" id="lo-send" aria-label="Copiar cobrança para enviar" hidden><svg class="ico" aria-hidden="true"><use href="#i-send-diagonal"/></svg></button>
       <button class="bbk ib del" id="lo-del" aria-label="Excluir empréstimo" hidden><svg class="ico" aria-hidden="true"><use href="#i-trash"/></svg></button>
     </div>
     <div class="fbody">
@@ -869,6 +871,7 @@
     <div class="fhd">
       <button class="bbk" id="fv-back" aria-label="Voltar"><svg class="ico" aria-hidden="true"><use href="#i-nav-arrow-left"/></svg></button>
       <div class="ftitle" id="fv-ftitle">Novo favor</div>
+      <button class="bbk ib" id="fv-send" aria-label="Copiar cobrança para enviar" hidden><svg class="ico" aria-hidden="true"><use href="#i-send-diagonal"/></svg></button>
       <button class="bbk ib del" id="fv-del" aria-label="Excluir" hidden><svg class="ico" aria-hidden="true"><use href="#i-trash"/></svg></button>
     </div>
     <div class="fbody">
@@ -906,10 +909,10 @@
       <!-- o quanto já voltou não se digita: vem dos pagamentos -->
       <!-- "me deve 250 por 3 meses": vira um favor por mês, todos já devidos -->
       <div class="ff fv-repete" id="fv-repete">
-        <label class="fl" for="fv-meses">Repete por quantos meses (a partir da data acima)</label>
+        <label class="fl" for="fv-meses">Repete por quantos meses</label>
         <div class="fv-meses-linha">
           <input type="number" class="fi" id="fv-meses" value="1" min="1" max="60" inputmode="numeric">
-          <span class="fv-meses-dica">1 = favor avulso</span>
+          <span class="fv-meses-dica">1 = avulso · só o vencimento avança</span>
         </div>
       </div>
 

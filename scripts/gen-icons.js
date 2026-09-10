@@ -19,6 +19,8 @@ const ICONES = [
   'info-circle',
   // kpis / conta / ajustes
   'wallet', 'log-out', 'settings', 'refresh', 'repeat', 'user',
+  // copiar a cobrança para mandar por mensagem
+  'send-diagonal',
 ];
 
 function baixar(nome) {

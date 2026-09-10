@@ -513,6 +513,13 @@
    * metade em 2027 — '07/jan' sozinho é ambíguo, e dois grupos diferentes
    * ficariam com o mesmo título.
    */
+  /** dd/mm/aaaa — a mensagem sai do app, quem lê não tem o contexto. */
+  function dataLonga(iso) {
+    if (!iso) return '—';
+    const p = String(iso).split('-');
+    return p[2] + '/' + p[1] + '/' + p[0];
+  }
+
   function dataCurta(iso) {
     if (!iso) return '—';
     const p = iso.split('-');
@@ -2011,6 +2018,7 @@
     editFavorId = id || null;
     $('fv-ftitle').textContent = editFavorId ? 'Editar favor' : 'Novo favor';
     $('fv-del').hidden = !editFavorId;
+    $('fv-send').hidden = !editFavorId;
 
     // sugere quem já está na lista, para não haver "Ana" e "ana"
     const nomes = [];
@@ -2089,6 +2097,14 @@
     const amount = parseBRL($('fv-amount').value) || 0;
     if (amount <= 0) { $('fv-amount').focus(); toast('Informe o valor'); return; }
 
+    /* Sem data de pagamento não há o que repetir: só o vencimento anda,
+       então as N linhas sairiam idênticas. */
+    if (mesesDoFavor() > 1 && !$('fv-due').value) {
+      $('fv-due').focus();
+      toast('Para repetir, diga quando ela combinou de pagar');
+      return;
+    }
+
     const f = Store.normalizeFavor({
       id: editFavorId || undefined,
       person: person,
@@ -2105,14 +2121,17 @@
       const idx = favores.findIndex(function (x) { return x.id === editFavorId; });
       if (idx >= 0) favores[idx] = f;
     } else if (meses > 1) {
-      /* "me deve 250 até dezembro, 3 vezes": cada mês é uma dívida própria,
-         com data própria. Todas já são devidas — favor não tem "previsto";
-         o que ainda não voltou é justamente o que a lista mostra em aberto. */
+      /* "me deve 250 até dezembro, 3 vezes": cada mês é uma cobrança
+         própria, com vencimento próprio.
+
+         Só o VENCIMENTO anda. A data em que o dinheiro saiu é a mesma nas
+         N linhas: a saída aconteceu uma vez só, num dia só — o que se
+         repete é a promessa de pagar. Fazer as duas andarem punha o
+         dinheiro saindo em meses em que ninguém pegou nada. */
       for (let i = 0; i < meses; i++) {
         favores.push(Store.normalizeFavor({
           person: f.person, reason: f.reason, amount: f.amount,
-          lent_on: mesAdiante(f.lent_on, i),
-          // sem isto, os N favores dividiriam o mesmo vencimento
+          lent_on: f.lent_on,
           due_on: f.due_on ? mesAdiante(f.due_on, i) : null,
           notes: f.notes,
         }));
@@ -2426,6 +2445,7 @@
     editLoanId = id || null;
     $('lo-ftitle').textContent = editLoanId ? 'Editar empréstimo' : 'Novo empréstimo';
     $('lo-del').hidden = !editLoanId;
+    $('lo-send').hidden = !editLoanId;
 
     const l = editLoanId ? loans.find(function (x) { return x.id === editLoanId; }) : null;
     $('lo-person').value     = l ? l.person : '';
@@ -2653,6 +2673,75 @@
 
   /* ── toast ──────────────────────────────────────────── */
   let toastTimer = null;
+  /* ── cobrança em texto ──────────────────────────────
+     O que vai para a área de transferência é a mesma conta que a tela
+     mostra: tudo sai de loanInfo()/alocacao, nunca dos campos crus. Em
+     mensalidade, principal e juro são coisas separadas — somar os dois
+     numa linha só é o erro que fez "2.700 de 2.800" com a dívida
+     inteira ainda de pé. Os asteriscos são o negrito do WhatsApp. */
+
+  function textoDoFavor(f) {
+    const pago  = alocacao.pago[f.id] || 0;
+    const falta = Math.max(0, f.amount - pago);
+    const li = ['*' + f.person + '* — ' + f.reason,
+                'Valor: R$ ' + num(f.amount),
+                'Do dia ' + dataLonga(f.lent_on)];
+    if (pago > 0.005) li.push('Já pago: R$ ' + num(pago));
+    li.push(falta < 0.005 ? '*Quitado — nada a receber.*'
+                          : '*Falta: R$ ' + num(falta) + '*');
+    if (f.notes) li.push('', f.notes);
+    return li.join('\n');
+  }
+
+  function textoDoEmprestimo(l) {
+    const i = loanInfo(l);
+    const li = ['*' + l.person + '* — empréstimo ' +
+                  (i.mensal ? 'por mensalidade' : METHOD_LABEL[l.method]),
+                'Emprestado: R$ ' + num(l.principal) + ' em ' + dataLonga(l.lent_on)];
+
+    if (i.mensal) {
+      li.push('Mensalidade: R$ ' + num(l.installment_amount || 0) + '/mês' +
+              (i.jurosPct > 0 ? ' (' + pctTexto(i.jurosPct) + ' ao mês)' : ''));
+      if (i.jurosRec > 0) {
+        li.push('Mensalidades já recebidas: R$ ' + num(i.jurosRec) +
+                (i.meses ? ' (' + i.meses + (i.meses === 1 ? ' mês' : ' meses') + ')' : ''));
+      }
+      if (l.received > 0) li.push('Principal devolvido: R$ ' + num(l.received));
+      li.push(i.quitado ? '*Principal devolvido por inteiro.*'
+                        : '*Falta voltar: R$ ' + num(i.emAberto) + '*');
+    } else {
+      li.push('A receber: R$ ' + num(l.total_due) +
+              (l.method === 'parcelado' && l.installments
+                ? ' em ' + l.installments + 'x de R$ ' + num(l.total_due / l.installments)
+                : '') +
+              (i.juros > 0 ? ' (R$ ' + num(i.juros) + ' de juros · ' + pctTexto(i.jurosPct) + ')' : ''));
+      if (l.due_on) li.push('Vence em ' + dataLonga(l.due_on));
+      if (l.received > 0) li.push('Já recebido: R$ ' + num(l.received));
+      li.push(i.quitado ? '*Quitado — nada a receber.*'
+                        : '*Em aberto: R$ ' + num(i.emAberto) + '*');
+    }
+
+    if (i.atrasado) li.push('_Atrasado desde ' + dataLonga(l.due_on) + '._');
+    if (l.notes) li.push('', l.notes);
+    return li.join('\n');
+  }
+
+  function pctTexto(p) {
+    return p.toLocaleString('pt-BR', { maximumFractionDigits: 1 }) + '%';
+  }
+
+  /** A cópia depende de permissão do navegador: avisa quando não vai. */
+  function copiarCobranca(texto) {
+    if (!navigator.clipboard || !navigator.clipboard.writeText) {
+      toast('Este navegador não deixa copiar daqui'); return;
+    }
+    navigator.clipboard.writeText(texto).then(function () {
+      toast('Cobrança copiada — é só colar no WhatsApp');
+    }, function () {
+      toast('Não consegui copiar — o navegador bloqueou');
+    });
+  }
+
   function toast(msg, actionLabel, actionFn) {
     const t = el.toast;
     t.innerHTML = '';
@@ -3093,6 +3182,10 @@
     $('pg-cancel').addEventListener('click', function () { closeSheets(); });
     $('pg-back').addEventListener('click', function () { closeSheets(); });
     $('fv-save').addEventListener('click', saveFavor);
+    $('fv-send').addEventListener('click', function () {
+      const f = favores.find(function (x) { return x.id === editFavorId; });
+      if (f) copiarCobranca(textoDoFavor(f));
+    });
     $('fv-del').addEventListener('click', delFavor);
     $('fv-cancel').addEventListener('click', function () { closeSheets(); });
     $('fv-back').addEventListener('click', function () { closeSheets(); });
@@ -3139,6 +3232,10 @@
       $(id).addEventListener('input', onLoanAmounts);
     });
     $('lo-save').addEventListener('click', saveLoan);
+    $('lo-send').addEventListener('click', function () {
+      const l = loans.find(function (x) { return x.id === editLoanId; });
+      if (l) copiarCobranca(textoDoEmprestimo(l));
+    });
     $('lo-del').addEventListener('click', delLoan);
     $('lo-cancel').addEventListener('click', function () { closeSheets(); });
     $('lo-back').addEventListener('click', function () { closeSheets(); });
