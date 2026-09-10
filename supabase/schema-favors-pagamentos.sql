@@ -129,6 +129,11 @@ $$;
 -- E o CHECK sai junto de propósito: pagar mais do que se deve
 -- passa a ser representável (200 sobre 150 em aberto = 50 de
 -- crédito), e a constraint recusaria exatamente esse caso.
+-- A view antiga soma favors.paid, então o Postgres recusa derrubar a
+-- coluna enquanto ela existir. Ela é recriada no fim deste arquivo,
+-- já lendo os pagamentos.
+drop view if exists public.favores_por_pessoa;
+
 alter table public.favors drop constraint if exists favors_paid_lte_amount;
 alter table public.favors drop column if exists paid;
 

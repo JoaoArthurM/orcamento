@@ -135,6 +135,13 @@ Config vazia = modo local sem login.
 `CREATE OR REPLACE VIEW` só acrescenta coluna no fim; para inserir no meio ou
 reordenar, use `drop view` + `create view`.
 
+E a view **depende** das colunas que lê: derrubar uma coluna com a view de pé
+dá `2BP01: cannot drop column ... because other objects depend on it`. Numa
+migração que recria a view no fim, o `drop view` vai no **começo** do arquivo.
+
+`node tests/sql.test.js` confere parênteses, vírgula solta antes de SELECT e
+essa ordem — mas não substitui rodar o SQL de verdade.
+
 O RLS barra antes do CHECK, então constraints não são testáveis pela API sem
 sessão — `42501` ali é o comportamento certo.
 

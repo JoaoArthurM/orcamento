@@ -1,4 +1,4 @@
-/* Roda os três conjuntos de teste da camada de dados.
+/* Roda os conjuntos de teste da camada de dados e do markup.
    Cada arquivo sai com código 1 se alguma asserção falhar.
 
    node tests/run-all.js
@@ -6,7 +6,8 @@
 const { execFileSync } = require('child_process');
 const path = require('path');
 
-const SUITES = ['markup.test.js', 'store.test.js', 'loans.test.js', 'accounts.test.js', 'favors.test.js'];
+const SUITES = ['markup.test.js', 'sql.test.js', 'store.test.js',
+                'loans.test.js', 'accounts.test.js', 'favors.test.js'];
 
 let falhou = false;
 
