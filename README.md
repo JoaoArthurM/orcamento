@@ -159,8 +159,10 @@ olha — a cor existe na tela de quem vê, então é essa pessoa que decide. As
 iniciais de quem está conectado ficam empilhadas ao lado do seu avatar. O botão **Juntos / Separados** decide se eles entram na sua projeção ou
 só aparecem na lista.
 
-Gerar um código novo desliga o anterior. Qualquer um dos dois lados desfaz a
-conexão.
+A conexão vale **nos dois sentidos**: um código digitado e as duas pessoas
+passam a ver a economia uma da outra. Desfazer também derruba os dois lados.
+
+Gerar um código novo desliga o anterior.
 
 A atualização acontece ao abrir a aba de economia — não é tempo real.
 

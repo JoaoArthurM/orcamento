@@ -1737,15 +1737,35 @@
     await listarConexoes();
   }
 
+  /**
+   * Uma linha por pessoa.
+   *
+   * Agora que o vínculo é mútuo, `minhas_conexoes` devolve DUAS linhas por
+   * pessoa — uma em cada direção. Na tela isso seria a mesma pessoa
+   * duplicada, e com dois seletores de cor discordando.
+   *
+   * Fica a linha em que EU sou o espectador (papel 'dono'): é dela que sai
+   * a cor com que vejo essa pessoa. Para desconectar tanto faz — a função
+   * derruba os dois lados.
+   */
+  function porPessoaConectada(lista) {
+    const mapa = {};
+    (lista || []).forEach(function (c) {
+      const antes = mapa[c.pessoa_id];
+      // 'dono' ganha de 'espectador': é a direção que eu enxergo
+      if (!antes || c.papel === 'dono') mapa[c.pessoa_id] = c;
+    });
+    return Object.keys(mapa).map(function (k) { return mapa[k]; });
+  }
+
   async function listarConexoes() {
-    const lista = await Store.conexoes();
+    const lista = porPessoaConectada(await Store.conexoes());
     $('sh-conexoes-bloco').hidden = !lista.length;
     $('btn-share').classList.toggle('ligado', lista.length > 0);
 
     $('sh-conexoes').innerHTML = lista.map(function (c) {
       /* A cor pinta os lançamentos desta pessoa NA MINHA tela — então
-         quem escolhe é quem olha, ou seja, eu. Só aparece nas conexões
-         em que eu sou o espectador. */
+         quem escolhe é quem olha, ou seja, eu. */
       const cores = c.papel === 'dono'
         ? '<span class="sh-cores">' + CORES_PASTEL.map(function (k) {
             return '<button class="sh-cor cor-' + k + (k === c.color ? ' on' : '') +
@@ -1757,13 +1777,11 @@
       return '<div class="sh-pessoa">' +
         '<span class="sh-pessoa-corpo">' +
           '<span class="sh-pessoa-email">' + esc(c.email || '—') + '</span>' +
-          '<span class="sh-pessoa-papel">' +
-            (c.papel === 'espectador' ? 'vê a sua economia' : 'você vê a economia desta conta') +
-          '</span>' +
+          '<span class="sh-pessoa-papel">economia compartilhada nos dois sentidos</span>' +
         '</span>' + cores +
         '<button class="sh-remover" data-remover="' + c.id +
           '" data-papel="' + c.papel + '" data-email="' + esc(c.email || '') +
-          '" aria-label="' + (c.papel === 'espectador' ? 'Remover acesso' : 'Sair') + '">' +
+          '" aria-label="Desconectar">' +
           ico('log-out') + '</button>' +
       '</div>';
     }).join('');
@@ -3689,17 +3707,13 @@
       const rm = ev.target.closest('[data-remover]');
       if (!rm) return;
 
-      /* Os dois lados do mesmo vínculo são coisas diferentes: tirar o
-         acesso de alguém, ou sair da economia de alguém. */
-      const dono = rm.dataset.papel === 'dono';
+      /* A conexão vale nos dois sentidos, então desfazer também. */
       const quem = '<b>' + esc(rm.dataset.email || 'esta conta') + '</b>';
       confirmar({
-        titulo: dono ? 'Sair desta economia' : 'Remover acesso',
-        msg: dono
-          ? 'Você deixa de ver a economia de ' + quem +
-            '. Para voltar, vai precisar do código de novo.'
-          : quem + ' deixa de ver a sua economia. Nada seu é apagado.',
-        acao: dono ? 'Sair' : 'Remover',
+        titulo: 'Desconectar',
+        msg: 'Você e ' + quem + ' deixam de ver a economia um do outro. ' +
+          'Nenhum lançamento é apagado, e dá para reconectar com o código.',
+        acao: 'Desconectar',
         fn: async function () {
           /* Sem try, uma falha de rede deixaria a folha aberta e travada:
              o botão já foi tocado e nada mais acontece. */
@@ -3712,7 +3726,7 @@
             fecharConfirmar();
             await listarConexoes();
             await recarregarCompartilhadas();
-            toast(dono ? 'Você saiu dessa economia' : 'Acesso removido');
+            toast('Desconectado');
           } catch (e) {
             $('cf-msg').innerHTML = 'Não deu para desfazer agora. ' +
               'Verifique a conexão e tente de novo.';

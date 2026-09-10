@@ -1005,7 +1005,12 @@
     /* Um pacote por dono: a projeção precisa saber de quem é cada linha
        para colorir, e o saldo inicial de cada um entra uma vez só. */
     return donos.map(function (id) {
-      const c = (conexoes || []).find(function (x) { return x.pessoa_id === id; }) || {};
+      /* Duas linhas por pessoa desde que o vínculo virou mútuo. A cor que
+         vale é a da direção em que EU olho — papel 'dono'. Pegar a
+         primeira que aparecesse traria a cor que a outra pessoa escolheu. */
+      const c = (conexoes || []).find(function (x) {
+        return x.pessoa_id === id && x.papel === 'dono';
+      }) || {};
       const st = settings.find(function (x) { return x.user_id === id; });
       const meu = function (lista) {
         return lista.filter(function (x) { return x.__dono === id; });
@@ -1301,10 +1306,9 @@
       return (!r.error && r.data) ? r.data.share_code : null;
     },
 
-    async removerConexao(id) {
-      const r = await client.from('economy_shares').delete().eq('id', id);
-      if (r.error) throw r.error;
-    },
+    /* Desfaz os DOIS lados. Um DELETE direto apagaria só uma direção e
+       deixaria meia conexão de pé, sem nada na tela explicando. */
+    async removerConexao(id) { return rpc('desconectar', { p_share: id }); },
 
     async trocarCor(id, cor) { return rpc('trocar_cor', { p_share: id, p_color: cor }); },
 

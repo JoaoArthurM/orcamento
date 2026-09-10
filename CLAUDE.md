@@ -122,6 +122,16 @@ quebrou `usar_codigo` na primeira versão.
 O teste de SQL não pega isto: é semântico, não estrutural. Função com
 `returns table` só se prova rodando.
 
+## A conexão é mútua, mas são DUAS linhas
+
+`usar_codigo` insere os dois sentidos, e `minhas_conexoes` devolve dois
+registros por pessoa. Na tela isso vira gente duplicada: `porPessoaConectada`
+agrupa e fica com a linha de papel `dono` — a direção em que EU olho, e de
+onde sai a cor certa. `puxarCompartilhadas` faz o mesmo filtro.
+
+Desconectar passa por `desconectar()`, que apaga os dois. Um DELETE direto
+deixaria meia conexão de pé.
+
 ## Economia compartilhada: o RLS é a única barreira
 
 Quem entra com um código ganha **SELECT** nas tabelas da economia do dono. Não
