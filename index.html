@@ -930,6 +930,20 @@
 
       <div class="fv-saldo" id="fv-saldo">Falta receber: R$ 0,00</div>
 
+      <!-- marcado, o que falta receber entra na projeção do simulador -->
+      <button type="button" class="lo-eco" id="fv-eco" aria-pressed="false">
+        <span class="lo-eco-cx" aria-hidden="true">
+          <svg class="ico"><use href="#i-check"/></svg>
+        </span>
+        <span class="lo-eco-txt">
+          <span class="lo-eco-tit">Essa receita vai para a economia?</span>
+          <span class="lo-eco-sub" id="fv-eco-sub">—</span>
+        </span>
+        <span class="lo-eco-ico" aria-hidden="true">
+          <svg class="ico"><use href="#i-piggy-bank"/></svg>
+        </span>
+      </button>
+
       <div class="ff">
         <label class="fl" for="fv-notes">Observações</label>
         <textarea class="fi" id="fv-notes" rows="2" placeholder="opcional"></textarea>
@@ -954,7 +968,8 @@
     </div>
   </div>
 
-  <!-- excluir favor que se repete: três saídas, como em qualquer agenda -->
+  <!-- favor que se repete: mexer em um, nos próximos ou em todos.
+       Serve para excluir e para ligar/desligar a projeção. -->
   <div class="sheet" id="sheet-excluir" role="dialog" aria-modal="true" aria-labelledby="ex-title">
     <span class="sheet-grab mobile-only" aria-hidden="true"></span>
     <div class="fhd">
@@ -974,7 +989,7 @@
         <span class="ex-op-sub" id="ex-n-proximos">—</span>
       </button>
 
-      <button class="ex-op perigo" data-alcance="todos">
+      <button class="ex-op" id="ex-op-todos" data-alcance="todos">
         <span class="ex-op-tit">Todos da série</span>
         <span class="ex-op-sub" id="ex-n-todos">—</span>
       </button>

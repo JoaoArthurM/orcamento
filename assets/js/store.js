@@ -242,6 +242,9 @@
       due_on:  dataOuNulo(f.due_on),
       // liga os favores nascidos de um "repete por N meses". Nulo = avulso
       series_id: isUuid(f.series_id) ? f.series_id : null,
+      // marcado: o que falta receber entra na projeção do simulador.
+      // Sem due_on não há mês onde pôr, então a tela exige a data.
+      to_savings: !!f.to_savings && !!dataOuNulo(f.due_on),
       notes:   f.notes ? String(f.notes).slice(0, 500) : null,
     };
   }
@@ -544,7 +547,7 @@
       person: f.person, reason: f.reason,
       amount: f.amount,
       lent_on: f.lent_on, due_on: f.due_on, series_id: f.series_id,
-      notes: f.notes,
+      to_savings: f.to_savings, notes: f.notes,
       position: index,
     };
   }
@@ -553,7 +556,7 @@
     return normalizeFavor({
       id: r.id, person: r.person, reason: r.reason,
       amount: r.amount, lent_on: r.lent_on, due_on: r.due_on,
-      series_id: r.series_id, notes: r.notes,
+      series_id: r.series_id, to_savings: r.to_savings, notes: r.notes,
     });
   }
 

@@ -92,6 +92,18 @@ Emprestou 2.500 a 300/mês. Ela paga duas mensalidades e depois devolve os
 Empréstimo de mensalidade **nunca aparece como atrasado**: o acerto final não
 tem prazo, e a data ali é só previsão.
 
+#### Favor pode entrar na projeção
+
+Mesma caixinha do empréstimo, no formulário do favor. Marcado, o que falta
+receber entra no simulador **no mês do vencimento** — cada parcela de uma
+repetição no seu próprio mês.
+
+**Exige a data de pagamento.** Sem ela não há mês onde lançar, e o app recusa
+salvar em vez de inventar um.
+
+Ligar ou desligar numa linha de repetição pergunta o alcance — somente esta,
+esta e as próximas, ou todas — do mesmo jeito que excluir.
+
 #### Horizonte e recorte
 
 O cartão **"12 meses"** abre a faixa e mostra o total da janela inteira.
@@ -296,6 +308,7 @@ nesta ordem:
 7. [`supabase/schema-favors-serie.sql`](supabase/schema-favors-serie.sql) — `favors.series_id`
 8. [`supabase/schema-loans-economia.sql`](supabase/schema-loans-economia.sql) — `loans.to_savings`
 9. [`supabase/schema-horizonte.sql`](supabase/schema-horizonte.sql) — `settings.horizon_months`
+10. [`supabase/schema-favors-economia.sql`](supabase/schema-favors-economia.sql) — `favors.to_savings`
 6. [`supabase/schema-loans-mensalidade.sql`](supabase/schema-loans-mensalidade.sql) — `received_interest` e a mensalidade que não quita
 
 Quem criou `accounts` antes do tipo `economia` precisa rodar também

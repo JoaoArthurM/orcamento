@@ -42,10 +42,11 @@ const check = (n, c, x) => { if (c) console.log('  ok   ' + n);
  * `entries`, `saldoInicial`, `contas` e `loans` são o que calc() lê do
  * escopo de cima no app.js; `Store.FREQ_MES` converte a frequência.
  */
-function motor(entries, saldoInicial, mesInicial, contas, loans, meses) {
+function motor(entries, saldoInicial, mesInicial, contas, loans, meses, favores, alocacao) {
   const Store = { FREQ_MES: { mensal: 1, quinzenal: 2, semanal: 4.345, anual: 1 / 12, pontual: 0 } };
   const ctx = { entries: entries, saldoInicial: saldoInicial, contas: contas || [],
-                loans: loans || [], Store: Store,
+                loans: loans || [], favores: favores || [],
+                alocacao: alocacao || { pago: {}, credito: {} }, Store: Store,
                 Math: Math, Number: Number, Array: Array, String: String };
   ctx.window = ctx;
   vm.createContext(ctx);
@@ -320,6 +321,61 @@ const E = (o) => Object.assign({ hidden: false, months: [] }, o);
 
     // e o padrão de 12 não mudou
     check('sem horizonte, continua 12', motor([], 0).length === 12);
+  }
+
+  /* 9: favor marcado como "vai para a economia" */
+  {
+    const F = (o) => Object.assign({ id: 'f1', person: 'Marina', amount: 500,
+      to_savings: true, lent_on: '2026-08-01' }, o);
+
+    const um = motor([], 0, 9, [], [], 12, [F({ due_on: '2026-11-07' })]);
+    check('favor entra no mês do vencimento', um[2].inC === 500, um[2].inC);
+    check('e em nenhum outro',
+      um.filter(function (r) { return r.inC > 0; }).length === 1,
+      um.map(function (r) { return r.inC; }));
+
+    // sem marcar, não entra
+    const off = motor([], 0, 9, [], [], 12, [F({ due_on: '2026-11-07', to_savings: false })]);
+    check('favor sem marcar não entra', off.every(function (r) { return r.inC === 0; }));
+
+    /* Sem due_on não há mês onde pôr. A tela bloqueia, mas se um favor
+       chegar assim por outro caminho, ele não pode virar receita fantasma. */
+    const semData = motor([], 0, 9, [], [], 12, [F({ due_on: null })]);
+    check('marcado sem data não vira receita fantasma',
+      semData.every(function (r) { return r.inC === 0; }),
+      semData.map(function (r) { return r.inC; }));
+
+    // o que já foi pago não é dinheiro futuro
+    const parcial = motor([], 0, 9, [], [], 12, [F({ due_on: '2026-11-07' })],
+      { pago: { f1: 200 }, credito: {} });
+    check('entra só o que falta receber', parcial[2].inC === 300, parcial[2].inC);
+
+    const quitado = motor([], 0, 9, [], [], 12, [F({ due_on: '2026-11-07' })],
+      { pago: { f1: 500 }, credito: {} });
+    check('favor quitado não projeta', quitado.every(function (r) { return r.inC === 0; }));
+
+    // vencimento no passado escorrega para o mês corrente
+    const vencido = motor([], 0, 9, [], [], 12, [F({ due_on: '2026-05-07' })]);
+    check('favor vencido escorrega para o mês corrente',
+      vencido[0].inC === 500, vencido.map(function (r) { return r.inC; }).slice(0, 3));
+
+    /* Numa janela de 24 meses novembro aparece duas vezes — o favor não
+       pode ser recebido nos dois. */
+    const dois = motor([], 0, 9, [], [], 24, [F({ due_on: '2026-11-07' })]);
+    check('favor entra UMA vez em 24 meses',
+      dois.filter(function (r) { return r.inC > 0; }).length === 1,
+      dois.map(function (r, i) { return r.inC > 0 ? i : -1; })
+        .filter(function (i) { return i >= 0; }));
+
+    // convive com empréstimo marcado no mesmo mês
+    const junto = motor([], 0, 9, [], [{ id: 'l1', person: 'R', to_savings: true,
+      method: 'avista', received: 0, principal: 100, total_due: 100,
+      due_on: '2026-11-20' }], 12, [F({ due_on: '2026-11-07' })]);
+    check('favor e empréstimo somam no mesmo mês', junto[2].inC === 600, junto[2].inC);
+
+    check('sem favor marcado o resultado é o de sempre',
+      motor([E({ type: 'ci', amount: 100, months: [9] })], 0, 9, [], [], 12, []).cumP ===
+      motor([E({ type: 'ci', amount: 100, months: [9] })], 0, 9).cumP);
   }
 
   console.log(fails === 0 ? '\nTODOS OS TESTES DE CÁLCULO PASSARAM' : '\n' + fails + ' FALHA(S)');

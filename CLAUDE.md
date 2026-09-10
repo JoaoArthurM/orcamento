@@ -108,6 +108,20 @@ primeira entrada: gravar vazio é o mesmo caminho de "apaguei tudo".
 A semente antiga tinha nomes e valores reais, e o repositório é público. Não
 reponha dados de pessoa nenhuma em teste, fixture ou placeholder.
 
+## Três derivadas, e uma folha de alcance só
+
+`entradasDoCalculo(win)` soma `entries` + economia de contas + empréstimos +
+favores marcados. Favor precisa de `due_on` para entrar: `normalizeFavor` força
+`to_savings = false` sem data, e `favoresComoEntradas` ignora quem não tem — a
+tela bloqueia antes, mas nenhuma das duas confia na outra.
+
+`perguntarAlcance(f, cfg)` é a folha `#sheet-excluir`, agora genérica: excluir e
+ligar/desligar economia passam por ela. `cfg.fn(alcance)` recebe o que foi
+escolhido; `cfg.perigo` pinta "todos" de vermelho só na exclusão.
+
+Ao propagar a marcação, **só o `to_savings` viaja** — nome, valor e data ficam na
+linha editada. Espalhar o resto sobrescreveria parcelas ajustadas uma a uma.
+
 ## Horizonte variável: cuidado com o mês que se repete
 
 `get12M(n)` mantém o nome mas o tamanho vem de `horizonte` (12/24/36/48,

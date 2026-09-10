@@ -228,11 +228,52 @@
     return out;
   }
 
+  /**
+   * Favor marcado como "vai para a economia" entra na projeção como renda
+   * do tipo empréstimo, no mês em que ela combinou de pagar.
+   *
+   * Sem `due_on` não há mês onde pôr — por isso a tela exige a data para
+   * deixar marcar. Aqui a checagem se repete porque um favor pode perder
+   * a data por outro caminho (importação, outro aparelho, edição futura),
+   * e uma linha sem mês viraria receita fantasma.
+   *
+   * Vencimento no passado escorrega para o mês corrente: o dinheiro é
+   * esperado agora, não num mês que já foi. É o mesmo deslize que a lista
+   * de favores mostra.
+   */
+  function favoresComoEntradas(win) {
+    const out = [];
+    const idxHoje = win[0].y * 12 + (win[0].m - 1);
+
+    (favores || []).forEach(function (f) {
+      if (!f.to_savings || !f.due_on) return;
+
+      const pago = (alocacao && alocacao.pago && alocacao.pago[f.id]) || 0;
+      const falta = Math.max(0, (Number(f.amount) || 0) - pago);
+      if (falta <= 0) return;          // quitado não é dinheiro futuro
+
+      let idx = Number(String(f.due_on).slice(0, 4)) * 12
+              + (Number(String(f.due_on).slice(5, 7)) - 1);
+      if (idx < idxHoje) idx = idxHoje;
+
+      out.push({
+        id: 'fav:' + f.id, name: f.person, type: 'em', hidden: false,
+        amount: falta,
+        // mês E ano: numa janela de 24 meses novembro aparece duas vezes
+        months: [(idx % 12) + 1], ano: Math.floor(idx / 12),
+        deFavor: true,
+      });
+    });
+    return out;
+  }
+
   /** As entradas que o cálculo enxerga: as lançadas aqui mais as derivadas. */
   function entradasDoCalculo(win) {
+    const w = win || get12M();
     return entries
       .concat(economiaComoFs())
-      .concat(emprestimosComoEntradas(win || get12M()));
+      .concat(emprestimosComoEntradas(w))
+      .concat(favoresComoEntradas(w));
   }
 
   /**
@@ -2213,12 +2254,14 @@
     $('fv-amount').value = f ? num(f.amount) : '';
     $('fv-date').value   = f ? f.lent_on : Store.hoje();
     $('fv-due').value    = f && f.due_on ? f.due_on : '';
+    $('fv-eco').setAttribute('aria-pressed', String(!!(f && f.to_savings)));
     $('fv-notes').value  = f && f.notes ? f.notes : '';
     // repetir só faz sentido ao criar: editando, mexeria num favor só
     $('fv-meses').value  = 1;
     $('fv-repete').hidden = !!editFavorId;
 
     onFavorAmounts();
+    onFavorEco();
     openSheet($('sheet-favor'));
     if (!editFavorId) {
       setTimeout(function () { $(pessoaSugerida ? 'fv-reason' : 'fv-person').focus(); }, 320);
@@ -2260,6 +2303,32 @@
     }
   }
 
+  /** Diz o que marcar a caixinha vai fazer — e avisa o que falta. */
+  function onFavorEco() {
+    const ligado = $('fv-eco').getAttribute('aria-pressed') === 'true';
+    const quando = $('fv-due').value;
+    const box = $('fv-eco-sub');
+
+    if (!ligado) {
+      box.textContent = 'Fica só aqui, fora da projeção do simulador.';
+      return;
+    }
+    if (!quando) {
+      box.textContent = 'Falta dizer quando ela combinou de pagar — sem isso ' +
+        'não há mês onde lançar.';
+      return;
+    }
+    const total = parseBRL($('fv-amount').value) || 0;
+    const pago = editFavorId ? (alocacao.pago[editFavorId] || 0) : 0;
+    const falta = Math.max(0, total - pago);
+    const n = mesesDoFavor();
+    box.textContent = falta > 0
+      ? (n > 1
+          ? 'Cada uma das ' + n + ' entra no seu mês, a partir de ' + dataCurta(quando) + '.'
+          : 'Entra R$ ' + num(falta) + ' em ' + dataCurta(quando) + '.')
+      : 'Nada a receber — não entra na projeção.';
+  }
+
   /** Quantas vezes o mesmo favor se repete, mês a mês. 1 = avulso. */
   function mesesDoFavor() {
     if (editFavorId) return 1;
@@ -2285,6 +2354,13 @@
       return;
     }
 
+    /* E não dá para projetar sem saber em que mês o dinheiro entra. */
+    if ($('fv-eco').getAttribute('aria-pressed') === 'true' && !$('fv-due').value) {
+      $('fv-due').focus();
+      toast('Para entrar na economia, diga quando ela combinou de pagar');
+      return;
+    }
+
     const atual = editFavorId
       ? favores.find(function (x) { return x.id === editFavorId; }) : null;
 
@@ -2297,11 +2373,27 @@
       amount: amount,
       lent_on: $('fv-date').value,
       due_on: $('fv-due').value || null,
+      to_savings: $('fv-eco').getAttribute('aria-pressed') === 'true',
       notes: $('fv-notes').value.trim() || null,
     });
 
     const era = !!editFavorId;
     const meses = mesesDoFavor();
+
+    /* Ligar ou desligar a projeção numa linha de uma repetição é ambíguo:
+       vale para esta parcela ou para o combinado inteiro? Só perguntamos
+       quando a marcação MUDOU — editar o valor de uma parcela não deve
+       abrir diálogo nenhum. */
+    if (era && atual && atual.series_id && atual.to_savings !== f.to_savings) {
+      perguntarAlcance(atual, {
+        titulo: f.to_savings ? 'Incluir na economia' : 'Tirar da economia',
+        sub: '“' + f.reason + '” de ' + f.person + ' faz parte de uma repetição. ' +
+          (f.to_savings ? 'Incluir' : 'Tirar') + ' quais?',
+        fn: function (alcance) { aplicarEconomia(f, alcance); },
+      });
+      return;
+    }
+
     if (era) {
       const idx = favores.findIndex(function (x) { return x.id === editFavorId; });
       if (idx >= 0) favores[idx] = f;
@@ -2321,6 +2413,7 @@
           lent_on: f.lent_on,
           due_on: f.due_on ? mesAdiante(f.due_on, i) : null,
           series_id: serie,
+          to_savings: f.to_savings,
           notes: f.notes,
         }));
       }
@@ -2492,6 +2585,34 @@
     });
   }
 
+  /**
+   * Pergunta o alcance quando o favor faz parte de uma repetição.
+   * Serve para excluir e para ligar/desligar a projeção — em ambos, mexer
+   * numa linha só ou na série inteira são intenções diferentes.
+   *
+   * `cfg.fn(alcance)` recebe 'este' | 'proximos' | 'todos'.
+   */
+  let acaoAlcance = null;
+
+  function perguntarAlcance(f, cfg) {
+    acaoAlcance = cfg.fn;
+
+    const conta = function (a) {
+      return Store.favoresDaExclusao(favores, f.id, a).length;
+    };
+    const plural = function (n) { return n + (n === 1 ? ' favor' : ' favores'); };
+
+    $('ex-title').textContent = cfg.titulo;
+    $('ex-sub').textContent = cfg.sub;
+    $('ex-n-este').textContent     = plural(conta('este'));
+    $('ex-n-proximos').textContent = plural(conta('proximos')) + ', deste vencimento em diante';
+    $('ex-n-todos').textContent    = plural(conta('todos')) + ', a série inteira';
+    // só a exclusão é destrutiva
+    $('ex-op-todos').classList.toggle('perigo', !!cfg.perigo);
+
+    openSheet($('sheet-excluir'));
+  }
+
   /* Favor solto some direto; favor que se repete pergunta antes, porque
      as três saídas não têm como caber num toque só. */
   function delFavor() {
@@ -2499,19 +2620,50 @@
     if (!f) return;
     if (!f.series_id) { excluirFavores('este'); return; }
 
-    const conta = function (alcance) {
-      return Store.favoresDaExclusao(favores, f.id, alcance).length;
-    };
-    const plural = function (n) { return n + (n === 1 ? ' favor' : ' favores'); };
+    perguntarAlcance(f, {
+      titulo: 'Excluir favor',
+      sub: '“' + f.reason + '” de ' + f.person + ' faz parte de uma repetição' +
+        (f.due_on ? ', com vencimento em ' + dataCurta(f.due_on) : '') + '.',
+      perigo: true,
+      fn: excluirFavores,
+    });
+  }
 
-    $('ex-sub').textContent = '“' + f.reason + '” de ' + f.person +
-      ' faz parte de uma repetição' +
-      (f.due_on ? ', com vencimento em ' + dataCurta(f.due_on) : '') + '.';
-    $('ex-n-este').textContent      = plural(conta('este'));
-    $('ex-n-proximos').textContent  = plural(conta('proximos')) + ', deste vencimento em diante';
-    $('ex-n-todos').textContent     = plural(conta('todos')) + ', a série inteira';
+  /**
+   * Grava a edição e leva a marcação de economia para o alcance escolhido.
+   *
+   * Só o `to_savings` se propaga — nome, valor e data continuam sendo da
+   * linha editada. Espalhar o resto sobrescreveria parcelas que o usuário
+   * ajustou uma a uma.
+   */
+  function aplicarEconomia(f, alcance) {
+    const alvos = Store.favoresDaExclusao(favores, f.id, alcance);
+    const ids = {};
+    alvos.forEach(function (x) { ids[x.id] = true; });
 
-    openSheet($('sheet-excluir'));
+    const backup = JSON.parse(JSON.stringify(favores));
+
+    favores = favores.map(function (x) {
+      if (x.id === f.id) return f;                       // a linha editada, inteira
+      if (!ids[x.id]) return x;
+      return Store.normalizeFavor(Object.assign({}, x, { to_savings: f.to_savings }));
+    });
+
+    closeSheets();
+    render(); triggerSave();
+
+    /* Sem due_on o Store recusa a marcação — a linha fica de fora e o
+       usuário precisa saber por quê. */
+    const marcados = favores.filter(function (x) {
+      return ids[x.id] && x.to_savings === f.to_savings;
+    }).length;
+    const fora = alvos.length - marcados;
+
+    toast((f.to_savings ? marcados + ' na economia' : marcados + ' fora da economia') +
+      (fora ? ' · ' + fora + ' sem data ficaram de fora' : ''),
+      'Desfazer', function () {
+        favores = backup; render(); triggerSave();
+      });
   }
 
   /** Apaga o alcance escolhido e deixa o desfazer pronto. */
@@ -3436,7 +3588,14 @@
         renderFavores();
       }
     });
-    $('fv-amount').addEventListener('input', onFavorAmounts);
+    $('fv-amount').addEventListener('input', function () { onFavorAmounts(); onFavorEco(); });
+    $('fv-due').addEventListener('change', onFavorEco);
+    $('fv-meses').addEventListener('input', onFavorEco);
+    $('fv-eco').addEventListener('click', function () {
+      const b = $('fv-eco');
+      b.setAttribute('aria-pressed', b.getAttribute('aria-pressed') === 'true' ? 'false' : 'true');
+      onFavorEco();
+    });
     $('fv-meses').addEventListener('input', onFavorAmounts);
     $('pg-amount').addEventListener('input', onPagamentoAmount);
     $('pg-save').addEventListener('click', savePagamento);
@@ -3445,7 +3604,7 @@
     $('pg-back').addEventListener('click', function () { closeSheets(); });
     $('sheet-excluir').addEventListener('click', function (ev) {
       const b = ev.target.closest('[data-alcance]');
-      if (b) excluirFavores(b.dataset.alcance);
+      if (b && acaoAlcance) acaoAlcance(b.dataset.alcance);
     });
     $('ex-cancel').addEventListener('click', function () { closeSheets(); });
     $('ex-back').addEventListener('click', function () { closeSheets(); });
