@@ -92,6 +92,16 @@ Emprestou 2.500 a 300/mês. Ela paga duas mensalidades e depois devolve os
 Empréstimo de mensalidade **nunca aparece como atrasado**: o acerto final não
 tem prazo, e a data ali é só previsão.
 
+#### Horizonte e recorte
+
+O cartão **"12 meses"** abre a faixa e mostra o total da janela inteira.
+Escolhido um mês, o número grande e os KPIs passam a falar **do período até
+ele** — clicar em novembro mostra o acumulado até novembro.
+
+Tocar no selo do horizonte (`12 meses`, sob o valor) troca a projeção para
+**24, 36 ou 48 meses**. A escolha fica em `settings.horizon_months` e segue o
+usuário entre aparelhos.
+
 #### Empréstimo pode entrar na projeção
 
 No formulário do empréstimo, **"Essa receita vai para a economia?"** faz o que
@@ -285,6 +295,7 @@ nesta ordem:
 6. [`supabase/schema-favors-vencimento.sql`](supabase/schema-favors-vencimento.sql) — `favors.due_on`
 7. [`supabase/schema-favors-serie.sql`](supabase/schema-favors-serie.sql) — `favors.series_id`
 8. [`supabase/schema-loans-economia.sql`](supabase/schema-loans-economia.sql) — `loans.to_savings`
+9. [`supabase/schema-horizonte.sql`](supabase/schema-horizonte.sql) — `settings.horizon_months`
 6. [`supabase/schema-loans-mensalidade.sql`](supabase/schema-loans-mensalidade.sql) — `received_interest` e a mensalidade que não quita
 
 Quem criou `accounts` antes do tipo `economia` precisa rodar também

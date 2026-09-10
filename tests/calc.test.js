@@ -21,7 +21,7 @@ const ROOT = path.join(__dirname, '..') + '/';
 const app = fs.readFileSync(ROOT + 'assets/js/app.js', 'utf8');
 
 /* ── extrai o bloco de cálculo ───────────────────────── */
-const INI = '  /** Janela rolante de 12 meses a partir do mês corrente. */';
+const INI = '  /**\n   * Janela rolante a partir do mês corrente.';
 const FIM = '  /* ══════════════════════════════════════════════════════\n     FAVORES';
 const i = app.indexOf(INI);
 const f = app.indexOf(FIM);
@@ -42,7 +42,7 @@ const check = (n, c, x) => { if (c) console.log('  ok   ' + n);
  * `entries`, `saldoInicial`, `contas` e `loans` são o que calc() lê do
  * escopo de cima no app.js; `Store.FREQ_MES` converte a frequência.
  */
-function motor(entries, saldoInicial, mesInicial, contas, loans) {
+function motor(entries, saldoInicial, mesInicial, contas, loans, meses) {
   const Store = { FREQ_MES: { mensal: 1, quinzenal: 2, semanal: 4.345, anual: 1 / 12, pontual: 0 } };
   const ctx = { entries: entries, saldoInicial: saldoInicial, contas: contas || [],
                 loans: loans || [], Store: Store,
@@ -52,9 +52,11 @@ function motor(entries, saldoInicial, mesInicial, contas, loans) {
   vm.runInContext(fonte, ctx);
   // congela a janela: sem isto o resultado mudaria a cada mês do ano
   const inicio = (mesInicial === undefined ? 9 : mesInicial) - 1;
-  ctx.get12M = function () {
+  const n = meses || 12;
+  ctx.horizonte = n;
+  ctx.get12M = function (quantos) {
     const out = [];
-    for (let k = 0; k < 12; k++) {
+    for (let k = 0; k < (quantos || n); k++) {
       const idx = (inicio + k) % 12;
       out.push({ m: idx + 1, y: 2026 + Math.floor((inicio + k) / 12) });
     }
@@ -246,17 +248,30 @@ const E = (o) => Object.assign({ hidden: false, months: [] }, o);
        no mês corrente, a linha anda sozinha na virada — é o "em outubro
        entra 300, em novembro não; quando vira o mês, entra em novembro". */
     const mensal = motor([], 0, 9, [], [L({ method: 'mensal', principal: 2500,
-      total_due: 2500, installment_amount: 300 })]);
-    check('mensalidade entra só no 1º mês', mensal[0].inC === 300, mensal[0].inC);
-    check('e não se repete pelos outros meses',
-      mensal.slice(1).every(function (r) { return r.inC === 0; }),
+      total_due: 2500, installment_amount: 300, due_on: '2026-10-05' })]);
+    /* A mensalidade cai no mês COMBINADO, não no mês corrente. Janela
+       começa em setembro; combinado é 05/out → outubro, o índice 1. */
+    check('mensalidade entra no mês combinado', mensal[1].inC === 300, mensal[1].inC);
+    check('e não no mês corrente', mensal[0].inC === 0, mensal[0].inC);
+    check('e em nenhum outro mês da janela',
+      mensal.filter(function (r) { return r.inC > 0; }).length === 1,
       mensal.map(function (r) { return r.inC; }));
 
     // a janela começando em outubro põe a mesma linha em outubro
-    const emOutubro = motor([], 0, 10, [], [L({ method: 'mensal', principal: 2500,
-      total_due: 2500, installment_amount: 300 })]);
-    check('virando o mês, a mensalidade vai junto',
-      emOutubro[0].inC === 300 && emOutubro[1].inC === 0, emOutubro[0].inC);
+    /* Já recebeu duas de 300: a próxima é o combinado + 2 meses = dez,
+       índice 3 numa janela que começa em setembro. */
+    const duasPagas = motor([], 0, 9, [], [L({ method: 'mensal', principal: 2500,
+      total_due: 2500, installment_amount: 300, received_interest: 600,
+      due_on: '2026-10-05' })]);
+    check('cada mensalidade recebida empurra a próxima',
+      duasPagas[3].inC === 300 && duasPagas[1].inC === 0,
+      duasPagas.map(function (r) { return r.inC; }).slice(0, 5));
+
+    /* Combinado já passou e nada caiu: escorrega para o mês corrente. */
+    const atrasada = motor([], 0, 9, [], [L({ method: 'mensal', principal: 2500,
+      total_due: 2500, installment_amount: 300, due_on: '2026-05-05' })]);
+    check('mensalidade vencida escorrega para o mês corrente',
+      atrasada[0].inC === 300, atrasada.map(function (r) { return r.inC; }).slice(0, 3));
 
     // mensalidade de empréstimo já devolvido para de projetar
     const devolvido = motor([], 0, 9, [], [L({ method: 'mensal', principal: 2500,
@@ -268,6 +283,43 @@ const E = (o) => Object.assign({ hidden: false, months: [] }, o);
     check('sem empréstimo marcado o resultado é o de sempre',
       motor([E({ type: 'ci', amount: 100, months: [9] })], 0, 9, [], []).cumP ===
       motor([E({ type: 'ci', amount: 100, months: [9] })], 0, 9).cumP);
+  }
+
+  /* 8: horizonte maior que 12 meses */
+  {
+    const L = (o) => Object.assign({ id: 'l1', person: 'Marina', to_savings: true,
+      method: 'avista', received: 0, received_interest: 0 }, o);
+
+    const dois = motor([], 0, 9, [], [], 24);
+    check('24 meses devolve 24 linhas', dois.length === 24, dois.length);
+    const quatro = motor([], 0, 9, [], [], 48);
+    check('48 meses devolve 48 linhas', quatro.length === 48, quatro.length);
+
+    /* O mês 11 aparece DUAS vezes numa janela de 24: nov/2026 e nov/2027.
+       Se o empréstimo casar só pelo número do mês, ele entra nos dois — e
+       o mesmo dinheiro é recebido duas vezes. */
+    const emp = motor([], 0, 9, [], [L({ principal: 2000, total_due: 2400,
+      due_on: '2026-11-20' })], 24);
+    const meses = emp.map(function (r, i) { return r.inC > 0 ? i : -1; })
+      .filter(function (i) { return i >= 0; });
+    check('empréstimo entra UMA vez em 24 meses', meses.length === 1, meses);
+    check('e no mês certo (nov/2026)',
+      emp[2].inC === 2400 && emp[2].y === 2026, [emp[2].inC, emp[2].y]);
+
+    // entrada normal, essa sim, repete todo ano — é o combinado dela
+    const anual = motor([E({ type: 'ci', amount: 100, months: [11] })], 0, 9, [], [], 24);
+    check('entrada mensal comum repete nos dois anos',
+      anual[2].inC === 100 && anual[14].inC === 100, [anual[2].inC, anual[14].inC]);
+
+    // mensalidade continua sendo uma só, mesmo em 48 meses
+    const mensal = motor([], 0, 9, [], [L({ method: 'mensal', principal: 2500,
+      total_due: 2500, installment_amount: 300, due_on: '2026-10-05' })], 48);
+    check('mensalidade segue única em 48 meses',
+      mensal.filter(function (r) { return r.inC > 0; }).length === 1,
+      mensal.filter(function (r) { return r.inC > 0; }).length);
+
+    // e o padrão de 12 não mudou
+    check('sem horizonte, continua 12', motor([], 0).length === 12);
   }
 
   console.log(fails === 0 ? '\nTODOS OS TESTES DE CÁLCULO PASSARAM' : '\n' + fails + ' FALHA(S)');

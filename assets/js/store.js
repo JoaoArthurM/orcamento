@@ -615,7 +615,8 @@
      esquecida aqui não fica só de fora: chega como [] e o diff APAGA
      a tabela inteira. */
   function estadoVazio(saldo) {
-    const vazio = { saldoInicial: saldo === undefined ? 0 : saldo, hubOrder: null };
+    const vazio = { saldoInicial: saldo === undefined ? 0 : saldo,
+                    hubOrder: null, horizonte: 12 };
     COLECOES.forEach(function (c) { vazio[c.chave] = []; });
     return vazio;
   }
@@ -635,7 +636,8 @@
             favors: Array.isArray(d.favors) ? d.favors.filter(validFavor).map(normalizeFavor) : [],
             payments: Array.isArray(d.payments)
               ? d.payments.filter(validPayment).map(normalizePayment) : [],
-            hubOrder: Array.isArray(d.hubOrder) ? d.hubOrder : null,
+                  hubOrder: Array.isArray(d.hubOrder) ? d.hubOrder : null,
+            horizonte: normalizeHorizonte(d.horizonte),
           };
         }
       } catch (e) {}
@@ -668,6 +670,7 @@
       favors: state.favors || [],
       payments: state.payments || [],
       hubOrder: state.hubOrder || null,
+      horizonte: normalizeHorizonte(state.horizonte),
       savedAt: Date.now(),
     }));
   }
@@ -702,7 +705,11 @@
 
     /* hub_order só existe a partir da migração v3 */
     let sr = await client.from('settings')
-      .select('saldo_inicial, hub_order').eq('user_id', user.id).maybeSingle();
+      .select('saldo_inicial, hub_order, horizon_months').eq('user_id', user.id).maybeSingle();
+    if (sr.error && /horizon_months|column/i.test(sr.error.message || '')) {
+      sr = await client.from('settings')
+        .select('saldo_inicial, hub_order').eq('user_id', user.id).maybeSingle();
+    }
     if (sr.error && /hub_order|column/i.test(sr.error.message || '')) {
       sr = await client.from('settings')
         .select('saldo_inicial').eq('user_id', user.id).maybeSingle();
@@ -732,6 +739,7 @@
       entries: er.data.map(fromRow),
       saldoInicial: sr.data ? (Number(sr.data.saldo_inicial) || 0) : 0,
       hubOrder: (sr.data && Array.isArray(sr.data.hub_order)) ? sr.data.hub_order : null,
+      horizonte: normalizeHorizonte(sr.data && sr.data.horizon_months),
       loans: loans,
       accounts: accounts,
       favors: favors,
@@ -778,7 +786,8 @@
       const ordemAntes = synced ? JSON.stringify(synced.hubOrder || null) : null;
       const ordemAgora = JSON.stringify(state.hubOrder || null);
       const saldoMudou = !synced || synced.saldoInicial !== state.saldoInicial
-                         || ordemAntes !== ordemAgora;
+                         || ordemAntes !== ordemAgora
+                         || (synced.horizonte || 12) !== (state.horizonte || 12);
       const temTrabalho = saldoMudou || planos.some(function (p) {
         return p.upserts.length || p.deletes.length;
       });
@@ -803,7 +812,13 @@
       if (saldoMudou) {
         const linha = { user_id: user.id, saldo_inicial: state.saldoInicial };
         if (state.hubOrder) linha.hub_order = state.hubOrder;
+        linha.horizon_months = normalizeHorizonte(state.horizonte);
         let r = await client.from('settings').upsert(linha, { onConflict: 'user_id' });
+        if (r.error && /horizon_months|column/i.test(r.error.message || '')) {
+          // sem a migração do horizonte, ele fica só no aparelho
+          delete linha.horizon_months;
+          r = await client.from('settings').upsert(linha, { onConflict: 'user_id' });
+        }
         if (r.error && /hub_order|column/i.test(r.error.message || '')) {
           // sem a migração v3 a ordem fica só no aparelho
           delete linha.hub_order;
@@ -892,6 +907,12 @@
     if (channel) { try { client.removeChannel(channel); } catch (e) {} channel = null; }
   }
 
+  /** Horizonte da projeção: inteiro entre 1 e 120, 12 quando vier lixo. */
+  function normalizeHorizonte(v) {
+    const n = parseInt(v, 10);
+    return (isFinite(n) && n >= 1 && n <= 120) ? n : 12;
+  }
+
   /** Preenche o que a chamada não mandou, para o diff não apagar nada. */
   function completar(state) {
     const cheio = Object.assign(estadoVazio(), state || {});
@@ -899,6 +920,7 @@
       if (!Array.isArray(cheio[c.chave])) cheio[c.chave] = [];
     });
     cheio.hubOrder = cheio.hubOrder || null;
+    cheio.horizonte = normalizeHorizonte(cheio.horizonte);
     return cheio;
   }
 
@@ -918,6 +940,7 @@
     validAccount: validAccount,
     normalizeFavor: normalizeFavor,
     validFavor: validFavor,
+    normalizeHorizonte: normalizeHorizonte,
     normalizePayment: normalizePayment,
     validPayment: validPayment,
     alocarFavores: alocarFavores,

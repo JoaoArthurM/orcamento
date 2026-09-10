@@ -61,7 +61,8 @@
   let editLoanId   = null;
   let view         = 'p';        // 'p' pessimista · 'o' otimista
   let tab          = 'resumo';
-  let selMonth     = 0;          // índice 0..11 na janela de 12 meses
+  let selMonth     = -1;         // índice na janela; -1 = janela inteira
+  let horizonte    = 12;         // meses projetados — escolha do usuário
   let editId       = null;
   let selM         = [];         // meses marcados no formulário
   let w12          = get12M();
@@ -77,13 +78,20 @@
      LÓGICA DE CÁLCULO — porte fiel do simulador original
      ══════════════════════════════════════════════════════ */
 
-  /** Janela rolante de 12 meses a partir do mês corrente. */
-  function get12M() {
+  /**
+   * Janela rolante a partir do mês corrente.
+   *
+   * O nome ficou de quando eram sempre 12 — hoje o tamanho vem de
+   * `horizonte`, que o usuário escolhe e o Supabase guarda. Renomear
+   * arrastaria a camada de desenho inteira sem ganho nenhum.
+   */
+  function get12M(quantos) {
+    const n = quantos || horizonte;
     const hoje = new Date();
     const sm = hoje.getMonth();
     const sy = hoje.getFullYear();
     const months = [];
-    for (let i = 0; i < 12; i++) {
+    for (let i = 0; i < n; i++) {
       const idx = (sm + i) % 12;
       const y   = sy + Math.floor((sm + i) / 12);
       months.push({ m: idx + 1, y });
@@ -98,7 +106,13 @@
    * `fs` (poupança frequente) ignora a lista de meses e só começa no 2º mês
    * da janela — comportamento original preservado.
    */
-  function mv(e, m, isFirst) {
+  function mv(e, m, isFirst, y) {
+    /* Linha derivada de empréstimo vale num mês de um ANO específico.
+       Numa janela de 24 meses novembro aparece duas vezes, e sem esta
+       trava o mesmo empréstimo seria recebido nos dois. Entrada comum
+       não tem `ano` e segue repetindo todo ano, que é o combinado dela. */
+    if (e.ano !== undefined && e.ano !== y) return null;
+
     if (e.type === 'fs') {
       if (isFirst) return null;              // poupança começa no próximo mês
       return { kind: 'fixed', val: e.amount };
@@ -174,9 +188,29 @@
         const mens = Number(l.installment_amount) || 0;
         // empréstimo quitado pararia de render, mas continuaria projetando
         if (mens <= 0 || falta <= 0) return;
+        /* Qual mensalidade vem agora: a data combinada, empurrada por
+           quantas já entraram. Recebeu duas de 300, a próxima é a data
+           do combinado mais dois meses.
+
+           E nunca no passado: se o mês passou sem ela cair, escorrega
+           para o mês corrente — o mesmo deslize dos favores vencidos.
+
+           Contas em índice absoluto de mês (ano*12 + mês) para não
+           precisar de helper de data: este bloco é extraído e rodado
+           isolado pelo calc.test.js. */
+        const base = l.due_on || l.lent_on;
+        if (!base) return;
+        const jaEntraram = Math.floor((Number(l.received_interest) || 0) / mens);
+        let idx = Number(String(base).slice(0, 4)) * 12
+                + (Number(String(base).slice(5, 7)) - 1) + jaEntraram;
+        const idxHoje = win[0].y * 12 + (win[0].m - 1);
+        if (idx < idxHoje) idx = idxHoje;
+
         out.push({
           id: 'emp:' + l.id, name: l.person, type: 'em', hidden: false,
-          amount: mens, months: [win[0].m], deEmprestimo: true, mensal: true,
+          amount: mens,
+          months: [(idx % 12) + 1], ano: Math.floor(idx / 12),
+          deEmprestimo: true, mensal: true,
         });
         return;
       }
@@ -185,8 +219,9 @@
       out.push({
         id: 'emp:' + l.id, name: l.person, type: 'em', hidden: false,
         amount: falta,
-        // o número do mês, que é o que mv() compara
+        // mês e ano: o vencimento é uma data, não uma repetição anual
         months: [Number(String(l.due_on).slice(5, 7))],
+        ano: Number(String(l.due_on).slice(0, 4)),
         deEmprestimo: true,
       });
     });
@@ -212,7 +247,7 @@
     win.forEach(function (mo, i) {
       let out = 0, inC = 0, inLP = 0, inLO = 0;
       entradasDoCalculo(win).filter(function (e) { return !e.hidden; }).forEach(function (e) {
-        const v = mv(e, mo.m, i === 0);
+        const v = mv(e, mo.m, i === 0, mo.y);
         if (!v) return;
         if (e.type === 'fs' || e.type === 'os') out += v.val;
         else if (e.type === 'ci' || e.type === 'em' || e.type === 'co') inC += v.val;
@@ -742,7 +777,7 @@
       entries: entries, saldoInicial: saldoInicial,
       loans: loans, accounts: contas,
       favors: favores, payments: pagamentos,
-      hubOrder: hubOrder,
+      hubOrder: hubOrder, horizonte: horizonte,
     };
   }
 
@@ -762,6 +797,7 @@
     contas       = state.accounts || [];
     favores      = state.favors || [];
     pagamentos   = state.payments || [];
+    horizonte    = Store.normalizeHorizonte(state.horizonte);
     if (Array.isArray(state.hubOrder)) hubOrder = state.hubOrder;
   }
 
@@ -938,6 +974,7 @@
     realocar();
     w12 = get12M();
     if (selMonth > w12.length - 1) selMonth = w12.length - 1;
+    if (selMonth < -1) selMonth = -1;
     const rows = calc();
     lastRows = rows;
 
@@ -960,33 +997,74 @@
   }
   function netOf(r) { return view === 'p' ? r.netP : r.netO; }
 
+  /** "12 meses", "24 meses"… usado no cartão, no seletor e nos KPIs. */
+  function rotuloHorizonte() { return horizonte + ' meses'; }
+
+  const HORIZONTES = [
+    { n: 12, sub: 'um ano' },
+    { n: 24, sub: 'dois anos' },
+    { n: 36, sub: 'três anos' },
+    { n: 48, sub: 'quatro anos' },
+  ];
+
+  function abrirHorizonte() {
+    $('hz-opcoes').innerHTML = HORIZONTES.map(function (o) {
+      return '<button class="hz-op' + (o.n === horizonte ? ' on' : '') +
+        '" data-hz="' + o.n + '">' +
+        '<span class="hz-op-tit">' + o.n + ' meses</span>' +
+        '<span class="hz-op-sub">' + o.sub + '</span>' +
+      '</button>';
+    }).join('');
+    openSheet($('sheet-horizonte'));
+  }
+
+  function escolherHorizonte(n) {
+    const novo = Store.normalizeHorizonte(n);
+    if (novo !== horizonte) {
+      horizonte = novo;
+      /* A janela encolheu: um mês selecionado lá atrás não existe mais.
+         Volta para o cartão da janela inteira, que sempre é válido. */
+      selMonth = -1;
+      render(); triggerSave();
+    }
+    closeSheets();
+    toast('Projeção de ' + rotuloHorizonte());
+  }
+
+  /** Os meses que o recorte selecionado cobre. -1 = a janela inteira. */
+  function recorte(rows) {
+    return selMonth < 0 ? rows : rows.slice(0, selMonth + 1);
+  }
+
   /* ── cartão escuro ──────────────────────────────────── */
   function renderHero(rows) {
     const acum = acumOf(rows);
     const finalVal = acum[acum.length - 1];
 
-    // destaque = acumulado em dezembro do ano corrente (cai no último mês se dezembro ficou fora)
-    const curY = new Date().getFullYear();
-    let decIdx = -1;
-    w12.forEach(function (mo, i) { if (mo.m === 12 && mo.y === curY) decIdx = i; });
-    const sbVal = decIdx >= 0 ? acum[decIdx] : finalVal;
+    /* O número grande responde ao recorte: escolhido um mês, mostra o
+       acumulado ATÉ ele; no cartão de todos, o total da janela. Antes
+       mostrava sempre o fim, e selecionar um mês não mudava nada. */
+    const idx = selMonth < 0 ? acum.length - 1 : selMonth;
+    const val = acum[idx];
+    const mo  = w12[idx];
 
-    const periodo = decIdx >= 0 ? 'Acumulado em dezembro ' + curY : 'Acumulado em 12 meses';
     const pct = saldoInicial > 0
-      ? '+' + Math.round(((sbVal - saldoInicial) / saldoInicial) * 100) + '%'
+      ? '+' + Math.round(((val - saldoInicial) / saldoInicial) * 100) + '%'
       : null;
-    const growth = pct || '12 meses';
 
-    // sidebar (desktop)
-    el.sbFinal.textContent = num(sbVal);
-    el.sbFinalLabel.textContent = periodo;
-    el.sbGrowth.textContent = growth;
+    // sidebar (desktop) — segue o mesmo recorte
+    el.sbFinal.textContent = num(val);
+    el.sbFinalLabel.textContent = selMonth < 0
+      ? 'Acumulado em ' + rotuloHorizonte()
+      : 'Acumulado até ' + MS_FULL[mo.m - 1] + ' ' + mo.y;
+    el.sbGrowth.textContent = pct || rotuloHorizonte();
 
-    // cartão do mobile — mostra o total do fim da janela
-    const last = w12[w12.length - 1];
-    $('m-acum-val').textContent = num(finalVal);
-    $('m-acum-period').textContent = 'em ' + MS[last.m - 1].toLowerCase() + ' ' + String(last.y).slice(2);
-    $('m-growth').textContent = pct ? pct + ' no período' : '12 meses';
+    $('m-acum-val').textContent = num(val);
+    $('m-acum-period').textContent = selMonth < 0
+      ? 'em ' + MS[w12[w12.length - 1].m - 1].toLowerCase() + ' ' +
+        String(w12[w12.length - 1].y).slice(2)
+      : 'até ' + MS[mo.m - 1].toLowerCase() + ' ' + String(mo.y).slice(2);
+    $('m-growth').textContent = pct ? pct + ' no período' : rotuloHorizonte();
 
     const txt = 'Cenário ' + (view === 'p' ? 'pessimista' : 'otimista');
     if (el.scenarioTab) el.scenarioTab.textContent = txt;
@@ -997,17 +1075,23 @@
   /* ── KPIs ───────────────────────────────────────────── */
   function renderKPIs(rows) {
     const optimistic = view === 'o';
-    const tot = rows.reduce(function (a, r) {
+    /* Somam o recorte, não a janela toda: escolhido um mês, os cartões
+       falam do período até ele — o mesmo que o número grande. */
+    const janela = recorte(rows);
+    const tot = janela.reduce(function (a, r) {
       return { out: a.out + r.out, inC: a.inC + r.inC, inLP: a.inLP + r.inLP, inLO: a.inLO + r.inLO };
     }, { out: 0, inC: 0, inLP: 0, inLO: 0 });
     const acum = acumOf(rows);
-    const finalVal = acum[acum.length - 1];
+    const finalVal = acum[selMonth < 0 ? acum.length - 1 : selMonth];
+    const nota = selMonth < 0
+      ? rotuloHorizonte()
+      : (selMonth === 0 ? 'neste mês' : 'em ' + (selMonth + 1) + ' meses');
 
     const kpis = [
-      { label:'Poupança', note:'12 meses de aportes', val: short(tot.out), ico:'piggy-bank',
+      { label:'Poupança', note: nota + ' de aportes', val: short(tot.out), ico:'piggy-bank',
         bg:'#FFFFFF', fg:'#123A2C', labelFg:'#6F8C7C', noteFg:'#9CB2A4',
         tick:'#123A2C', tickBg:'#F1F6EE', dot:'#E4EDDF' },
-      { label:'Renda certa', note:'aportes anuais', val: short(tot.inC), ico:'coins',
+      { label:'Renda certa', note: nota, val: short(tot.inC), ico:'coins',
         bg:'#FFFFFF', fg:'#123A2C', labelFg:'#6F8C7C', noteFg:'#9CB2A4',
         tick:'#4A8A5F', tickBg:'#E9F6D6', dot:'#E4EDDF' },
       { label:'Renda incerta',
@@ -1177,7 +1261,14 @@
 
   /* ── seletor de mês (mobile) ────────────────────────── */
   function renderMonthStrip() {
-    $('m-months').innerHTML = w12.map(function (mo, i) {
+    // o cartão da janela inteira abre a faixa: é o resumo de tudo
+    const todos = '<button class="m-chip tudo' + (selMonth < 0 ? ' on' : '') +
+      '" data-mi="-1" role="tab" aria-selected="' + (selMonth < 0) + '">' +
+      '<span class="mn">' + horizonte + '</span>' +
+      '<span class="yr">meses</span>' +
+    '</button>';
+
+    $('m-months').innerHTML = todos + w12.map(function (mo, i) {
       const cls = 'm-chip' + (i === selMonth ? ' on' : '') + (i === 0 ? ' today' : '');
       return '<button class="' + cls + '" data-mi="' + i + '" role="tab" ' +
         'aria-selected="' + (i === selMonth) + '">' +
@@ -1196,7 +1287,8 @@
 
   /* ── entradas do mês selecionado (mobile) ───────────── */
   function renderMonthEntries(rows) {
-    const i   = selMonth;
+    // no cartão da janela inteira não há "um mês" para listar
+    const i   = selMonth < 0 ? 0 : selMonth;
     const mo  = w12[i];
     const net = netOf(rows[i]);
 
@@ -1210,7 +1302,7 @@
     ORDER.forEach(function (type) {
       entradasDoCalculo().forEach(function (e) {
         if (e.hidden || e.type !== type) return;
-        const v = mv(e, mo.m, i === 0);
+        const v = mv(e, mo.m, i === 0, mo.y);
         if (!v) return;
         const ts = TYPE_STYLE[type];
         const valTxt = v.kind === 'range' ? num(v.lo) + '–' + num(v.hi) : num(v.val);
@@ -2782,6 +2874,7 @@
     $('sheet-favor').classList.remove('open');
     $('sheet-pagamento').classList.remove('open');
     $('sheet-excluir').classList.remove('open');
+    $('sheet-horizonte').classList.remove('open');
     el.backdrop.classList.remove('open');
     openSheetEl = null;
     editId = null;
@@ -3229,6 +3322,9 @@
     function pickMonth(i, scroll) {
       selMonth = i;
       renderMonthStrip();
+      // o número grande e os KPIs falam do recorte, então redesenham junto
+      renderHero(lastRows);
+      renderKPIs(lastRows);
       renderMonthEntries(lastRows);
       renderCurve(lastRows);
       renderMonthTable(lastRows);
@@ -3239,6 +3335,14 @@
       const b = ev.target.closest('.m-chip');
       if (b) pickMonth(parseInt(b.dataset.mi, 10), true);
     });
+
+    $('m-growth').addEventListener('click', abrirHorizonte);
+    $('sheet-horizonte').addEventListener('click', function (ev) {
+      const b = ev.target.closest('[data-hz]');
+      if (b) escolherHorizonte(b.dataset.hz);
+    });
+    $('hz-cancel').addEventListener('click', function () { closeSheets(); });
+    $('hz-back').addEventListener('click', function () { closeSheets(); });
 
     $('m-table').addEventListener('click', function (ev) {
       const b = ev.target.closest('.m-trow');

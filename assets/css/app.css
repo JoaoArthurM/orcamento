@@ -1393,7 +1393,12 @@ svg { display: block; flex: none; }
   font-variant-numeric: tabular-nums;
 }
 
-.m-months { gap: 8px; margin-top: 18px; scroll-snap-type: x proximity; }
+/* align-items: center para o mês escolhido crescer sozinho — em
+   stretch os outros acompanhariam a altura dele */
+.m-months {
+  gap: 8px; margin-top: 16px; align-items: center;
+  scroll-snap-type: x proximity;
+}
 .m-chip {
   flex: none; scroll-snap-align: center;
   display: flex; flex-direction: column; align-items: center; gap: 2px;
@@ -1406,7 +1411,13 @@ svg { display: block; flex: none; }
 .m-chip .mn { font-size: 12.5px; font-weight: 600; letter-spacing: -.01em; }
 .m-chip .yr { font-size: 9px; opacity: .65; height: 11px; line-height: 11px; }
 .m-chip.today { background: #EDF6DF; color: #3F5F32; }
-.m-chip.on { background: var(--dark); color: #fff; }
+.m-chip.on {
+  background: var(--dark); color: #fff;
+  min-height: 58px; min-width: 70px; padding: 10px 18px;
+  box-shadow: 0 4px 14px rgba(18,58,44,.18);
+}
+.m-chip.on .mn { font-size: 14.5px; }
+.m-chip.on .yr { font-size: 10px; opacity: .8; height: 13px; line-height: 13px; }
 
 /* ── curva do acumulado ─────────────────────────────── */
 .m-curve {
@@ -2443,3 +2454,34 @@ svg { display: block; flex: none; }
 }
 .lo-eco-ico .ico { width: 15px; height: 15px; }
 .lo-eco[aria-pressed="true"] .lo-eco-ico { background: var(--dark); color: var(--lime); }
+
+/* ── cartão da janela inteira, na frente dos meses ───── */
+.m-chip.tudo {
+  background: var(--dark); color: #fff; border-color: var(--dark);
+}
+.m-chip.tudo .mn { color: var(--lime); }
+.m-chip.tudo .yr { color: #9FBCAB; }
+.m-chip.tudo.on { box-shadow: 0 6px 18px rgba(18,58,44,.28); }
+
+/* o badge do horizonte agora é clicável */
+#m-growth { cursor: pointer; transition: transform 120ms, filter 140ms; }
+#m-growth:active { transform: scale(.94); }
+#m-growth:hover  { filter: brightness(1.06); }
+
+#sheet-horizonte .ffoot { justify-content: flex-end; }
+#sheet-horizonte .bcn { flex: none; min-width: 140px; }
+
+.hz-op {
+  width: 100%; text-align: left;
+  display: flex; align-items: center; gap: 10px;
+  padding: 13px 15px; border-radius: 14px;
+  background: #F5F9F2; border: 1px solid #E4EEDD;
+  transition: background 130ms, transform 120ms;
+}
+.hz-op:active { transform: scale(.985); }
+.hz-op:hover  { background: #EDF4E7; }
+.hz-op.on { background: var(--dark); border-color: var(--dark); }
+.hz-op-tit { flex: 1; font-size: 13.5px; font-weight: 700; letter-spacing: -.02em; color: var(--tx); }
+.hz-op-sub { font-size: 11px; color: var(--tx-d); }
+.hz-op.on .hz-op-tit { color: #fff; }
+.hz-op.on .hz-op-sub { color: #9FBCAB; }

@@ -108,6 +108,25 @@ primeira entrada: gravar vazio é o mesmo caminho de "apaguei tudo".
 A semente antiga tinha nomes e valores reais, e o repositório é público. Não
 reponha dados de pessoa nenhuma em teste, fixture ou placeholder.
 
+## Horizonte variável: cuidado com o mês que se repete
+
+`get12M(n)` mantém o nome mas o tamanho vem de `horizonte` (12/24/36/48,
+guardado em `settings.horizon_months`). Numa janela de 24 meses **novembro
+aparece duas vezes** — e é aí que mora o bug fácil.
+
+Por isso `mv(e, m, isFirst, y)` recebe o ano, e toda derivada com data fixa
+carimba `ano`. Sem isso o mesmo empréstimo era recebido em nov/26 e nov/27.
+Entrada comum NÃO tem `ano`: ela repete todo ano de propósito.
+
+Ao criar derivada nova com data: carimbe `ano`. O `calc.test.js` roda em 24 e
+48 meses justamente para pegar isso.
+
+## selMonth = -1 é o cartão da janela inteira
+
+O recorte manda no número grande e nos KPIs, então `pickMonth` redesenha o
+herói e os KPIs também. `renderMonthEntries` cai no mês 0 quando `selMonth`
+é -1: não existe "um mês" para listar ali.
+
 ## Duas fontes derivadas alimentam o cálculo
 
 `entradasDoCalculo(win)` = `entries` + `economiaComoFs()` + `emprestimosComoEntradas(win)`.

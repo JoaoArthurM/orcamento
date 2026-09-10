@@ -391,6 +391,10 @@
           </div>
         </div>
 
+        <!-- seletor de mês: fica ANTES do cartão escuro, porque é o
+             filtro dele — o número grande responde ao mês escolhido -->
+        <div class="m-months" id="m-months" role="tablist" aria-label="Meses"></div>
+
         <!-- acumulado + cenário + ações -->
         <div class="m-hero">
           <div class="m-hero-top">
@@ -406,16 +410,14 @@
             <span class="m-hero-period" id="m-acum-period">em 12 meses</span>
           </span>
           <div class="m-hero-meta">
-            <span class="m-hero-growth" id="m-growth">12 meses</span>
+            <button class="m-hero-growth" id="m-growth" aria-haspopup="true"
+                    aria-label="Trocar o horizonte da projeção">12 meses</button>
           </div>
           <span class="save-st" id="save-st" role="status" aria-live="polite"></span>
         </div>
 
         <!-- KPIs em faixa rolante -->
         <div class="m-kpis" id="m-kpis"></div>
-
-        <!-- seletor de mês -->
-        <div class="m-months" id="m-months" role="tablist" aria-label="Meses"></div>
 
         <!-- curva do acumulado -->
         <div class="m-curve">
@@ -936,6 +938,19 @@
     <div class="ffoot">
       <button class="bcn" id="fv-cancel">Cancelar</button>
       <button class="bsv" id="fv-save">Salvar</button>
+    </div>
+  </div>
+
+  <!-- até onde a projeção vai -->
+  <div class="sheet" id="sheet-horizonte" role="dialog" aria-modal="true" aria-labelledby="hz-title">
+    <span class="sheet-grab mobile-only" aria-hidden="true"></span>
+    <div class="fhd">
+      <button class="bbk" id="hz-back" aria-label="Voltar"><svg class="ico" aria-hidden="true"><use href="#i-nav-arrow-left"/></svg></button>
+      <div class="ftitle" id="hz-title">Até onde projetar</div>
+    </div>
+    <div class="fbody" id="hz-opcoes"></div>
+    <div class="ffoot">
+      <button class="bcn" id="hz-cancel">Cancelar</button>
     </div>
   </div>
 
