@@ -6,7 +6,7 @@
   'use strict';
 
   /* ── CONSTANTES ─────────────────────────────────────── */
-  const APP_VERSION = '3.3.1';
+  const APP_VERSION = '3.4.2';
 
   const MS = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
   const MS_FULL = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
@@ -76,6 +76,7 @@
   let saldoInicial = 0;
   let screen       = 'hub';     // hub · eco · loans
   let loanFilter   = 'todos';   // todos · aberto · atrasados · quitados
+  let loanPerson   = null;      // filtro por pessoa (null = todas)
   let editLoanId   = null;
   let view         = 'p';        // 'p' pessimista · 'o' otimista
   let tab          = 'resumo';
@@ -328,12 +329,29 @@
 
   function loansFiltrados() {
     return loans.filter(function (l) {
+      if (loanPerson && chavePessoa(l.person) !== loanPerson) return false;
       const i = loanInfo(l);
       if (loanFilter === 'aberto')    return !i.quitado;
       if (loanFilter === 'atrasados') return i.atrasado;
       if (loanFilter === 'quitados')  return i.quitado;
       return true;
     });
+  }
+
+  /** Uma entrada por pessoa, com o que ela ainda deve. */
+  function pessoasDosEmprestimos() {
+    const mapa = {};
+    loans.forEach(function (l) {
+      const k = chavePessoa(l.person);
+      if (!mapa[k]) mapa[k] = { chave: k, nome: l.person, n: 0, emAberto: 0, atrasados: 0 };
+      const p = mapa[k];
+      const i = loanInfo(l);
+      p.n++;
+      p.emAberto += i.emAberto;
+      if (i.atrasado) p.atrasados++;
+    });
+    return Object.keys(mapa).map(function (k) { return mapa[k]; })
+      .sort(function (a, b) { return b.emAberto - a.emAberto; });
   }
 
   function iniciais(nome) {
@@ -345,9 +363,18 @@
   /** Cor do bloco de avatar, estável por nome. */
   const AVATAR_BG = ['#E9F6D6', '#FAF2DF', '#EEF3FD', '#FEF0EE', '#F1F6EE'];
   const AVATAR_FG = ['#2F6142', '#8A6A24', '#2E5A8C', '#8C3A2F', '#51705E'];
+  /**
+   * Cor estável por pessoa. Normaliza antes de somar, para que
+   * "Jamilly", "jamilly" e "Jamilly " caiam sempre na mesma cor.
+   */
+  function chavePessoa(nome) {
+    return String(nome || '').trim().toLowerCase().replace(/\s+/g, ' ');
+  }
+
   function avatarIdx(nome) {
+    const k = chavePessoa(nome);
     let h = 0;
-    for (let i = 0; i < nome.length; i++) h = (h * 31 + nome.charCodeAt(i)) % 997;
+    for (let i = 0; i < k.length; i++) h = (h * 31 + k.charCodeAt(i)) % 997;
     return h % AVATAR_BG.length;
   }
 
@@ -655,6 +682,7 @@
 
     const ab = document.querySelector('.appbar');
     if (ab) ab.classList.remove('flutuando');
+    ajustarContrasteTopo(true);
 
     lembrarTela();
 
@@ -1052,13 +1080,39 @@
     $('lo-received').textContent = num(r.recebido);
     $('lo-open').textContent     = num(r.emAberto);
 
+    /* cartões de pessoa — só aparecem quando há mais de uma */
+    const pessoas = pessoasDosEmprestimos();
+    const faixa = $('lo-pessoas');
+    faixa.hidden = pessoas.length < 2;
+    if (!faixa.hidden) {
+      faixa.innerHTML =
+        '<button class="lo-pcard' + (loanPerson ? '' : ' on') + '" data-p="" role="tab" ' +
+          'aria-selected="' + !loanPerson + '">' +
+          '<span class="lo-pav" style="background:#F1F6EE;color:#51705E">' + ico('user') + '</span>' +
+          '<span class="lo-pnome"><b>Todas</b><span>' + pessoas.length + ' pessoas</span></span>' +
+        '</button>' +
+        pessoas.map(function (p) {
+          const ai = avatarIdx(p.nome);
+          const on = loanPerson === p.chave;
+          const nota = p.emAberto > 0 ? 'deve R$ ' + short(p.emAberto) : 'quitado';
+          return '<button class="lo-pcard' + (on ? ' on' : '') + '" data-p="' + esc(p.chave) + '" ' +
+            'role="tab" aria-selected="' + on + '">' +
+            '<span class="lo-pav" style="background:' + AVATAR_BG[ai] + ';color:' + AVATAR_FG[ai] + '">' +
+              esc(iniciais(p.nome)) + '</span>' +
+            '<span class="lo-pnome"><b>' + esc(p.nome) + '</b><span>' + nota +
+              (p.atrasados ? ' · atrasado' : '') + '</span></span>' +
+          '</button>';
+        }).join('') + '<span style="flex:none;width:2px"></span>';
+    }
+
     $('lo-filters').innerHTML = LOAN_FILTERS.map(function (f) {
       return '<button class="lo-chip' + (f.id === loanFilter ? ' on' : '') + '" data-f="' + f.id + '" ' +
         'role="tab" aria-selected="' + (f.id === loanFilter) + '">' + f.label + '</button>';
     }).join('') + '<span style="flex:none;width:2px"></span>';
 
     const lista = loansFiltrados();
-    $('lo-count').textContent = lista.length === 1 ? '1 pessoa' : lista.length + ' pessoas';
+    $('lo-count').textContent = lista.length === 1
+      ? '1 empréstimo' : lista.length + ' empréstimos';
 
     if (!lista.length) {
       $('lo-list').innerHTML =
@@ -2219,6 +2273,80 @@
   function svgTrash() { return ico('trash'); }
 
   /* ══════════════════════════════════════════════════════
+     CONTRASTE DO TOPO
+     Os botões flutuam sobre conteúdo que rola — ora claro,
+     ora o cartão verde-escuro. Aqui medimos o que está
+     atrás de cada um e invertemos a cor quando precisa.
+     ══════════════════════════════════════════════════════ */
+
+  /** Extrai a primeira cor de um valor CSS — cor sólida ou gradiente. */
+  function primeiraCor(txt) {
+    const m = txt && txt.match(/rgba?\(([^)]+)\)/);
+    if (!m) return null;
+    const p = m[1].split(',').map(Number);
+    return (p.length > 3 && p[3] < 0.5) ? null : p;   // quase transparente não conta
+  }
+
+  /**
+   * Cor efetiva atrás do elemento.
+   *
+   * A busca para no #app: dali para trás só existe o <body>, que é
+   * verde-escuro apenas como moldura fora da área do app — usá-lo
+   * daria o veredito errado. O #app em si pinta um gradiente claro,
+   * que está em background-image, não em background-color.
+   */
+  function corAtras(el) {
+    if (!el || el.hidden) return null;
+    const r = el.getBoundingClientRect();
+    if (!r.width) return null;
+    const barra = el.closest('.appbar');
+    let pilha = [];
+    try {
+      pilha = document.elementsFromPoint(r.left + r.width / 2, r.top + r.height / 2) || [];
+    } catch (e) { return null; }
+
+    for (let i = 0; i < pilha.length; i++) {
+      const n = pilha[i];
+      if (barra && barra.contains(n)) continue;            // o próprio botão
+      const cs = getComputedStyle(n);
+
+      const solida = primeiraCor(cs.backgroundColor);
+      if (solida) return solida;
+
+      const grad = primeiraCor(cs.backgroundImage);
+      if (grad) return grad;
+
+      if (n.id === 'app' || n === document.body) break;    // não vai além do app
+    }
+    return null;
+  }
+
+  /** Luminância relativa (WCAG) — abaixo de 0.5 é fundo escuro. */
+  function ehEscuro(rgb) {
+    if (!rgb) return false;    // o gradiente da página é claro
+    const f = rgb.slice(0, 3).map(function (v) {
+      const x = v / 255;
+      return x <= 0.03928 ? x / 12.92 : Math.pow((x + 0.055) / 1.055, 2.4);
+    });
+    return (0.2126 * f[0] + 0.7152 * f[1] + 0.0722 * f[2]) < 0.5;
+  }
+
+  /* Execução direta com limite de frequência. requestAnimationFrame
+     seria o natural, mas ele para quando a janela perde o foco — e aí
+     os botões ficariam com a cor errada ao voltar. */
+  let contrasteUltimo = 0;
+  function ajustarContrasteTopo(agora) {
+    const t = Date.now();
+    if (!agora && t - contrasteUltimo < 60) return;   // no máximo ~16x por segundo
+    contrasteUltimo = t;
+    ['btn-back', 'm-avatar'].forEach(function (id) {
+      const n = $(id);
+      if (!n || n.hidden) return;
+      n.classList.toggle('claro', ehEscuro(corAtras(n)));
+    });
+  }
+
+  /* ══════════════════════════════════════════════════════
      HUB — reordenar segurando e arrastando
      ══════════════════════════════════════════════════════ */
   /**
@@ -2575,6 +2703,12 @@
     $('ct-back').addEventListener('click', function () { closeSheets(); });
 
     /* empréstimos */
+    $('lo-pessoas').addEventListener('click', function (ev) {
+      const b = ev.target.closest('.lo-pcard');
+      if (!b) return;
+      loanPerson = b.dataset.p || null;
+      renderLoans();
+    });
     $('lo-filters').addEventListener('click', function (ev) {
       const b = ev.target.closest('.lo-chip');
       if (!b) return;
@@ -2606,6 +2740,7 @@
       sc.addEventListener('scroll', function () {
         if (!appbar) return;
         appbar.classList.toggle('flutuando', sc.scrollTop > 8);
+        ajustarContrasteTopo();
       }, { passive: true });
     });
 
@@ -2939,6 +3074,10 @@
       deferredPrompt.prompt();
       deferredPrompt.userChoice.then(function () { deferredPrompt = null; $('install-card').hidden = true; });
     });
+
+    // o primeiro ajuste espera o layout assentar
+    setTimeout(function () { ajustarContrasteTopo(true); }, 60);
+    window.addEventListener('resize', ajustarContrasteTopo);
 
     Store.onStatusChange(setStatus);
     Store.onRemoteChange(function (state) {

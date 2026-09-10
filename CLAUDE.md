@@ -51,6 +51,13 @@ saía com juros zero.
 `node tests/markup.test.js` verifica duplicatas, se todo id lido com `.value`
 é mesmo um campo, e se todo ícone referenciado existe no sprite.
 
+## requestAnimationFrame não serve para tudo
+
+O rAF **para quando a janela perde o foco** — e não volta a rodar sozinho. Um
+callback agendado ali (ou uma flag de "já agendei") fica preso, e o efeito só
+reaparece depois de outra interação. Para trabalho leve disparado por scroll,
+prefira execução direta com limite de tempo. Foi o caso do contraste do topo.
+
 ## Testar no navegador
 
 Redimensione para ~400px antes: acima de 1024px o app troca para o layout
