@@ -122,6 +122,15 @@ quebrou `usar_codigo` na primeira versão.
 O teste de SQL não pega isto: é semântico, não estrutural. Função com
 `returns table` só se prova rodando.
 
+## Função usada em política de RLS precisa continuar executável
+
+Política que chama função sem permissão **erra** — não devolve `false`. Revogar
+`pode_ver_economia` de `anon` fez toda leitura de entries/settings/accounts/
+loans/favors/favor_payments responder `42501`, inclusive as linhas do próprio
+dono. Só não derrubou o app porque quem está logado usa `authenticated`.
+
+Antes de revogar uma função, procure o nome dela em `using (...)`.
+
 ## revoke de PUBLIC não tira o grant do Supabase a anon
 
 O Supabase concede EXECUTE ao papel `anon` por padrão em funções do `public`.

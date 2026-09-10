@@ -1,0 +1,31 @@
+-- ══════════════════════════════════════════════════════
+-- orçamento. — devolver pode_ver_economia() ao papel anon
+--
+-- Cole no SQL Editor do Supabase e clique em Run.
+--
+-- ── O QUE EU QUEBREI ──────────────────────────────────
+-- O arquivo `schema-compartilhar-trancar.sql` revogou de
+-- `anon` TODAS as funções do compartilhamento. Uma delas,
+-- `pode_ver_economia()`, é chamada de dentro das POLÍTICAS
+-- de RLS de entries, settings, accounts, loans, favors e
+-- favor_payments.
+--
+-- Política que chama função sem permissão não devolve
+-- "false": ela ERRA. Resultado: qualquer leitura dessas
+-- tabelas passou a responder 42501, mesmo as linhas do
+-- próprio dono.
+--
+-- Quem está logado usa o papel `authenticated`, que manteve
+-- o grant — então o app não parou. Mas a base ficou errada,
+-- e um caminho que use `anon` quebra sem aviso.
+--
+-- ── POR QUE É SEGURO DEVOLVER ─────────────────────────
+-- A função só responde "este usuário pode ver a economia
+-- daquele?". Sem sessão, auth.uid() é nulo e a resposta é
+-- sempre `false`. Ela não devolve dado nenhum.
+--
+-- As outras seis continuam trancadas: nenhuma é usada em
+-- política, e todas exigem sessão para fazer algo.
+-- ══════════════════════════════════════════════════════
+
+grant execute on function public.pode_ver_economia(uuid) to anon;

@@ -21,7 +21,9 @@
 -- não devem estar ao alcance de quem não entrou.
 -- ══════════════════════════════════════════════════════
 
-revoke execute on function public.pode_ver_economia(uuid) from anon;
+-- pode_ver_economia NÃO entra aqui: as políticas de RLS a chamam, e
+-- política que chama função sem permissão erra em vez de dar false.
+-- Sem sessão ela responde false e não devolve dado nenhum.
 revoke execute on function public.cor_livre(uuid)         from anon;
 revoke execute on function public.minhas_conexoes()       from anon;
 revoke execute on function public.desconectar(uuid)       from anon;
@@ -31,6 +33,7 @@ revoke execute on function public.usar_codigo(text)       from anon;
 
 -- `authenticated` continua com tudo: é quem o app usa depois do login.
 grant execute on function public.pode_ver_economia(uuid) to authenticated;
+grant execute on function public.pode_ver_economia(uuid) to anon;
 grant execute on function public.cor_livre(uuid)         to authenticated;
 grant execute on function public.minhas_conexoes()       to authenticated;
 grant execute on function public.desconectar(uuid)       to authenticated;

@@ -103,9 +103,9 @@ as $$
   );
 $$;
 
-revoke all on function public.pode_ver_economia(uuid) from public;
--- o Supabase concede a anon por padrão; revoke de PUBLIC não desfaz
-revoke execute on function public.pode_ver_economia(uuid) from anon;
+-- Esta fica ao alcance de anon de propósito: as políticas de RLS a
+-- chamam, e política que chama função sem permissão ERRA em vez de
+-- dar false. Sem sessão ela responde false e não devolve dado.
 grant execute on function public.pode_ver_economia(uuid) to authenticated;
 
 -- ══════════════════════════════════════════════════════
