@@ -125,10 +125,13 @@ roupa fica intacta.
 
 #### A dívida é que se repete, não o pagamento
 
-"Jamile me deve 250 até dezembro, 3 vezes" se anota no próprio favor: o
+"Marina me deve 250 até dezembro, 3 vezes" se anota no próprio favor: o
 formulário tem **repete por quantos meses**, e salvar cria **um favor por
-mês**, mesma pessoa e mesmo motivo, com a data deslizando (dia 31 em mês
-curto cai no último dia do mês).
+mês**, mesma pessoa e mesmo motivo.
+
+Só o **vencimento** avança (dia 31 em mês curto cai no último dia do mês). A
+data em que o dinheiro saiu é a mesma nas N linhas — a saída aconteceu uma vez,
+num dia só. Por isso repetir exige a data de pagamento preenchida.
 
 Cada mês é uma dívida com data própria — é o que faz a lista por dia, a
 repartição do pagamento e o "quitar só este item" continuarem valendo sem

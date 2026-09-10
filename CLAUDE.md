@@ -125,6 +125,17 @@ pagamento cairia num favor diferente do que está na tela.
 
 ## Favor: quem manda é o vencimento
 
+Na repetição por N meses, **só o `due_on` avança**. O `lent_on` é o mesmo nas N
+linhas: o dinheiro saiu uma vez, num dia só — o que se repete é a promessa de
+pagar. Fazer as duas datas andarem punha o dinheiro saindo em meses em que
+ninguém pegou nada, e foi um bug real aqui.
+
+Repetir **exige** data de pagamento: sem ela só o vencimento andaria, e as N
+linhas sairiam idênticas.
+
+Essa lógica mora em `saveFavor` (app.js), que precisa de DOM — os testes de VM
+não a alcançam. Verifique no navegador ao mexer nela.
+
 `due_on` ordena e agrupa; `lent_on` fica registrado e não ordena nada.
 `Store.ordemFavor()` é a regra única — sem prazo vai para o fim da fila
 (`9999-12-31`), e `porDia` no app.js usa o mesmo critério.
