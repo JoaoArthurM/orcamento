@@ -119,9 +119,23 @@ Mesma razão para o deslize do favor vencido: `favorInfo` compara `due_on` com
 hoje e empurra mês a mês até cair no futuro. A data guardada não muda, então o
 app não reescreve o banco só porque o tempo passou.
 
-O deslize **não pode** vazar para `alocarFavores`: lá a ordem é a da dívida mais
-antiga (`lent_on`), e um favor atrasado continua sendo o mais antigo. Com a data
-deslizada, o pagamento cairia no favor errado.
+O deslize **não pode** vazar para `alocarFavores`: lá a ordem é a do vencimento
+combinado (`due_on`), não a da data já empurrada. Com a data deslizada, o
+pagamento cairia num favor diferente do que está na tela.
+
+## Favor: quem manda é o vencimento
+
+`due_on` ordena e agrupa; `lent_on` fica registrado e não ordena nada.
+`Store.ordemFavor()` é a regra única — sem prazo vai para o fim da fila
+(`9999-12-31`), e `porDia` no app.js usa o mesmo critério.
+
+Tela e repartição **têm** de concordar: o botão diz "divide pelo que vence
+antes", então é isso que `alocarFavores` faz. Se divergirem, o dinheiro cai
+num favor que o usuário não viu.
+
+Pagamento de alcance `dia` casa por `due_on` **ou** por `lent_on` — os
+registrados antes desta mudança guardaram a data de saída, e sem a segunda
+opção perderiam o alvo e virariam crédito do nada.
 
 Contas de dinheiro na repartição são em **centavos inteiros**: um resto de
 ponto flutuante faz um favor quitado aparecer como aberto.

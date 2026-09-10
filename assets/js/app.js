@@ -198,23 +198,40 @@
              atrasado: atrasado, vence: vence, mesesAtraso: meses };
   }
 
-  /** Agrupa os favores de uma pessoa por dia — cada dia é uma saída. */
+  /**
+   * Agrupa os favores de uma pessoa pela data em que ela combinou de
+   * pagar. A data em que o dinheiro saiu fica registrada em cada item,
+   * mas não agrupa nem ordena mais nada.
+   *
+   * Quem vence antes aparece em cima: é lista de cobrança, e o que está
+   * atrasado tem que ser a primeira coisa que se vê. Favor sem prazo
+   * combinado vai para um grupo próprio, no fim.
+   *
+   * A mesma ordem vale em Store.alocarFavores — se as duas discordassem,
+   * o pagamento cairia num favor diferente do que está na tela.
+   */
+  const SEM_PRAZO = 'sem-prazo';
+
   function porDia(itens) {
     const mapa = {};
     itens.forEach(function (f) {
-      if (!mapa[f.lent_on]) mapa[f.lent_on] = { dia: f.lent_on, itens: [], total: 0,
-                                                pago: 0, atrasados: 0, vence: null };
-      const d = mapa[f.lent_on];
+      const chave = f.due_on || SEM_PRAZO;
+      if (!mapa[chave]) mapa[chave] = { dia: f.due_on || null, chave: chave, itens: [],
+                                        total: 0, pago: 0, atrasados: 0 };
+      const d = mapa[chave];
       const i = favorInfo(f);
       d.itens.push(f);
       d.total += f.amount;
       d.pago  += i.pago;
       if (i.atrasado) d.atrasados++;
-      // o dia não tem prazo próprio: mostra o vencimento mais próximo
-      // ainda em aberto — o que já foi pago não é mais cobrança
-      if (i.vence && !i.quitado && (!d.vence || i.vence < d.vence)) d.vence = i.vence;
+      // o grupo escorrega junto com os seus itens
+      if (i.atrasado && (!d.vence || i.vence < d.vence)) d.vence = i.vence;
     });
-    return Object.keys(mapa).sort().reverse().map(function (k) {
+    return Object.keys(mapa).sort(function (a, b) {
+      // o mesmo critério do Store: sem prazo é o fim da fila
+      return (a === SEM_PRAZO ? '9999-12-31' : a)
+        .localeCompare(b === SEM_PRAZO ? '9999-12-31' : b);
+    }).map(function (k) {
       const d = mapa[k];
       d.falta   = Math.max(0, d.total - d.pago);
       d.pct     = d.total > 0 ? (d.pago / d.total) * 100 : 0;
@@ -489,10 +506,18 @@
   }
 
   /** "09/set" — curto, para caber no cartão. */
+  /**
+   * Data curta. O ano aparece SÓ quando não é o corrente.
+   *
+   * Numa lista que atravessa a virada — 9 meses lançados em 2026 caem
+   * metade em 2027 — '07/jan' sozinho é ambíguo, e dois grupos diferentes
+   * ficariam com o mesmo título.
+   */
   function dataCurta(iso) {
     if (!iso) return '—';
     const p = iso.split('-');
-    return p[2] + '/' + MS[parseInt(p[1], 10) - 1].toLowerCase();
+    const curta = p[2] + '/' + MS[parseInt(p[1], 10) - 1].toLowerCase();
+    return p[0] === Store.hoje().slice(0, 4) ? curta : curta + '/' + p[0].slice(2);
   }
 
   /* ── FORMATAÇÃO ─────────────────────────────────────── */
@@ -1575,15 +1600,12 @@
               '<span class="fv-item-corpo">' +
                 '<span class="fv-motivo">' + esc(f.reason) + '</span>' +
                 (function () {
-                  const partes = [];
+                  /* O vencimento agora é o título do grupo; aqui vai a data
+                     em que o dinheiro saiu, que continua registrada. */
+                  const partes = ['pego em ' + dataCurta(f.lent_on)];
                   if (parcial) partes.push('pago R$ ' + num(i.pago) + ' de ' + num(f.amount));
-                  if (i.atrasado) {
-                    partes.push('venceu ' + dataCurta(f.due_on) + ' — foi para ' + dataCurta(i.vence));
-                  } else if (i.vence && !i.quitado) {
-                    partes.push('paga ' + dataCurta(i.vence));
-                  }
-                  return partes.length
-                    ? '<span class="fv-quando">' + partes.join(' · ') + '</span>' : '';
+                  if (i.atrasado) partes.push('atrasado');
+                  return '<span class="fv-quando">' + partes.join(' · ') + '</span>';
                 })() +
               '</span>' +
               '<span class="fv-item-val">' +
@@ -1601,15 +1623,21 @@
         return '<div class="fv-dia' + (d.quitado ? ' quitado' : '') +
             (d.atrasados ? ' atrasado' : '') + '">' +
           '<div class="fv-dia-cab">' +
-            '<span class="fv-dia-data">' + dataCurta(d.dia) + '</span>' +
-            '<span class="fv-dia-meta">' + d.itens.length +
+            '<span class="fv-dia-data">' +
+              (d.dia ? dataCurta(d.dia) : 'sem prazo') + '</span>' +
+            '<span class="fv-dia-meta">' +
+              (d.atrasados && d.vence ? 'foi para ' + dataCurta(d.vence) + ' · ' : '') +
+              d.itens.length +
               (d.itens.length === 1 ? ' conta · R$ ' : ' contas · R$ ') + num(d.total) + '</span>' +
             '<span class="fv-dia-falta ' +
               (d.quitado ? 'quitado' : (d.atrasados ? 'vencido' : 'aberto')) + '">' +
               (d.quitado ? 'pago' : 'falta R$ ' + num(d.falta)) + '</span>' +
             (d.quitado ? '' :
-              '<button class="fv-mini" data-pay="dia" data-alvo="' + esc(p.chave) + '|' + d.dia +
-                '" aria-label="Registrar pagamento deste dia">' + ico('coins') + '</button>') +
+              (d.dia
+                ? '<button class="fv-mini" data-pay="dia" data-alvo="' +
+                    esc(p.chave) + '|' + d.dia +
+                    '" aria-label="Registrar pagamento deste vencimento">' + ico('coins') + '</button>'
+                : '')) +
           '</div>' +
           '<div class="fv-dia-itens">' + itens + '</div>' +
         '</div>';
@@ -1661,7 +1689,7 @@
         '<div class="fv-itens">' +
           '<button class="fv-pagar-tudo" data-pay="total" data-alvo="' + esc(p.chave) + '">' +
             ico('coins') + '<span>Registrar pagamento</span>' +
-            '<span class="fv-pagar-nota">divide sozinho, do mais antigo</span>' +
+            '<span class="fv-pagar-nota">divide sozinho, pelo que vence antes</span>' +
           '</button>' +
           (p.credito > 0
             ? '<div class="fv-credito">' + ico('info-circle') +
@@ -1679,7 +1707,7 @@
       const f = favores.find(function (x) { return x.id === pg.favor_id; });
       return f ? esc(f.reason) : 'item removido';
     }
-    if (pg.scope === 'dia') return 'dia ' + dataCurta(pg.scope_day);
+    if (pg.scope === 'dia') return 'vencimento ' + dataCurta(pg.scope_day);
     return 'no total';
   }
 
@@ -2125,7 +2153,7 @@
       if (!d) return null;
       return { scope: 'dia', person: p.nome, favor_id: null, scope_day: dia,
                aberto: d.falta,
-               rotulo: 'dia ' + dataCurta(dia) + ' · ' + d.itens.length +
+               rotulo: 'vence ' + dataCurta(dia) + ' · ' + d.itens.length +
                        (d.itens.length === 1 ? ' conta' : ' contas') };
     }
     const p = porPessoa().find(function (x) { return x.chave === alvo; });
@@ -2168,8 +2196,8 @@
 
     const ALCANCE_NOTA = {
       item:  'Entra só nesta conta.',
-      dia:   'Divide entre as contas deste dia, da primeira para a última.',
-      total: 'Divide entre tudo que está em aberto, do mais antigo para o mais novo.',
+      dia:   'Divide entre as contas deste vencimento, da primeira para a última.',
+      total: 'Divide entre tudo que está em aberto, começando pelo que vence antes.',
     };
     $('pg-nota').textContent = ALCANCE_NOTA[pagAlvo.scope];
 

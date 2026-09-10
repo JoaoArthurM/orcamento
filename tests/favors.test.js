@@ -377,21 +377,71 @@ const P2 = 'bbbbbbbb-2222-4222-8222-bbbbbbbbbbbb';
       && up2.rows[0].due_on === '2026-11-01', up2 && up2.rows[0]);
   }
 
-  /* 12: o prazo não pode mexer na ordem da repartição.
-         Um favor atrasado continua sendo a dívida mais antiga, e é ele
-         que o pagamento tem que preencher primeiro. */
+  /* 12: a repartição segue a data de PAGAMENTO, não a de saída.
+         A tela agrupa por vencimento; se a divisão usasse outra ordem, o
+         dinheiro cairia num favor diferente daquele que o usuário viu. */
   {
     const S = load([]).Store;
-    const velho = S.normalizeFavor({ id: F1, person: 'A', reason: 'antigo', amount: 100,
-      lent_on: '2026-01-10', due_on: '2026-02-10' });
-    const novo = S.normalizeFavor({ id: F2, person: 'A', reason: 'novo', amount: 100,
-      lent_on: '2026-06-10', due_on: '2026-01-01' });   // prazo bem anterior
+    // pego antes, mas combinado para pagar depois
+    const pegoAntes = S.normalizeFavor({ id: F1, person: 'A', reason: 'pego antes',
+      amount: 100, lent_on: '2026-01-10', due_on: '2026-12-07' });
+    // pego depois, mas vence primeiro
+    const venceAntes = S.normalizeFavor({ id: F2, person: 'A', reason: 'vence antes',
+      amount: 100, lent_on: '2026-06-10', due_on: '2026-11-07' });
 
-    const r = S.alocarFavores([velho, novo], [
+    const r = S.alocarFavores([pegoAntes, venceAntes], [
       S.normalizePayment({ id: P1, person: 'A', amount: 100, scope: 'total' }),
     ]);
-    check('a ordem segue lent_on, não due_on',
-      r.pago[F1] === 100 && r.pago[F2] === 0, r.pago);
+    check('quem vence antes recebe primeiro',
+      r.pago[F2] === 100 && r.pago[F1] === 0, r.pago);
+
+    // favor sem prazo vai para o fim da fila
+    const semPrazo = S.normalizeFavor({ id: F3, person: 'A', reason: 'sem prazo',
+      amount: 100, lent_on: '2020-01-01' });
+    const r2 = S.alocarFavores([semPrazo, venceAntes], [
+      S.normalizePayment({ id: P1, person: 'A', amount: 100, scope: 'total' }),
+    ]);
+    check('sem prazo não fura a fila de quem tem data',
+      r2.pago[F2] === 100 && r2.pago[F3] === 0, r2.pago);
+
+    // ... mas recebe quando sobra
+    const r3 = S.alocarFavores([semPrazo, venceAntes], [
+      S.normalizePayment({ id: P1, person: 'A', amount: 200, scope: 'total' }),
+    ]);
+    check('sem prazo recebe o que sobra',
+      r3.pago[F2] === 100 && r3.pago[F3] === 100, r3.pago);
+
+    // mesmo vencimento: vale a ordem de lançamento
+    const a = S.normalizeFavor({ id: F1, person: 'A', reason: 'a', amount: 50,
+      lent_on: '2026-03-01', due_on: '2026-11-07' });
+    const b = S.normalizeFavor({ id: F2, person: 'A', reason: 'b', amount: 50,
+      lent_on: '2026-04-01', due_on: '2026-11-07' });
+    const r4 = S.alocarFavores([a, b], [
+      S.normalizePayment({ id: P1, person: 'A', amount: 50, scope: 'total' }),
+    ]);
+    check('empate no vencimento cai na ordem de lançamento',
+      r4.pago[F1] === 50 && r4.pago[F2] === 0, r4.pago);
+  }
+
+  /* 12b: pagamento de dia registrado ANTES desta mudança guardou a data de
+          saída. Ele não pode perder o alvo e virar crédito do nada. */
+  {
+    const S = load([]).Store;
+    const f = S.normalizeFavor({ id: F1, person: 'A', reason: 'x', amount: 80,
+      lent_on: '2026-09-10' });                   // sem due_on, como era antes
+    const antigo = S.normalizePayment({ id: P1, person: 'A', amount: 80,
+      scope: 'dia', scope_day: '2026-09-10' });
+    check('pagamento de dia antigo continua achando o favor',
+      S.alocarFavores([f], [antigo]).pago[F1] === 80,
+      S.alocarFavores([f], [antigo]));
+
+    // e o novo, keyado no vencimento, também acha
+    const g = S.normalizeFavor({ id: F2, person: 'A', reason: 'y', amount: 60,
+      lent_on: '2026-09-10', due_on: '2026-11-07' });
+    const novo = S.normalizePayment({ id: P2, person: 'A', amount: 60,
+      scope: 'dia', scope_day: '2026-11-07' });
+    check('pagamento de dia novo acha pelo vencimento',
+      S.alocarFavores([g], [novo]).pago[F2] === 60);
   }
 
   /* 13: tabela ausente não derruba o resto */

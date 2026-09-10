@@ -327,14 +327,29 @@
    * Ninguém guarda isso: é recalculado a cada desenho, e por isso
    * editar ou apagar um favor nunca deixa uma divisão velha para trás.
    */
+  /**
+   * A data que manda num favor é a de PAGAMENTO — quando ela combinou de
+   * pagar. A data em que o dinheiro saiu continua guardada, mas não ordena
+   * mais nada: o que interessa é quando o dinheiro deve voltar.
+   *
+   * Nulo é o fim da fila: favor sem prazo combinado não disputa lugar com
+   * quem tem data marcada.
+   */
+  function ordemFavor(f) {
+    return f && f.due_on ? f.due_on : '9999-12-31';
+  }
+
   function alocarFavores(favors, payments) {
-    /* Ordem em que o dinheiro entra: dia mais antigo primeiro e, dentro
-       do dia, a ordem em que os favores foram lançados — que é a mesma
-       que a tela mostra. O id NÃO serve de desempate: ele é aleatório, e
-       isso deixaria imprevisível qual conta do dia recebe o troco. */
+    /* Ordem em que o dinheiro entra: vence antes, enche antes — a mesma
+       ordem que a tela mostra. Se as duas discordassem, o pagamento cairia
+       num favor diferente daquele que o usuário viu.
+
+       Dentro do mesmo vencimento vale a ordem de lançamento. O id NÃO serve
+       de desempate: ele é aleatório, e isso deixaria imprevisível qual conta
+       do dia recebe o troco. */
     const lista = (favors || []).map(function (f, i) { return { f: f, i: i }; })
       .sort(function (a, b) {
-        return String(a.f.lent_on).localeCompare(String(b.f.lent_on)) || a.i - b.i;
+        return ordemFavor(a.f).localeCompare(ordemFavor(b.f)) || a.i - b.i;
       }).map(function (x) { return x.f; });
 
     const devendo = {};   // favorId → centavos ainda em aberto
@@ -386,7 +401,14 @@
       if (p.scope === 'item') {
         alvos = lista.filter(function (f) { return f.id === p.favor_id; });
       } else if (p.scope === 'dia') {
-        alvos = daPessoa(p).filter(function (f) { return f.lent_on === p.scope_day; });
+        /* O grupo é o vencimento. O lent_on entra junto por causa dos
+           pagamentos registrados antes desta mudança, que guardaram a data
+           em que o dinheiro saiu — sem isto, eles perderiam o alvo e
+           virariam crédito do nada. */
+        alvos = daPessoa(p).filter(function (f) {
+          return f.due_on === p.scope_day
+            || (!f.due_on && f.lent_on === p.scope_day);
+        });
       } else {
         alvos = daPessoa(p);
       }
@@ -863,6 +885,7 @@
     normalizePayment: normalizePayment,
     validPayment: validPayment,
     alocarFavores: alocarFavores,
+    ordemFavor: ordemFavor,
     estadoVazio: estadoVazio,
     FREQ_MES: FREQ_MES,
     hoje: hoje,

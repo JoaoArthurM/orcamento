@@ -135,6 +135,18 @@ repartição do pagamento e o "quitar só este item" continuarem valendo sem
 nenhum caso especial. Pagamento não se repete: cada um é um lançamento
 avulso, do valor que de fato entrou.
 
+#### A lista é por vencimento
+
+Os favores de cada pessoa se agrupam pela data em que ela **combinou de pagar**,
+do que vence antes para o que vence depois. A data em que o dinheiro saiu fica
+em cada item ("pego em 05/out"), mas não ordena nada. Sem prazo combinado, o
+favor cai num grupo "sem prazo" no fim.
+
+A repartição do pagamento segue a **mesma** ordem — se divergisse, o dinheiro
+cairia num favor diferente do que está na tela.
+
+Quando a lista atravessa a virada do ano, a data mostra o ano: `07/jan/27`.
+
 #### Prazo e atraso
 
 `due_on` guarda quando ela combinou de pagar — **nulo é normal** ("paga quando
