@@ -95,7 +95,7 @@
       && TYPES_OK.indexOf(e.type) >= 0;
   }
 
-  /** Normaliza uma entrada vinda de qualquer origem (semente, import, nuvem). */
+  /** Normaliza uma entrada vinda da nuvem ou do formulário. */
   function normalize(e) {
     const out = {
       id:     isUuid(e.id) ? e.id : newId(),
@@ -767,6 +767,26 @@
     }
   }
 
+  /**
+   * Assinatura estável do estado — serve para responder "mudou alguma
+   * coisa de verdade?".
+   *
+   * Passa por toRow porque é ele que define o que o servidor guarda: o
+   * que não vai para a linha (posição na memória, campo derivado) não
+   * pode contar como mudança.
+   */
+  function assinatura(st) {
+    if (!st) return '';
+    const partes = COLECOES.map(function (c) {
+      return c.chave + ':' + (st[c.chave] || []).map(function (r, i) {
+        try { return JSON.stringify(c.toRow(r, i)); } catch (e) { return ''; }
+      }).join('|');
+    });
+    partes.push('saldo:' + (Number(st.saldoInicial) || 0));
+    partes.push('hub:' + JSON.stringify(st.hubOrder || null));
+    return partes.join('\n');
+  }
+
   /* realtime — outro aparelho gravou */
   let remoteTimer = null;
   function subscribe() {
@@ -790,9 +810,20 @@
       try {
         const remote = await pull();
         if (!remote) return;
+
+        /* O Realtime devolve TAMBÉM as gravações deste aparelho: salvar
+           aqui dispara um evento que volta para cá. O eco chega depois
+           do push terminar, quando dirty e pushing já são false, então
+           as travas acima não o pegam.
+
+           Por isso a pergunta certa não é "chegou evento?" e sim
+           "o que veio é diferente do que eu já tinha?". Sem isto, cada
+           edição do usuário virava um aviso de "outro aparelho". */
+        const mudou = assinatura(remote) !== assinatura(synced);
+
         writeSynced(remote);
         writeLocal(remote);
-        if (onRemote) onRemote(remote);
+        if (mudou && onRemote) onRemote(remote);
       } catch (e) {}
     }, 400);
   }

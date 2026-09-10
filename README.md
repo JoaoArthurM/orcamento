@@ -32,7 +32,7 @@ hub ──► economia    ──► [simulador]   [+] [tabelas]
     ├─► empréstimos ──► [empréstimos] [+] [tabelas]
     ├─► contas      ──► [contas]      [+] [tabelas]
     ├─► favores     ──► [favores]     [+] [tabelas]
-    └─► ajustes (conta, senha, exportar/importar, apagar)
+    └─► ajustes (conta, senha, instalar, apagar)
 ```
 
 **Tabelas** mostra os lançamentos do módulo aberto, com busca e ações de editar
@@ -123,16 +123,17 @@ Exemplo — saída de 10/set com Uber 40, comida 160 e roupa 300, mais farmácia
 100 no dia 15. Ela passa 200 sem dizer de quê: quita o Uber e a comida, e a
 roupa fica intacta.
 
-#### Combinado de parcelas
+#### A dívida é que se repete, não o pagamento
 
-"Me paga 250 por 5 meses" vira cinco linhas com o mesmo `plan_id`, numeradas
-de 1 a 5. Só as de status `pago` abatem a dívida; as `previsto` existem para
-mostrar "2 de 5" e a próxima data.
+"Jamile me deve 250 até dezembro, 3 vezes" se anota no próprio favor: o
+formulário tem **repete por quantos meses**, e salvar cria **um favor por
+mês**, mesma pessoa e mesmo motivo, com a data deslizando (dia 31 em mês
+curto cai no último dia do mês).
 
-**Parcela que não cai no mês desliza para o mês seguinte** — e a série inteira
-vai junto, para duas nunca caírem no mesmo mês. O deslize é recalculado a cada
-desenho: a data guardada nunca muda, então o app não reescreve o banco só
-porque o tempo passou, e acerta a conta mesmo depois de semanas fechado.
+Cada mês é uma dívida com data própria — é o que faz a lista por dia, a
+repartição do pagamento e o "quitar só este item" continuarem valendo sem
+nenhum caso especial. Pagamento não se repete: cada um é um lançamento
+avulso, do valor que de fato entrou.
 
 **Quanto falta e a % paga são derivados**, nunca guardados: editar o valor de
 um gasto ou apagá-lo recalcula tudo sozinho. Favores quitados aparecem
@@ -197,8 +198,10 @@ pendente e sobe sozinha quando a conexão volta.
 - Alteração feita no PC aparece no celular na hora (Realtime).
 - **Sem credenciais em `assets/js/config.js`, o app roda em modo local**, sem
   login, exatamente como antes — útil para testar ou usar num aparelho só.
-- **Menu → Exportar/Importar JSON** continua funcionando como backup manual.
 - **Apagar dados salvos** apaga também na nuvem, em todos os aparelhos.
+
+O banco é a única fonte dos dados. Não há semente nem exportação em JSON: uma
+conta nova começa vazia, e o backup é o próprio Supabase.
 
 ### Configurar o Supabase
 

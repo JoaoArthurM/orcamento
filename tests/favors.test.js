@@ -56,8 +56,8 @@ const P2 = 'bbbbbbbb-2222-4222-8222-bbbbbbbbbbbb';
   {
     const S = load([]).Store;
 
-    const f = S.normalizeFavor({ person: '  Jamilly  ', reason: '  uber  ', amount: 900 });
-    check('nome e motivo são aparados', f.person === 'Jamilly' && f.reason === 'uber', [f.person, f.reason]);
+    const f = S.normalizeFavor({ person: '  Marina  ', reason: '  uber  ', amount: 900 });
+    check('nome e motivo são aparados', f.person === 'Marina' && f.reason === 'uber', [f.person, f.reason]);
     check('o favor não guarda mais quanto foi pago', !('paid' in f), Object.keys(f));
     check('data ganha o dia de hoje', /^\d{4}-\d{2}-\d{2}$/.test(f.lent_on), f.lent_on);
 
@@ -100,17 +100,17 @@ const P2 = 'bbbbbbbb-2222-4222-8222-bbbbbbbbbbbb';
   {
     const S = load([]).Store;
     const dia10 = [
-      S.normalizeFavor({ id: F1, person: 'Jamilly', reason: 'uber',   amount: 40,  lent_on: '2026-09-10' }),
-      S.normalizeFavor({ id: F2, person: 'Jamilly', reason: 'comida', amount: 160, lent_on: '2026-09-10' }),
-      S.normalizeFavor({ id: F3, person: 'Jamilly', reason: 'roupa',  amount: 300, lent_on: '2026-09-10' }),
+      S.normalizeFavor({ id: F1, person: 'Marina', reason: 'uber',   amount: 40,  lent_on: '2026-09-10' }),
+      S.normalizeFavor({ id: F2, person: 'Marina', reason: 'comida', amount: 160, lent_on: '2026-09-10' }),
+      S.normalizeFavor({ id: F3, person: 'Marina', reason: 'roupa',  amount: 300, lent_on: '2026-09-10' }),
     ];
-    const dia15 = S.normalizeFavor({ id: F4, person: 'Jamilly', reason: 'farmácia',
+    const dia15 = S.normalizeFavor({ id: F4, person: 'Marina', reason: 'farmácia',
                                      amount: 100, lent_on: '2026-09-15' });
     const todos = dia10.concat([dia15]);
 
     // ela passa 200 sem dizer de quê: enche do mais antigo para o mais novo
     const r = S.alocarFavores(todos, [
-      S.normalizePayment({ id: P1, person: 'Jamilly', amount: 200, scope: 'total' }),
+      S.normalizePayment({ id: P1, person: 'Marina', amount: 200, scope: 'total' }),
     ]);
     check('200 no total fecham o uber e a comida',
       r.pago[F1] === 40 && r.pago[F2] === 160, [r.pago[F1], r.pago[F2]]);
@@ -118,7 +118,7 @@ const P2 = 'bbbbbbbb-2222-4222-8222-bbbbbbbbbbbb';
 
     // pagando o dia 10 inteiro
     const rd = S.alocarFavores(todos, [
-      S.normalizePayment({ id: P1, person: 'Jamilly', amount: 500, scope: 'dia', scope_day: '2026-09-10' }),
+      S.normalizePayment({ id: P1, person: 'Marina', amount: 500, scope: 'dia', scope_day: '2026-09-10' }),
     ]);
     check('500 no dia 10 quitam as três contas do dia',
       rd.pago[F1] === 40 && rd.pago[F2] === 160 && rd.pago[F3] === 300, rd.pago);
@@ -126,31 +126,31 @@ const P2 = 'bbbbbbbb-2222-4222-8222-bbbbbbbbbbbb';
 
     // um pagamento de total transborda de um dia para o outro
     const rt = S.alocarFavores(todos, [
-      S.normalizePayment({ id: P1, person: 'Jamilly', amount: 560, scope: 'total' }),
+      S.normalizePayment({ id: P1, person: 'Marina', amount: 560, scope: 'total' }),
     ]);
     check('no total, o dia 10 enche e o resto cai no dia 15',
       rt.pago[F3] === 300 && rt.pago[F4] === 60, [rt.pago[F3], rt.pago[F4]]);
 
     // o mais específico manda: o item entra antes do total
     const re = S.alocarFavores(todos, [
-      S.normalizePayment({ id: P2, person: 'Jamilly', amount: 100, scope: 'total' }),
-      S.normalizePayment({ id: P1, person: 'Jamilly', amount: 300, scope: 'item', favor_id: F3 }),
+      S.normalizePayment({ id: P2, person: 'Marina', amount: 100, scope: 'total' }),
+      S.normalizePayment({ id: P1, person: 'Marina', amount: 300, scope: 'item', favor_id: F3 }),
     ]);
     check('o pagamento de item chega primeiro à roupa', re.pago[F3] === 300, re.pago[F3]);
     check('e o do total preenche o começo', re.pago[F1] === 40 && re.pago[F2] === 60, re.pago);
 
     // pagou mais do que devia
     const rc = S.alocarFavores(todos, [
-      S.normalizePayment({ id: P1, person: 'Jamilly', amount: 700, scope: 'total' }),
+      S.normalizePayment({ id: P1, person: 'Marina', amount: 700, scope: 'total' }),
     ]);
-    check('sobra vira crédito, não some', rc.credito['jamilly'] === 100, rc.credito);
+    check('sobra vira crédito, não some', rc.credito['marina'] === 100, rc.credito);
 
     // o dinheiro de uma pessoa não paga o de outra
     const outra = S.normalizeFavor({ id: F1, person: 'Bia', reason: 'x', amount: 50 });
     const rp = S.alocarFavores([outra, dia15], [
       S.normalizePayment({ id: P1, person: 'Bia', amount: 500, scope: 'total' }),
     ]);
-    check('pagamento da Bia não toca no favor da Jamilly', rp.pago[F4] === 0, rp.pago);
+    check('pagamento da Bia não toca no favor da Marina', rp.pago[F4] === 0, rp.pago);
     check('e o excedente fica de crédito da Bia', rp.credito['bia'] === 450, rp.credito);
   }
 
@@ -187,9 +187,9 @@ const P2 = 'bbbbbbbb-2222-4222-8222-bbbbbbbbbbbb';
     const ops = [];
     const S = load(ops).Store;
     S.init(); S.setUser({ id: 'u1' });
-    const f = S.normalizeFavor({ id: F1, person: 'Jamilly', reason: 'uber',
+    const f = S.normalizeFavor({ id: F1, person: 'Marina', reason: 'uber',
       amount: 900, lent_on: '2026-09-01' });
-    const pg = S.normalizePayment({ id: P1, person: 'Jamilly', amount: 500,
+    const pg = S.normalizePayment({ id: P1, person: 'Marina', amount: 500,
       paid_on: '2026-09-05', scope: 'total' });
     S.save({ favors: [f], payments: [pg] });
     await tick();
@@ -202,7 +202,7 @@ const P2 = 'bbbbbbbb-2222-4222-8222-bbbbbbbbbbbb';
     const upP = ops.find((o) => o.op === 'upsert' && o.table === 'favor_payments');
     check('pagamento sobe para favor_payments', upP && upP.rows.length === 1, upP && upP.rows.length);
     check('campos do pagamento vão completos',
-      upP && upP.rows[0].person === 'Jamilly' && upP.rows[0].amount === 500
+      upP && upP.rows[0].person === 'Marina' && upP.rows[0].amount === 500
       && upP.rows[0].paid_on === '2026-09-05' && upP.rows[0].scope === 'total'
       && upP.rows[0].user_id === 'u1' && upP.rows[0].position === 0, upP && upP.rows[0]);
     check('falta e % não são gravados em lugar nenhum',
@@ -281,13 +281,13 @@ const P2 = 'bbbbbbbb-2222-4222-8222-bbbbbbbbbbbb';
   /* 9: combinado de parcelas — "me paga 250 por 5 meses" */
   {
     const S = load([]).Store;
-    const f = S.normalizeFavor({ id: F1, person: 'Jamilly', reason: 'notebook',
+    const f = S.normalizeFavor({ id: F1, person: 'Marina', reason: 'notebook',
       amount: 1250, lent_on: '2026-01-05' });
 
     const plano = 'ffffffff-9999-4999-8999-ffffffffffff';
     const parcelas = [1, 2, 3, 4, 5].map((i) => S.normalizePayment({
       id: 'aaaaaaaa-000' + i + '-4000-8000-aaaaaaaaaaaa',
-      person: 'Jamilly', amount: 250, paid_on: '2026-0' + i + '-05',
+      person: 'Marina', amount: 250, paid_on: '2026-0' + i + '-05',
       scope: 'total', status: i === 1 ? 'pago' : 'previsto',
       plan_id: plano, plan_index: i, plan_total: 5,
     }));

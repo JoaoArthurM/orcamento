@@ -43,27 +43,6 @@
   const DOT_COLOR = { fs:'#123A2C', os:'#93AA9B', ci:'#4A8A5F', ui:'#B58F3F', em:'#C05848', co:'#4A72B5' };
   const ICON_BG   = { fs:'#F1F6EE', os:'#F1F6EE', ci:'#E9F6D6', ui:'#FAF2DF', em:'#FEF0EE', co:'#EEF3FD' };
 
-  /* dados originais — semente na primeira abertura */
-  const SEED_ENTRIES = [
-    { id:'xe8pmpho', name:'Consórcio 1',     type:'co', hidden:false, amount:2997, months:[11] },
-    { id:'vtdaj2m6', name:'Consórcio 2',     type:'co', hidden:false, amount:2997, months:[4] },
-    { id:'qu5hjf8f', name:'Poupança Mensal', type:'ci', hidden:false, amount:1250, months:[1,2,3,4,5,6,7,10,11,12] },
-    { id:'aw3pl03g', name:'Decimo',          type:'ui', hidden:false, min_amount:0, max_amount:5000, may_not_occur:true, months:[12] },
-    { id:'48gx50dh', name:'Loyola',          type:'ci', hidden:false, amount:5000, months:[11] },
-    { id:'131cvcnf', name:'Mãe',             type:'ui', hidden:false, min_amount:0, max_amount:4400, may_not_occur:false, months:[10] },
-    { id:'yf5ynzpw', name:'Jamilly',         type:'em', hidden:false, amount:600, months:[12] },
-    { id:'4oq7p9s4', name:'Jamilly',         type:'em', hidden:false, amount:250, months:[9,10,11,12] },
-    { id:'ojci1kxz', name:'Jamilly -TOTAL-', type:'os', hidden:false, amount:4100, months:[12] },
-    { id:'u9vox9so', name:'Jamilly',         type:'ui', hidden:false, min_amount:583.9, max_amount:803.9, may_not_occur:false, months:[9] },
-    { id:'97bwm78y', name:'Emelly',          type:'em', hidden:false, amount:1690, months:[9] },
-    { id:'u9v17xwk', name:'Dona Eliana',     type:'em', hidden:false, amount:200, months:[9] },
-    { id:'yrvw7mxa', name:'Lorena',          type:'em', hidden:false, amount:520, months:[9] },
-    { id:'lgm7mc5j', name:'Arthur -Tenis-',  type:'ci', hidden:false, amount:179, months:[9] },
-    { id:'u54ljv03', name:'Arthur -Pedido-', type:'ci', hidden:false, amount:250, months:[9,10,11] },
-    { id:'g4l2wgyd', name:'Arthur -Calça-',  type:'ci', hidden:false, amount:224.5, months:[9] },
-  ];
-  const SEED_SALDO = 1933.71;
-
   /* ── ESTADO ─────────────────────────────────────────── */
   let entries      = [];
   let loans        = [];
@@ -246,49 +225,6 @@
     return pagamentos.filter(function (p) {
       return chavePessoa(p.person) === chave && p.status !== 'previsto';
     }).sort(function (a, b) { return String(b.paid_on).localeCompare(String(a.paid_on)); });
-  }
-
-  /**
-   * Os combinados de parcelas de uma pessoa: "250 por 5 meses".
-   * Uma entrada por plan_id, com o que já caiu e qual é a próxima.
-   */
-  function combinadosDe(chave) {
-    const mapa = {};
-    pagamentos.forEach(function (p) {
-      if (!p.plan_id || chavePessoa(p.person) !== chave) return;
-      if (!mapa[p.plan_id]) {
-        mapa[p.plan_id] = { id: p.plan_id, total: p.plan_total,
-                            parcelas: [], pagas: 0, valor: p.amount };
-      }
-      const c = mapa[p.plan_id];
-      c.parcelas.push(p);
-      if (p.status !== 'previsto') c.pagas++;
-    });
-    return Object.keys(mapa).map(function (k) {
-      const c = mapa[k];
-      c.parcelas.sort(function (a, b) { return (a.plan_index || 0) - (b.plan_index || 0); });
-      c.proxima = c.parcelas.find(function (p) { return p.status === 'previsto'; }) || null;
-      c.quitado = !c.proxima;
-
-      /* Se o mês da parcela passou sem ela cair, o combinado inteiro
-         desliza para o mês seguinte — e os que vêm depois vão junto,
-         para não se amontoarem no mesmo mês.
-
-         A data guardada NÃO muda: o deslize é recalculado toda vez. Isso
-         evita reescrever o banco todo mês só porque o tempo passou, e faz
-         a conta certa mesmo se o app ficar semanas sem ser aberto. */
-      c.deslize = 0;
-      if (c.proxima) {
-        const mesAgora = Store.hoje().slice(0, 7);
-        while (mesAdiante(c.proxima.paid_on, c.deslize).slice(0, 7) < mesAgora) {
-          c.deslize++;
-          if (c.deslize > 600) break;    // trava contra data absurda
-        }
-        c.vence = mesAdiante(c.proxima.paid_on, c.deslize);
-        c.atrasada = c.deslize > 0;
-      }
-      return c;
-    }).sort(function (a, b) { return a.quitado - b.quitado; });
   }
 
   function favoresResumo() {
@@ -488,7 +424,7 @@
   const AVATAR_FG = ['#2F6142', '#8A6A24', '#2E5A8C', '#8C3A2F', '#51705E'];
   /**
    * Cor estável por pessoa. Normaliza antes de somar, para que
-   * "Jamilly", "jamilly" e "Jamilly " caiam sempre na mesma cor.
+   * "Marina", "marina" e "Marina " caiam sempre na mesma cor.
    */
   function chavePessoa(nome) {
     return String(nome || '').trim().toLowerCase().replace(/\s+/g, ' ');
@@ -660,16 +596,9 @@
     if (Array.isArray(state.hubOrder)) hubOrder = state.hubOrder;
   }
 
-  function seedState() {
-    return {
-      entries: JSON.parse(JSON.stringify(SEED_ENTRIES)).map(Store.normalize),
-      saldoInicial: SEED_SALDO,
-      loans: [],
-      accounts: [],
-      favors: [],
-      payments: [],
-    };
-  }
+  /* Quem está começando começa vazio. Vem do Store para não ficar
+     para trás quando nascer uma coleção nova. */
+  function estadoInicial() { return Store.estadoVazio(); }
 
   /* ══════════════════════════════════════════════════════
      LAYOUT — realoca componentes entre mobile e desktop
@@ -821,7 +750,6 @@
 
     lembrarTela();
 
-    if (tab === 'settings') fillExport();
     if (tab === 'tabelas') renderList();
     if (alvo === 'view-sim' && lastRows) renderCurve(lastRows);
   }
@@ -1130,9 +1058,20 @@
       });
     });
 
-    $('m-entries').innerHTML = linhas.length ? linhas.join('') :
-      '<div class="m-empty"><span class="m-empty-dots"></span>' +
-      '<span>Nenhuma entrada neste mês</span></div>';
+    /* Conta nova é diferente de mês vazio: sem nada lançado em lugar
+       nenhum, a tela é só zero, e quem chegou agora precisa saber por
+       onde começar. Antes isso ficava escondido pelos dados de exemplo. */
+    $('m-entries').innerHTML = linhas.length ? linhas.join('')
+      : (entries.length
+        ? '<div class="m-empty"><span class="m-empty-dots"></span>' +
+          '<span>Nenhuma entrada neste mês</span></div>'
+        : '<div class="m-empty primeira">' +
+          '<span class="m-empty-ico">' + ico('piggy-bank') + '</span>' +
+          '<span class="m-empty-tit">Comece pelo que entra e sai</span>' +
+          '<span class="m-empty-sub">Toque em <b>+ Entrada</b> para lançar um salário, ' +
+            'uma poupança ou uma renda que ainda não é certa. A projeção dos ' +
+            '12 meses se monta sozinha.</span>' +
+          '</div>');
   }
 
   /* ── tabela mês a mês (mobile) ──────────────────────── */
@@ -1609,26 +1548,6 @@
         '</div>';
       }).join('');
 
-      /* combinados de parcelas: "me paga 250 por 5 meses" */
-      const combinados = combinadosDe(p.chave).map(function (c) {
-        const prox = c.proxima;
-        return '<div class="fv-plano' + (c.quitado ? ' quitado' : '') +
-            (c.atrasada ? ' atrasada' : '') + '">' +
-          '<span class="fv-plano-ico">' + ico('repeat') + '</span>' +
-          '<span class="fv-plano-corpo">' +
-            '<span class="fv-plano-tit">' + c.pagas + ' de ' + c.total +
-              ' · R$ ' + num(c.valor) + ' por mês</span>' +
-            '<span class="fv-plano-meta">' +
-              (c.quitado ? 'combinado cumprido'
-                : c.atrasada
-                  ? 'não caiu em ' + dataCurta(prox.paid_on) + ' — foi para ' + dataCurta(c.vence)
-                  : 'próxima em ' + dataCurta(c.vence)) + '</span>' +
-          '</span>' +
-          (c.quitado ? '' :
-            '<button class="fv-plano-ok" data-recebi="' + prox.id + '">recebi</button>') +
-        '</div>';
-      }).join('');
-
       /* o que ela já pagou, e onde caiu */
       const pags = pagamentosDe(p.chave);
       const historico = pags.length
@@ -1677,7 +1596,7 @@
             ? '<div class="fv-credito">' + ico('info-circle') +
               '<span>Pagou R$ ' + num(p.credito) + ' a mais — fica de crédito.</span></div>'
             : '') +
-          combinados + dias + historico +
+          dias + historico +
         '</div>' +
       '</div>';
     }).join('');
@@ -2007,6 +1926,9 @@
     $('fv-amount').value = f ? num(f.amount) : '';
     $('fv-date').value   = f ? f.lent_on : Store.hoje();
     $('fv-notes').value  = f && f.notes ? f.notes : '';
+    // repetir só faz sentido ao criar: editando, mexeria num favor só
+    $('fv-meses').value  = 1;
+    $('fv-repete').hidden = !!editFavorId;
 
     onFavorAmounts();
     openSheet($('sheet-favor'));
@@ -2026,10 +1948,14 @@
     const pago = f ? (alocacao.pago[f.id] || 0) : 0;
 
     if (!f) {
+      const meses = mesesDoFavor();
       box.className = 'fv-saldo';
-      box.textContent = total > 0
-        ? 'Falta receber: R$ ' + num(total) + ' — registre os pagamentos na lista.'
-        : 'Depois, registre os pagamentos pela lista: por item, por dia ou no total.';
+      box.textContent = total <= 0
+        ? 'Depois, registre os pagamentos pela lista: por item, por dia ou no total.'
+        : (meses > 1
+            ? meses + '× R$ ' + num(total) + ' — falta receber R$ ' +
+              num(total * meses) + ', um por mês.'
+            : 'Falta receber: R$ ' + num(total) + ' — registre os pagamentos na lista.');
       return;
     }
 
@@ -2044,6 +1970,13 @@
       box.textContent = 'Já pago R$ ' + num(pago) + '  ·  falta R$ ' + num(falta) +
         (total > 0 ? '  ·  ' + pct.toLocaleString('pt-BR', { maximumFractionDigits: 1 }) + '%' : '');
     }
+  }
+
+  /** Quantas vezes o mesmo favor se repete, mês a mês. 1 = avulso. */
+  function mesesDoFavor() {
+    if (editFavorId) return 1;
+    const n = parseInt($('fv-meses').value, 10);
+    return (isFinite(n) && n >= 1) ? Math.min(60, n) : 1;
   }
 
   function saveFavor() {
@@ -2066,9 +1999,20 @@
     });
 
     const era = !!editFavorId;
+    const meses = mesesDoFavor();
     if (era) {
       const idx = favores.findIndex(function (x) { return x.id === editFavorId; });
       if (idx >= 0) favores[idx] = f;
+    } else if (meses > 1) {
+      /* "me deve 250 até dezembro, 3 vezes": cada mês é uma dívida própria,
+         com data própria. Todas já são devidas — favor não tem "previsto";
+         o que ainda não voltou é justamente o que a lista mostra em aberto. */
+      for (let i = 0; i < meses; i++) {
+        favores.push(Store.normalizeFavor({
+          person: f.person, reason: f.reason, amount: f.amount,
+          lent_on: mesAdiante(f.lent_on, i), notes: f.notes,
+        }));
+      }
     } else {
       favores.push(f);
     }
@@ -2076,7 +2020,10 @@
     pessoaAberta = chavePessoa(f.person);
     closeSheets();
     render(); triggerSave();
-    toast(era ? 'Favor atualizado' : 'Favor anotado');
+    toast(era ? 'Favor atualizado'
+              : (meses > 1
+                  ? meses + '× R$ ' + num(f.amount) + ' anotados, um por mês'
+                  : 'Favor anotado'));
   }
 
   /* ── formulário de pagamento ────────────────────────── */
@@ -2129,20 +2076,13 @@
       $('pg-amount').value = num(pg.amount);
       $('pg-date').value = pg.paid_on;
       $('pg-notes').value = pg.notes || '';
-      $('pg-meses').value = '1';
-      $('pg-ja-caiu').checked = true;
     } else {
       pagAlvo = alvoDoPagamento(scope, alvo);
       if (!pagAlvo) return;
       $('pg-amount').value = '';
       $('pg-date').value = Store.hoje();
       $('pg-notes').value = '';
-      $('pg-meses').value = '1';
-      $('pg-ja-caiu').checked = true;
     }
-
-    // repetir só faz sentido ao criar: editar uma parcela mexe nela só
-    $('pg-repete').hidden = !!editPagId;
 
     $('pg-ftitle').textContent = editPagId ? 'Editar pagamento' : 'Registrar pagamento';
     $('pg-del').hidden = !editPagId;
@@ -2162,47 +2102,33 @@
     if (!editPagId) setTimeout(function () { $('pg-amount').focus(); }, 320);
   }
 
-  /** Avisa quanto o combinado cobre, e quando ele passa do devido. */
+  /** Avisa quanto o pagamento cobre, e quando ele passa do devido. */
   function onPagamentoAmount() {
     if (!pagAlvo) return;
     const v = parseBRL($('pg-amount').value) || 0;
-    const meses = mesesDoPlano();
     const box = $('pg-saldo');
 
     if (v <= 0) { box.className = 'fv-saldo'; box.textContent = ALVO_VAZIO; return; }
 
-    const soma = v * meses;
-    if (soma > pagAlvo.aberto + 0.005) {
+    if (v > pagAlvo.aberto + 0.005) {
       box.className = 'fv-saldo erro';
-      box.textContent = (meses > 1 ? meses + '× R$ ' + num(v) + ' = R$ ' + num(soma) + ', que passa '
-                                   : 'Passa ') +
-        'R$ ' + num(soma - pagAlvo.aberto) + ' do que está em aberto — a sobra fica de crédito.';
+      box.textContent = 'Passa R$ ' + num(v - pagAlvo.aberto) +
+        ' do que está em aberto — a sobra fica de crédito.';
       return;
     }
 
     box.className = 'fv-saldo';
-    const resta = Math.max(0, pagAlvo.aberto - soma);
-    if (meses > 1) {
-      box.textContent = meses + '× R$ ' + num(v) + ' = R$ ' + num(soma) +
-        (resta < 0.005 ? ' — quita tudo.' : ' — ainda faltariam R$ ' + num(resta) + '.') +
-        ($('pg-ja-caiu').checked ? '' : ' Nenhuma abate até ser recebida.');
-    } else {
-      box.textContent = resta < 0.005
-        ? 'Quita tudo deste alcance.'
-        : 'Depois deste, faltam R$ ' + num(resta) + '.';
-    }
+    const resta = Math.max(0, pagAlvo.aberto - v);
+    box.textContent = resta < 0.005
+      ? 'Quita tudo deste alcance.'
+      : 'Depois deste, faltam R$ ' + num(resta) + '.';
   }
   const ALVO_VAZIO = 'Quanto ela te passou?';
 
-  function mesesDoPlano() {
-    if (editPagId) return 1;
-    const n = parseInt($('pg-meses').value, 10);
-    return isFinite(n) && n >= 1 && n <= 60 ? n : 1;
-  }
-
   /**
-   * Mesmo dia, N meses adiante. Dia 31 em mês curto cai no último dia
-   * do mês, e não escorrega para o mês seguinte como o Date faria.
+   * Mesmo dia, N meses adiante — é assim que um favor que se repete
+   * ganha a data de cada mês. Dia 31 em mês curto cai no último dia do
+   * mês, e não escorrega para o mês seguinte como o Date faria.
    */
   function mesAdiante(iso, n) {
     const p = String(iso).split('-').map(Number);
@@ -2229,27 +2155,9 @@
     });
 
     const era = !!editPagId;
-    const meses = mesesDoPlano();
-
     if (era) {
       const idx = pagamentos.findIndex(function (x) { return x.id === editPagId; });
       if (idx >= 0) pagamentos[idx] = pg;
-    } else if (meses > 1) {
-      /* Combinado: a primeira parcela é a que caiu hoje; as outras ficam
-         previstas, mês a mês. Guardar as futuras agora é o que permite
-         mostrar "2 de 5" — mas elas não abatem nada até serem recebidas. */
-      const planoId = Store.newId();
-      const primeiraCaiu = $('pg-ja-caiu').checked;
-      for (let i = 0; i < meses; i++) {
-        pagamentos.push(Store.normalizePayment({
-          person: pg.person, amount: pg.amount,
-          paid_on: mesAdiante(pg.paid_on, i),
-          scope: pg.scope, favor_id: pg.favor_id, scope_day: pg.scope_day,
-          status: (i === 0 && primeiraCaiu) ? 'pago' : 'previsto',
-          plan_id: planoId, plan_index: i + 1, plan_total: meses,
-          notes: pg.notes,
-        }));
-      }
     } else {
       pagamentos.push(pg);
     }
@@ -2258,38 +2166,17 @@
     closeSheets();
     render(); triggerSave();
     toast(era ? 'Pagamento atualizado'
-              : (meses > 1
-                  ? 'Combinado de ' + meses + '× R$ ' + num(amount) +
-                    ($('pg-ja-caiu').checked ? ' — a 1ª já entrou' : ' — nenhuma caiu ainda')
-                  : 'Pagamento de R$ ' + num(amount) + ' registrado'));
-  }
-
-  /** Marca a próxima parcela do combinado como recebida. */
-  function receberParcela(id) {
-    const i = pagamentos.findIndex(function (x) { return x.id === id; });
-    if (i < 0) return;
-    const antes = pagamentos[i];
-    pagamentos[i] = Store.normalizePayment(
-      Object.assign({}, antes, { status: 'pago', paid_on: Store.hoje() }));
-    render(); triggerSave();
-    toast('Parcela ' + antes.plan_index + ' de ' + antes.plan_total + ' recebida',
-      'Desfazer', function () {
-        pagamentos[i] = antes; render(); triggerSave();
-      });
+              : 'Pagamento de R$ ' + num(amount) + ' registrado');
   }
 
   function delPagamento() {
     const pg = pagamentos.find(function (x) { return x.id === editPagId; });
     if (!pg) return;
     const backup = pagamentos.slice();
-    // apagar uma parcela solta deixaria "2 de 5" com quatro linhas:
-    // desfaz o combinado inteiro
-    pagamentos = pg.plan_id
-      ? pagamentos.filter(function (x) { return x.plan_id !== pg.plan_id; })
-      : pagamentos.filter(function (x) { return x.id !== editPagId; });
+    pagamentos = pagamentos.filter(function (x) { return x.id !== editPagId; });
     closeSheets();
     render(); triggerSave();
-    toast(pg.plan_id ? 'Combinado desfeito' : 'Pagamento excluído', 'Desfazer', function () {
+    toast('Pagamento excluído', 'Desfazer', function () {
       pagamentos = backup; render(); triggerSave();
     });
   }
@@ -2619,70 +2506,6 @@
     }
   }
 
-  /* ── exportar / importar ────────────────────────────── */
-  function fillExport() {
-    $('export-ta').value = JSON.stringify({ entries: entries, saldoInicial: saldoInicial }, null, 2);
-    $('export-fb').textContent = '';
-    $('import-fb').textContent = '';
-  }
-
-  function doExport() {
-    const ta = $('export-ta');
-    const fb = $('export-fb');
-    const done = function () { fb.className = 'fb ok'; fb.textContent = 'Copiado!';
-                               setTimeout(function () { fb.textContent = ''; }, 2500); };
-    if (navigator.clipboard && navigator.clipboard.writeText) {
-      navigator.clipboard.writeText(ta.value).then(done).catch(function () {
-        ta.select(); document.execCommand('copy'); done();
-      });
-    } else {
-      ta.select(); document.execCommand('copy'); done();
-    }
-  }
-
-  function doExportFile() {
-    const blob = new Blob([$('export-ta').value], { type: 'application/json' });
-    const url  = URL.createObjectURL(blob);
-    const a    = document.createElement('a');
-    const d    = new Date();
-    const stamp = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' +
-                  String(d.getDate()).padStart(2, '0');
-    a.href = url;
-    a.download = 'orcamento-' + stamp + '.json';
-    document.body.appendChild(a); a.click(); a.remove();
-    setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
-  }
-
-  function doImport() {
-    const fb  = $('import-fb');
-    const raw = $('import-ta').value.trim();
-    if (!raw) { fb.className = 'fb err'; fb.textContent = 'Cole o JSON primeiro.'; return; }
-    let d;
-    try { d = JSON.parse(raw); }
-    catch (err) { fb.className = 'fb err'; fb.textContent = 'JSON inválido — verifique o conteúdo.'; return; }
-
-    if (!d || !Array.isArray(d.entries)) {
-      fb.className = 'fb err';
-      fb.textContent = 'JSON inválido — campo “entries” não encontrado.';
-      return;
-    }
-    const clean = d.entries.filter(Store.validEntry).map(Store.normalize);
-    if (!clean.length) {
-      fb.className = 'fb err';
-      fb.textContent = 'Nenhuma entrada válida encontrada no JSON.';
-      return;
-    }
-    entries = clean;
-    if (typeof d.saldoInicial === 'number' && isFinite(d.saldoInicial)) saldoInicial = d.saldoInicial;
-    applySI();
-    render(); triggerSave();
-    fillExport();                       // fillExport limpa os avisos — mensagem vem depois
-    $('import-ta').value = '';
-    fb.className = 'fb ok';
-    fb.textContent = clean.length + ' entrada(s) importada(s) com sucesso.';
-    if (isDesktop) setTimeout(closeSheets, 1400);
-  }
-
   async function doReset() {
     const fb = $('reset-fb');
     if (el.resetArmed) {
@@ -2696,13 +2519,12 @@
         el.resetArmed = false;
         return;
       }
-      adoptState(seedState());
-      applySI(); render(); triggerSave();
+      adoptState(estadoInicial());
+      applySI(); render();
       fb.className = 'fb ok';
-      fb.textContent = 'Dados restaurados ao original.';
+      fb.textContent = 'Tudo apagado. Comece a lançar quando quiser.';
       $('btn-reset').textContent = 'Apagar dados salvos';
       el.resetArmed = false;
-      fillExport();
       return;
     }
     el.resetArmed = true;
@@ -3112,7 +2934,7 @@
       const b = $(id);
       if (!b) return;
       b.addEventListener('click', function () {
-        if (isDesktop) { fillExport(); openSheet(el.sheetSettings); }
+        if (isDesktop) openSheet(el.sheetSettings);
         else setScreen('tabelas');
       });
     });
@@ -3148,8 +2970,6 @@
     $('fv-lista').addEventListener('click', function (ev) {
       const pagar = ev.target.closest('[data-pay]');
       if (pagar) { openPagamento(pagar.dataset.pay, pagar.dataset.alvo); return; }
-      const recebi = ev.target.closest('[data-recebi]');
-      if (recebi) { receberParcela(recebi.dataset.recebi); return; }
       const pag = ev.target.closest('[data-pgid]');
       if (pag) { openPagamento(null, null, pag.dataset.pgid); return; }
       const item = ev.target.closest('[data-fid]');
@@ -3162,9 +2982,8 @@
       }
     });
     $('fv-amount').addEventListener('input', onFavorAmounts);
+    $('fv-meses').addEventListener('input', onFavorAmounts);
     $('pg-amount').addEventListener('input', onPagamentoAmount);
-    $('pg-meses').addEventListener('input', onPagamentoAmount);
-    $('pg-ja-caiu').addEventListener('change', onPagamentoAmount);
     $('pg-save').addEventListener('click', savePagamento);
     $('pg-del').addEventListener('click', delPagamento);
     $('pg-cancel').addEventListener('click', function () { closeSheets(); });
@@ -3221,9 +3040,6 @@
     $('lo-back').addEventListener('click', function () { closeSheets(); });
 
     /* ajustes */
-    $('btn-export').addEventListener('click', doExport);
-    $('btn-export-file').addEventListener('click', doExportFile);
-    $('btn-import').addEventListener('click', doImport);
     $('btn-reset').addEventListener('click', doReset);
 
     /* o cabeçalho encolhe assim que a rolagem sai do topo */
@@ -3516,7 +3332,7 @@
 
     // desenha já com o que houver neste aparelho, sem esperar a rede
     const cached = Store.localState() || Store.legacyState();
-    adoptState(cached || seedState());
+    adoptState(cached || estadoInicial());
     applySI(); render();
     const onde = telaLembrada();
     if (onde && onde.screen !== 'hub') {
@@ -3526,11 +3342,13 @@
       setScreen('hub');
     }
 
-    const r = await Store.reconcile(Store.legacyState() || seedState());
+    const r = await Store.reconcile(Store.legacyState() || estadoInicial());
     if (r.state) {
       adoptState(r.state); applySI(); render();
     } else {
-      adoptState(seedState()); applySI(); render(); triggerSave();
+      // conta nova: gravar vazio é o mesmo caminho de "apaguei tudo".
+      // Nada a enviar até a primeira entrada.
+      adoptState(estadoInicial()); applySI(); render();
     }
 
     Store.startRealtime();
@@ -3543,7 +3361,7 @@
     $('password-card').hidden = true;
     $('btn-signout').hidden = true;
     const cached = Store.localState() || Store.legacyState();
-    adoptState(cached || seedState());
+    adoptState(cached || estadoInicial());
     applySI(); render();
     const onde = telaLembrada();
     if (onde && onde.screen !== 'hub') {

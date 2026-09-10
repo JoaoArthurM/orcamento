@@ -2226,63 +2226,11 @@ svg { display: block; flex: none; }
 }
 .fv-credito .ico { width: 15px; height: 15px; flex: none; }
 
-/* ── combinado de parcelas ───────────────────────────── */
-.fv-plano {
-  display: flex; align-items: center; gap: 10px;
-  margin-top: 8px; padding: 10px 11px 10px 12px;
-  border-radius: 14px;
-  background: #F1F6FD; border: 1px solid #DCE8F8;
-}
-.fv-plano.atrasada { background: #FFF6E9; border-color: #F3E1C4; }
-.fv-plano.quitado  { background: #F2F8EC; border-color: #E0EDD4; opacity: .8; }
-
-.fv-plano-ico {
-  width: 28px; height: 28px; border-radius: 9px; flex: none;
-  display: flex; align-items: center; justify-content: center;
-  background: #DCE8F8; color: #2E5A8C;
-}
-.fv-plano.atrasada .fv-plano-ico { background: #F6E6CC; color: #8A6D2B; }
-.fv-plano.quitado  .fv-plano-ico { background: #E0EDD4; color: #2F6142; }
-.fv-plano-ico .ico { width: 14px; height: 14px; }
-
-.fv-plano-corpo { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
-.fv-plano-tit {
-  font-size: 12px; font-weight: 700; letter-spacing: -.01em; color: var(--dark);
-  font-variant-numeric: tabular-nums;
-}
-.fv-plano-meta {
-  font-size: 10px; color: #7E93A6;
-  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-}
-.fv-plano.atrasada .fv-plano-meta { color: #8A6D2B; }
-
-.fv-plano-ok {
-  flex: none; padding: 7px 13px; border-radius: 99px;
-  background: var(--dark); color: #DDF29A;
-  font-size: 11px; font-weight: 700; letter-spacing: -.01em;
-  transition: transform 120ms;
-}
-.fv-plano-ok:active { transform: scale(.93); }
-
-/* campo de repetição no formulário */
-.pg-meses-linha { display: flex; align-items: center; gap: 10px; }
-.pg-meses-linha .fi { width: 92px; flex: none; }
-.pg-meses-dica { font-size: 11px; color: var(--tx-d); }
-
-.pg-check { display: flex; align-items: center; gap: 9px; margin-top: 11px; cursor: pointer; }
-.pg-check input { position: absolute; opacity: 0; width: 0; height: 0; }
-.pg-check-cx {
-  width: 20px; height: 20px; border-radius: 6px; flex: none;
-  display: flex; align-items: center; justify-content: center;
-  border: 1.5px solid #C6D5CB; background: #fff; color: transparent;
-  transition: background 130ms, border-color 130ms, color 130ms;
-}
-.pg-check-cx .ico { width: 12px; height: 12px; }
-.pg-check input:checked + .pg-check-cx {
-  background: var(--dark); border-color: var(--dark); color: var(--lime);
-}
-.pg-check-txt { font-size: 12px; color: var(--tx); }
-.pg-repete[hidden] { display: none; }
+/* campo de repetição no formulário de favor */
+.fv-meses-linha { display: flex; align-items: center; gap: 10px; }
+.fv-meses-linha .fi { width: 92px; flex: none; }
+.fv-meses-dica { font-size: 11px; color: var(--tx-d); }
+.fv-repete[hidden] { display: none; }
 
 /* ── o que já foi pago ───────────────────────────────── */
 .fv-hist { margin-top: 12px; border-top: 1px dashed #E9F0E4; padding-top: 8px; }
@@ -2402,3 +2350,23 @@ svg { display: block; flex: none; }
   border-radius: 10px; background: #EEF3FD;
   font-size: 10.5px; color: #2E5A8C; letter-spacing: -.005em;
 }
+
+/* primeira abertura: sem nada lançado, a tela é só zero — aqui vai
+   o empurrão inicial, no lugar do 'nenhuma entrada neste mês' */
+.m-empty.primeira {
+  flex-direction: column; align-items: center; text-align: center;
+  gap: 7px; padding: 26px 22px;
+}
+.m-empty.primeira .m-empty-ico {
+  width: 42px; height: 42px; border-radius: 14px;
+  display: flex; align-items: center; justify-content: center;
+  background: #E9F6D6; color: var(--dark); margin-bottom: 3px;
+}
+.m-empty.primeira .m-empty-ico .ico { width: 21px; height: 21px; }
+.m-empty.primeira .m-empty-tit {
+  font-size: 13.5px; font-weight: 700; letter-spacing: -.02em; color: var(--tx);
+}
+.m-empty.primeira .m-empty-sub {
+  font-size: 11.5px; line-height: 1.5; color: var(--tx-d); max-width: 30ch;
+}
+.m-empty.primeira .m-empty-sub b { color: var(--tx); font-weight: 600; }

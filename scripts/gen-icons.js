@@ -18,7 +18,7 @@ const ICONES = [
   'piggy-bank', 'donate', 'safe', 'coins', 'dice-five', 'hand-cash', 'bank',
   'info-circle',
   // kpis / conta / ajustes
-  'wallet', 'log-out', 'settings', 'download', 'upload', 'clipboard-check', 'refresh', 'repeat', 'user',
+  'wallet', 'log-out', 'settings', 'refresh', 'repeat', 'user',
 ];
 
 function baixar(nome) {

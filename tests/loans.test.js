@@ -68,8 +68,8 @@ const L2 = 'bbbbbbbb-2222-4222-8222-222222222222';
   /* 1: normalização */
   {
     const S = load([]).Store;
-    const l = S.normalizeLoan({ person: '  Jamilly  ', principal: 1000, total_due: 1200, method: 'avista' });
-    check('nome é aparado', l.person === 'Jamilly', l.person);
+    const l = S.normalizeLoan({ person: '  Marina  ', principal: 1000, total_due: 1200, method: 'avista' });
+    check('nome é aparado', l.person === 'Marina', l.person);
     check('juros derivam de total - principal', l.total_due - l.principal === 200);
     check('lent_on ganha a data de hoje', /^\d{4}-\d{2}-\d{2}$/.test(l.lent_on), l.lent_on);
     check('due_on vazio vira null', l.due_on === null);
@@ -95,13 +95,13 @@ const L2 = 'bbbbbbbb-2222-4222-8222-222222222222';
     const ops = [];
     const S = load(ops).Store;
     S.init(); S.setUser({ id: 'u1' });
-    const l = S.normalizeLoan({ id: L1, person: 'Jamilly', principal: 1000, total_due: 1200,
+    const l = S.normalizeLoan({ id: L1, person: 'Marina', principal: 1000, total_due: 1200,
       lent_on: '2026-09-01', due_on: '2026-12-01', method: 'parcelado', installments: 4 });
     S.save({ entries: [], saldoInicial: 0, loans: [l] });
     await tick();
     const up = ops.find((o) => o.op === 'upsert' && o.table === 'loans');
     check('empréstimo sobe para a tabela loans', up && up.rows.length === 1, up && up.rows.length);
-    check('campos vão completos', up && up.rows[0].person === 'Jamilly'
+    check('campos vão completos', up && up.rows[0].person === 'Marina'
       && up.rows[0].principal === 1000 && up.rows[0].total_due === 1200
       && up.rows[0].installments === 4 && up.rows[0].due_on === '2026-12-01', up && up.rows[0]);
     check('user_id vai na linha', up && up.rows[0].user_id === 'u1');
@@ -229,13 +229,13 @@ const L2 = 'bbbbbbbb-2222-4222-8222-222222222222';
     check('parcelado não acumula juro à parte', parc.received_interest === 0, parc.received_interest);
   }
 
-  /* 8b: o caso da Emelly, exatamente como foi descrito.
+  /* 8b: o caso da Renata, exatamente como foi descrito.
          2.500 emprestados, 300 de mensalidade. Ela paga duas mensalidades
          e depois devolve os 2.500 — entraram 3.100 no total. */
   {
     const S = load([]).Store;
 
-    let l = S.normalizeLoan({ id: L1, person: 'Emelly', principal: 2500,
+    let l = S.normalizeLoan({ id: L1, person: 'Renata', principal: 2500,
       method: 'mensal', installment_amount: 300, total_due: 0 });
     check('no começo, falta voltar os 2.500 inteiros',
       l.total_due - l.received === 2500, l.total_due - l.received);
@@ -267,7 +267,7 @@ const L2 = 'bbbbbbbb-2222-4222-8222-222222222222';
     const ops = [];
     const S = load(ops).Store;
     S.init(); S.setUser({ id: 'u1' });
-    const l = S.normalizeLoan({ id: L1, person: 'Emelly', principal: 2500,
+    const l = S.normalizeLoan({ id: L1, person: 'Renata', principal: 2500,
       method: 'mensal', installment_amount: 300, received_interest: 300 });
     S.save({ loans: [l] }); await tick();
 

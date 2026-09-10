@@ -41,8 +41,11 @@ Três pontos parecem bug e são intencionais:
 - poupança **soma** no saldo, não subtrai
 - `inLP` é somado e nunca usado (o cenário pessimista trata renda incerta como 0)
 
-Regressão rápida (semente + saldo 1933.71): `cumP` = **34691.21**,
-`cumO` = **44895.11**.
+`node tests/calc.test.js` protege os três, mais a regressão de conjunto
+(`cumP` 34691.21 / `cumO` 44895.11). Ele extrai o bloco de cálculo do app.js
+por marcadores de texto e roda numa VM com a janela de 12 meses fixada — se
+você mexer nos comentários-banner em volta de `get12M`/`calc`, o teste avisa
+que não achou o bloco.
 
 ## Ids no index.html
 
@@ -82,6 +85,28 @@ devendo os 2.500 inteiros.
 Consequências que não são óbvias: mensalidade **nunca é "Atrasado"** (o acerto
 não tem prazo), a porcentagem de juro é **ao mês**, e o "recebido" da tela soma
 `received + received_interest`.
+
+## O Realtime devolve as suas próprias gravações
+
+Salvar dispara um evento que volta para este mesmo aparelho. O eco chega
+**depois** do push terminar, com `dirty` e `pushing` já em false — as travas de
+"tem coisa pendente" não pegam.
+
+Por isso `scheduleRemote` compara `assinatura(remote)` com `assinatura(synced)`
+e só chama `onRemote` quando mudou de verdade. Sem isso, cada edição do usuário
+virava um "Atualizado de outro aparelho".
+
+`node tests/realtime.test.js` cobre os dois lados: eco não avisa, mudança de
+fora avisa.
+
+## Sem semente, sem export
+
+Não há dados de exemplo no código nem exportação em JSON — o banco é a única
+fonte. Conta nova começa em `Store.estadoVazio()` e **não** grava nada até a
+primeira entrada: gravar vazio é o mesmo caminho de "apaguei tudo".
+
+A semente antiga tinha nomes e valores reais, e o repositório é público. Não
+reponha dados de pessoa nenhuma em teste, fixture ou placeholder.
 
 ## Valor derivado não se guarda
 
