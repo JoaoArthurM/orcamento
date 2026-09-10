@@ -97,7 +97,7 @@ const L2 = 'bbbbbbbb-2222-4222-8222-222222222222';
     S.init(); S.setUser({ id: 'u1' });
     const l = S.normalizeLoan({ id: L1, person: 'Jamilly', principal: 1000, total_due: 1200,
       lent_on: '2026-09-01', due_on: '2026-12-01', method: 'parcelado', installments: 4 });
-    S.save([], 0, [l]);
+    S.save({ entries: [], saldoInicial: 0, loans: [l] });
     await tick();
     const up = ops.find((o) => o.op === 'upsert' && o.table === 'loans');
     check('empréstimo sobe para a tabela loans', up && up.rows.length === 1, up && up.rows.length);
@@ -115,9 +115,9 @@ const L2 = 'bbbbbbbb-2222-4222-8222-222222222222';
     S.init(); S.setUser({ id: 'u1' });
     const a = S.normalizeLoan({ id: L1, person: 'A', principal: 100, total_due: 110 });
     const b = S.normalizeLoan({ id: L2, person: 'B', principal: 200, total_due: 260 });
-    S.save([], 0, [a, b]); await tick();
+    S.save({ entries: [], saldoInicial: 0, loans: [a, b] }); await tick();
     ops.length = 0;
-    S.save([], 0, [a, Object.assign({}, b, { received: 60 })]); await tick();
+    S.save({ entries: [], saldoInicial: 0, loans: [a, Object.assign({}, b, { received: 60 })] }); await tick();
     const up = ops.find((o) => o.op === 'upsert' && o.table === 'loans');
     check('só o empréstimo alterado sobe', up && up.rows.length === 1, up && up.rows.map((r) => r.person));
     check('valor recebido atualizado', up && up.rows[0].received === 60);
@@ -130,9 +130,9 @@ const L2 = 'bbbbbbbb-2222-4222-8222-222222222222';
     S.init(); S.setUser({ id: 'u1' });
     const a = S.normalizeLoan({ id: L1, person: 'A', principal: 100, total_due: 110 });
     const b = S.normalizeLoan({ id: L2, person: 'B', principal: 200, total_due: 260 });
-    S.save([], 0, [a, b]); await tick();
+    S.save({ entries: [], saldoInicial: 0, loans: [a, b] }); await tick();
     ops.length = 0;
-    S.save([], 0, [a]); await tick();
+    S.save({ entries: [], saldoInicial: 0, loans: [a] }); await tick();
     const del = ops.find((o) => o.op === 'delete' && o.table === 'loans');
     check('exclusão vira DELETE na tabela certa', del && del.ids[0] === L2, del);
   }
@@ -143,9 +143,9 @@ const L2 = 'bbbbbbbb-2222-4222-8222-222222222222';
     const S = load(ops).Store;
     S.init(); S.setUser({ id: 'u1' });
     const a = S.normalizeLoan({ id: L1, person: 'A', principal: 100, total_due: 110 });
-    S.save([], 5, [a]); await tick();
+    S.save({ entries: [], saldoInicial: 5, loans: [a] }); await tick();
     ops.length = 0;
-    S.save([], 5, [a]); await tick();
+    S.save({ entries: [], saldoInicial: 5, loans: [a] }); await tick();
     check('estado idêntico não gera tráfego', ops.length === 0, ops);
   }
 
@@ -156,7 +156,7 @@ const L2 = 'bbbbbbbb-2222-4222-8222-222222222222';
     S.init(); S.setUser({ id: 'u1' });
     const e = S.normalize({ id: L1, name: 'Renda', type: 'ci', amount: 100, months: [1] });
     const l = S.normalizeLoan({ id: L2, person: 'B', principal: 200, total_due: 260 });
-    S.save([e], 7, [l]); await tick();
+    S.save({ entries: [e], saldoInicial: 7, loans: [l] }); await tick();
     const tabelas = ops.filter((o) => o.op === 'upsert').map((o) => o.table).sort();
     check('grava nas três tabelas', JSON.stringify(tabelas) === '["entries","loans","settings"]', tabelas);
     const salvo = S.localState();
@@ -196,32 +196,88 @@ const L2 = 'bbbbbbbb-2222-4222-8222-222222222222';
       r.source === 'uploaded' || r.source === 'cloud', r.source);
   }
 
-  /* 8: na mensalidade, o total a receber é derivado */
+  /* 8: na mensalidade o juro corre por fora e não quita nada */
   {
     const S = load([]).Store;
 
     const m = S.normalizeLoan({ person: 'X', principal: 2500, total_due: 0,
       method: 'mensal', installment_amount: 300 });
-    check('mensal: total = emprestado + mensalidade', m.total_due === 2800, m.total_due);
-    check('mensal: a mensalidade vira o juro', m.total_due - m.principal === 300);
+    check('mensal: a dívida é o principal, não principal + mensalidade',
+      m.total_due === 2500, m.total_due);
+    check('mensal: a mensalidade fica guardada à parte',
+      m.installment_amount === 300 && m.received_interest === 0, m);
 
     // mesmo se vier um total errado de fora, o cálculo manda
     const forcado = S.normalizeLoan({ person: 'X', principal: 2500, total_due: 9999,
       method: 'mensal', installment_amount: 300 });
-    check('mensal: total digitado é ignorado', forcado.total_due === 2800, forcado.total_due);
+    check('mensal: total digitado é ignorado', forcado.total_due === 2500, forcado.total_due);
 
-    // sem mensalidade, não há juro
     const zero = S.normalizeLoan({ person: 'X', principal: 1000, total_due: 5000,
       method: 'mensal', installment_amount: 0 });
-    check('mensal sem mensalidade: juro zero', zero.total_due === 1000, zero.total_due);
+    check('mensal sem mensalidade: a dívida continua o principal',
+      zero.total_due === 1000, zero.total_due);
 
-    // os outros métodos continuam com o total digitado
-    const vista = S.normalizeLoan({ person: 'X', principal: 150, total_due: 200, method: 'avista' });
+    // os outros métodos continuam com o total digitado, e sem juro acumulado
+    const vista = S.normalizeLoan({ person: 'X', principal: 150, total_due: 200,
+      method: 'avista', received_interest: 90 });
     check('à vista mantém o total digitado', vista.total_due === 200, vista.total_due);
+    check('à vista não acumula juro à parte', vista.received_interest === 0, vista.received_interest);
 
     const parc = S.normalizeLoan({ person: 'X', principal: 1000, total_due: 1200,
-      method: 'parcelado', installments: 4 });
+      method: 'parcelado', installments: 4, received_interest: 50 });
     check('parcelado mantém o total digitado', parc.total_due === 1200, parc.total_due);
+    check('parcelado não acumula juro à parte', parc.received_interest === 0, parc.received_interest);
+  }
+
+  /* 8b: o caso da Emelly, exatamente como foi descrito.
+         2.500 emprestados, 300 de mensalidade. Ela paga duas mensalidades
+         e depois devolve os 2.500 — entraram 3.100 no total. */
+  {
+    const S = load([]).Store;
+
+    let l = S.normalizeLoan({ id: L1, person: 'Emelly', principal: 2500,
+      method: 'mensal', installment_amount: 300, total_due: 0 });
+    check('no começo, falta voltar os 2.500 inteiros',
+      l.total_due - l.received === 2500, l.total_due - l.received);
+
+    // primeira mensalidade
+    l = S.normalizeLoan(Object.assign({}, l, { received_interest: 300 }));
+    check('300 de mensalidade não abatem nada',
+      l.total_due - l.received === 2500 && l.received_interest === 300,
+      [l.total_due - l.received, l.received_interest]);
+
+    // segunda
+    l = S.normalizeLoan(Object.assign({}, l, { received_interest: 600 }));
+    check('600 de mensalidade também não abatem',
+      l.total_due - l.received === 2500 && l.received_interest === 600,
+      [l.total_due - l.received, l.received_interest]);
+    check('e não está quitado', !(l.received >= l.total_due));
+
+    // ela devolve o principal
+    l = S.normalizeLoan(Object.assign({}, l, { received: 2500 }));
+    check('devolvido o principal, quita', l.received >= l.total_due);
+    check('e o total que entrou é 3.100',
+      l.received + l.received_interest === 3100, l.received + l.received_interest);
+  }
+
+  /* 8c: a mensalidade recebida PRECISA subir.
+         Se received_interest não fosse para a linha do banco, cada
+         mensalidade nova geraria uma linha idêntica e o diff a descartaria. */
+  {
+    const ops = [];
+    const S = load(ops).Store;
+    S.init(); S.setUser({ id: 'u1' });
+    const l = S.normalizeLoan({ id: L1, person: 'Emelly', principal: 2500,
+      method: 'mensal', installment_amount: 300, received_interest: 300 });
+    S.save({ loans: [l] }); await tick();
+
+    ops.length = 0;
+    S.save({ loans: [S.normalizeLoan(Object.assign({}, l, { received_interest: 600 }))] });
+    await tick();
+    const up = ops.find((o) => o.op === 'upsert' && o.table === 'loans');
+    check('a mensalidade nova sobe', up && up.rows.length === 1, up && up.rows.length);
+    check('e a linha leva o juro recebido',
+      up && up.rows[0].received_interest === 600, up && up.rows[0]);
   }
 
   /* 9: o progresso acompanha o que já foi recebido */
@@ -229,8 +285,9 @@ const L2 = 'bbbbbbbb-2222-4222-8222-222222222222';
     const S = load([]).Store;
     const l = S.normalizeLoan({ person: 'X', principal: 2500, total_due: 0,
       method: 'mensal', installment_amount: 300, received: 1400 });
-    check('mensal guarda o recebido', l.received === 1400);
-    check('em aberto = total − recebido', l.total_due - l.received === 1400,
+    check('mensal guarda o principal devolvido', l.received === 1400);
+    // 2.500 de dívida, 1.400 devolvidos — a mensalidade não entra nesta conta
+    check('em aberto = principal − devolvido', l.total_due - l.received === 1100,
       l.total_due - l.received);
   }
 

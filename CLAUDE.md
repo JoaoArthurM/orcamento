@@ -9,8 +9,12 @@ sincronização via Supabase. Detalhes de produto e de schema no `README.md`.
 
 ```bash
 npx serve -l 4173 .            # o service worker não roda em file://
-node tests/run-all.js          # 72 asserções da camada de dados
+node tests/run-all.js          # asserções da camada de dados
 ```
+
+Para testar sem login, **copie o projeto** para um diretório temporário e
+esvazie o `config.js` da cópia. Esvaziar o do repositório já fez as
+credenciais subirem em branco num commit, e os dados do usuário sumirem.
 
 ## Ao editar CSS/JS: suba o VERSION do sw.js
 
@@ -50,6 +54,46 @@ saía com juros zero.
 
 `node tests/markup.test.js` verifica duplicatas, se todo id lido com `.value`
 é mesmo um campo, e se todo ícone referenciado existe no sprite.
+
+## Store.save recebe um objeto — e coleção faltando APAGA
+
+`Store.save({ entries, saldoInicial, loans, accounts, favors, payments, hubOrder })`.
+
+O diff de `COLECOES` compara com o último estado confirmado: coleção que chega
+`[]` vira DELETE de todas as linhas. Por isso a assinatura é um objeto e não
+uma lista de argumentos — com nomes, o campo esquecido aparece na chamada.
+`completar()` preenche o que faltar, mas não adivinha intenção: quem monta o
+estado é `estadoAtual()` no app.js, e é ele que deve ganhar a coleção nova.
+
+Ao acrescentar uma tabela, mexa **só** em `COLECOES` — `estadoVazio()`, o
+`wipe()` e o realtime saem dali. Se você precisou editar uma lista de tabelas
+escrita à mão, é sinal de que ela devia derivar de `COLECOES`.
+
+## Mensalidade não é parcela
+
+Em `method === 'mensal'`, `total_due === principal` e o juro vive em
+`received_interest`, que só acumula. `received` é **principal devolvido** — e é
+só ele que quita.
+
+Já esteve errado: `total_due = principal + installment_amount` fazia nove
+mensalidades de 300 parecerem 2.700 de 2.800 quitados, com a pessoa ainda
+devendo os 2.500 inteiros.
+
+Consequências que não são óbvias: mensalidade **nunca é "Atrasado"** (o acerto
+não tem prazo), a porcentagem de juro é **ao mês**, e o "recebido" da tela soma
+`received + received_interest`.
+
+## Valor derivado não se guarda
+
+`favors` não tem `paid`: quanto cada gasto recebeu sai de
+`Store.alocarFavores(favors, payments)`, recalculado a cada desenho. Foi assim
+justamente porque a divisão gravada envelhece — baixar o valor de um gasto, ou
+apagá-lo, deixaria a repartição de ontem errada e sem nada de onde refazê-la.
+
+Mesma razão para o deslize da parcela atrasada ser calculado, não gravado.
+
+Contas de dinheiro na repartição são em **centavos inteiros**: um resto de
+ponto flutuante faz um favor quitado aparecer como aberto.
 
 ## requestAnimationFrame não serve para tudo
 

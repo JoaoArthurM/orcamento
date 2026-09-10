@@ -97,7 +97,7 @@ const U2 = '22222222-2222-4222-8222-222222222222';
       S.normalize({ id: U1, name: 'Consórcio', type: 'co', amount: 2997, months: [11] }),
       S.normalize({ id: U2, name: 'Décimo', type: 'ui', min_amount: 0, max_amount: 5000, may_not_occur: true, months: [12] }),
     ];
-    S.save(es, 1933.71);
+    S.save({ entries: es, saldoInicial: 1933.71 });
     await tick();
     const up = ops.find((o) => o.op === 'upsert' && o.table === 'entries');
     check('envia as 2 entradas', up && up.rows.length === 2, up && up.rows.length);
@@ -117,9 +117,9 @@ const U2 = '22222222-2222-4222-8222-222222222222';
     S.init(); S.setUser({ id: 'u1' });
     const e1 = S.normalize({ id: U1, name: 'A', type: 'ci', amount: 100, months: [1] });
     const e2 = S.normalize({ id: U2, name: 'B', type: 'ci', amount: 200, months: [2] });
-    S.save([e1, e2], 0); await tick();
+    S.save({ entries: [e1, e2], saldoInicial: 0 }); await tick();
     ops.length = 0;
-    S.save([e1, Object.assign({}, e2, { amount: 999 })], 0); await tick();
+    S.save({ entries: [e1, Object.assign({}, e2, { amount: 999 })], saldoInicial: 0 }); await tick();
     const up = ops.find((o) => o.op === 'upsert' && o.table === 'entries');
     check('só a entrada alterada sobe', up && up.rows.length === 1, up && up.rows.map((r) => r.name));
     check('sobe com o valor novo', up && up.rows[0].amount === 999);
@@ -133,9 +133,9 @@ const U2 = '22222222-2222-4222-8222-222222222222';
     S.init(); S.setUser({ id: 'u1' });
     const e1 = S.normalize({ id: U1, name: 'A', type: 'ci', amount: 100, months: [1] });
     const e2 = S.normalize({ id: U2, name: 'B', type: 'ci', amount: 200, months: [2] });
-    S.save([e1, e2], 0); await tick();
+    S.save({ entries: [e1, e2], saldoInicial: 0 }); await tick();
     ops.length = 0;
-    S.save([e1], 0); await tick();
+    S.save({ entries: [e1], saldoInicial: 0 }); await tick();
     const del = ops.find((o) => o.op === 'delete');
     check('exclusão vira DELETE', del && del.ids.length === 1 && del.ids[0] === U2, del);
     check('exclusão não faz upsert da removida',
@@ -149,9 +149,9 @@ const U2 = '22222222-2222-4222-8222-222222222222';
     S.init(); S.setUser({ id: 'u1' });
     const e1 = S.normalize({ id: U1, name: 'A', type: 'ci', amount: 100, months: [1] });
     const e2 = S.normalize({ id: U2, name: 'B', type: 'ci', amount: 200, months: [2] });
-    S.save([e1, e2], 0); await tick();
+    S.save({ entries: [e1, e2], saldoInicial: 0 }); await tick();
     ops.length = 0;
-    S.save([e2, e1], 0); await tick();
+    S.save({ entries: [e2, e1], saldoInicial: 0 }); await tick();
     const up = ops.find((o) => o.op === 'upsert' && o.table === 'entries');
     check('reordenar reenvia as duas posições', up && up.rows.length === 2, up && up.rows.length);
     check('posições novas corretas',
@@ -164,9 +164,9 @@ const U2 = '22222222-2222-4222-8222-222222222222';
     const S = load(ops).Store;
     S.init(); S.setUser({ id: 'u1' });
     const e1 = S.normalize({ id: U1, name: 'A', type: 'ci', amount: 100, months: [1] });
-    S.save([e1], 10); await tick();
+    S.save({ entries: [e1], saldoInicial: 10 }); await tick();
     ops.length = 0;
-    S.save([e1], 10); await tick();
+    S.save({ entries: [e1], saldoInicial: 10 }); await tick();
     check('estado idêntico não gera tráfego', ops.length === 0, ops);
   }
 
@@ -189,7 +189,7 @@ const U2 = '22222222-2222-4222-8222-222222222222';
     const win = load(ops, remote);
     const S = win.Store;
     S.init(); S.setUser({ id: 'u1' });
-    S.save([S.normalize({ id: U2, name: 'DaquiSo', type: 'ci', amount: 1, months: [1] })], 9);
+    S.save({ entries: [S.normalize({ id: U2, name: 'DaquiSo', type: 'ci', amount: 1, months: [1] })], saldoInicial: 9 });
     await tick();
     ops.length = 0;
     const r = await S.reconcile(null);
@@ -217,7 +217,7 @@ const U2 = '22222222-2222-4222-8222-222222222222';
     vm.createContext(win); vm.runInContext(src, win);
     const S = win.Store;
     check('sem credenciais → modo local', S.init() === false && S.mode === 'local');
-    S.save([S.normalize({ id: U1, name: 'X', type: 'ci', amount: 5, months: [1] })], 7);
+    S.save({ entries: [S.normalize({ id: U1, name: 'X', type: 'ci', amount: 5, months: [1] })], saldoInicial: 7 });
     const saved = JSON.parse(win.mem['orcamento:v2:local:state']);
     check('modo local grava no localStorage', saved.entries.length === 1 && saved.saldoInicial === 7);
   }

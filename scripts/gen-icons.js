@@ -16,6 +16,7 @@ const ICONES = [
   'edit-pencil', 'graph-up', 'calendar', 'table-rows', 'search', 'trash',
   // tipos de entrada
   'piggy-bank', 'donate', 'safe', 'coins', 'dice-five', 'hand-cash', 'bank',
+  'info-circle',
   // kpis / conta / ajustes
   'wallet', 'log-out', 'settings', 'download', 'upload', 'clipboard-check', 'refresh', 'repeat', 'user',
 ];

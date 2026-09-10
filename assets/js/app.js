@@ -71,7 +71,9 @@
   let editContaId  = null;
   let hubOrder     = null;   // ordem dos módulos no hub, vinda da conta
   let favores      = [];
+  let pagamentos   = [];        // pagamentos de favor, com alcance
   let editFavorId  = null;
+  let editPagId    = null;
   let pessoaAberta = null;   // qual pessoa está expandida na lista
   let saldoInicial = 0;
   let screen       = 'hub';     // hub · eco · loans
@@ -165,49 +167,139 @@
 
   /* ══════════════════════════════════════════════════════
      FAVORES
-     Dinheiro emprestado sem juros. O registro é por favor;
-     a tela agrupa por pessoa.
+     Dinheiro emprestado sem juros.
+
+     São três níveis, e o pagamento pode entrar em qualquer um:
+
+       pessoa  → o que ela deve por tudo
+         dia   → a saída daquele dia (o Uber, a comida, a roupa)
+           item → um gasto solto
+
+     Quem reparte o pagamento entre os itens é Store.alocarFavores;
+     aqui só se lê o resultado. Nada disso é guardado.
      ══════════════════════════════════════════════════════ */
 
-  /** Quanto falta e a % paga saem sempre destes dois valores. */
+  let alocacao = { pago: {}, credito: {} };
+
+  /** Refaz a divisão. Chamada uma vez por desenho, não por item. */
+  function realocar() {
+    alocacao = Store.alocarFavores(favores, pagamentos);
+  }
+
   function favorInfo(f) {
-    const falta = Math.max(0, f.amount - f.paid);
-    const pct   = f.amount > 0 ? (f.paid / f.amount) * 100 : 0;
-    return { falta: falta, pct: pct, quitado: falta === 0 && f.amount > 0 };
+    const pago  = alocacao.pago[f.id] || 0;
+    const falta = Math.max(0, f.amount - pago);
+    const pct   = f.amount > 0 ? (pago / f.amount) * 100 : 0;
+    return { pago: pago, falta: falta, pct: pct,
+             quitado: falta < 0.005 && f.amount > 0 };
+  }
+
+  /** Agrupa os favores de uma pessoa por dia — cada dia é uma saída. */
+  function porDia(itens) {
+    const mapa = {};
+    itens.forEach(function (f) {
+      if (!mapa[f.lent_on]) mapa[f.lent_on] = { dia: f.lent_on, itens: [], total: 0, pago: 0 };
+      const d = mapa[f.lent_on];
+      d.itens.push(f);
+      d.total += f.amount;
+      d.pago  += favorInfo(f).pago;
+    });
+    return Object.keys(mapa).sort().reverse().map(function (k) {
+      const d = mapa[k];
+      d.falta   = Math.max(0, d.total - d.pago);
+      d.pct     = d.total > 0 ? (d.pago / d.total) * 100 : 0;
+      d.quitado = d.falta < 0.005 && d.total > 0;
+      return d;
+    });
   }
 
   /** Agrupa por pessoa, somando total, pago e falta. */
   function porPessoa() {
     const mapa = {};
     favores.forEach(function (f) {
-      const chave = f.person.toLowerCase();
+      const chave = chavePessoa(f.person);
       if (!mapa[chave]) {
-        mapa[chave] = { nome: f.person, itens: [], total: 0, pago: 0, desde: f.lent_on };
+        mapa[chave] = { chave: chave, nome: f.person, itens: [],
+                        total: 0, pago: 0, desde: f.lent_on };
       }
       const p = mapa[chave];
       p.itens.push(f);
       p.total += f.amount;
-      p.pago  += f.paid;
+      p.pago  += favorInfo(f).pago;
       if (f.lent_on < p.desde) p.desde = f.lent_on;
     });
     return Object.keys(mapa).map(function (k) {
       const p = mapa[k];
-      p.falta = Math.max(0, p.total - p.pago);
-      p.pct = p.total > 0 ? (p.pago / p.total) * 100 : 0;
-      p.quitado = p.falta === 0 && p.total > 0;
+      p.falta   = Math.max(0, p.total - p.pago);
+      p.pct     = p.total > 0 ? (p.pago / p.total) * 100 : 0;
+      p.quitado = p.falta < 0.005 && p.total > 0;
+      // pagou mais do que devia: fica de crédito
+      p.credito = alocacao.credito[k] || 0;
+      p.dias    = porDia(p.itens);
       // quem deve mais aparece primeiro
       return p;
     }).sort(function (a, b) { return b.falta - a.falta; });
   }
 
+  /** Os pagamentos que já caíram, do mais recente para o mais antigo. */
+  function pagamentosDe(chave) {
+    return pagamentos.filter(function (p) {
+      return chavePessoa(p.person) === chave && p.status !== 'previsto';
+    }).sort(function (a, b) { return String(b.paid_on).localeCompare(String(a.paid_on)); });
+  }
+
+  /**
+   * Os combinados de parcelas de uma pessoa: "250 por 5 meses".
+   * Uma entrada por plan_id, com o que já caiu e qual é a próxima.
+   */
+  function combinadosDe(chave) {
+    const mapa = {};
+    pagamentos.forEach(function (p) {
+      if (!p.plan_id || chavePessoa(p.person) !== chave) return;
+      if (!mapa[p.plan_id]) {
+        mapa[p.plan_id] = { id: p.plan_id, total: p.plan_total,
+                            parcelas: [], pagas: 0, valor: p.amount };
+      }
+      const c = mapa[p.plan_id];
+      c.parcelas.push(p);
+      if (p.status !== 'previsto') c.pagas++;
+    });
+    return Object.keys(mapa).map(function (k) {
+      const c = mapa[k];
+      c.parcelas.sort(function (a, b) { return (a.plan_index || 0) - (b.plan_index || 0); });
+      c.proxima = c.parcelas.find(function (p) { return p.status === 'previsto'; }) || null;
+      c.quitado = !c.proxima;
+
+      /* Se o mês da parcela passou sem ela cair, o combinado inteiro
+         desliza para o mês seguinte — e os que vêm depois vão junto,
+         para não se amontoarem no mesmo mês.
+
+         A data guardada NÃO muda: o deslize é recalculado toda vez. Isso
+         evita reescrever o banco todo mês só porque o tempo passou, e faz
+         a conta certa mesmo se o app ficar semanas sem ser aberto. */
+      c.deslize = 0;
+      if (c.proxima) {
+        const mesAgora = Store.hoje().slice(0, 7);
+        while (mesAdiante(c.proxima.paid_on, c.deslize).slice(0, 7) < mesAgora) {
+          c.deslize++;
+          if (c.deslize > 600) break;    // trava contra data absurda
+        }
+        c.vence = mesAdiante(c.proxima.paid_on, c.deslize);
+        c.atrasada = c.deslize > 0;
+      }
+      return c;
+    }).sort(function (a, b) { return a.quitado - b.quitado; });
+  }
+
   function favoresResumo() {
+    const pessoas = porPessoa();
     const total = favores.reduce(function (a, f) { return a + f.amount; }, 0);
-    const pago  = favores.reduce(function (a, f) { return a + f.paid; }, 0);
-    const pessoas = porPessoa().filter(function (p) { return !p.quitado; }).length;
+    const pago  = pessoas.reduce(function (a, p) { return a + p.pago; }, 0);
     return {
       total: total, pago: pago, falta: Math.max(0, total - pago),
       pct: total > 0 ? (pago / total) * 100 : 0,
-      pessoas: pessoas, favores: favores.length,
+      pessoas: pessoas.filter(function (p) { return !p.quitado; }).length,
+      favores: favores.length,
     };
   }
 
@@ -295,22 +387,48 @@
 
   /**
    * Tudo que a tela precisa saber de um empréstimo.
-   * Os juros nunca são guardados: saem de (total_due - principal).
+   * Os juros nunca são guardados.
+   *
+   * Há dois combinados diferentes debaixo do mesmo cartão:
+   *
+   *   à vista / parcelado — o juro está embutido no total a receber,
+   *     e cada real que entra abate esse total até quitar.
+   *
+   *   mensalidade — o juro é uma quantia fixa que entra TODO MÊS, por
+   *     tempo indeterminado, e não abate nada. A dívida é o principal,
+   *     e ela só morre quando o principal voltar inteiro. Receber nove
+   *     mensalidades de 300 não deixa ninguém perto de quitar 2.500.
    */
   function loanInfo(l) {
-    const juros    = l.total_due - l.principal;
+    const mensal   = l.method === 'mensal';
+    const jurosRec = mensal ? (l.received_interest || 0) : 0;
+
+    // no mensal o juro não é uma previsão: é o que já entrou
+    const juros    = mensal ? jurosRec : l.total_due - l.principal;
     const emAberto = Math.max(0, l.total_due - l.received);
     const quitado  = l.received >= l.total_due && l.total_due > 0;
-    const atrasado = !quitado && !!l.due_on && l.due_on < hojeISO();
+
+    /* Mensalidade não atrasa: o acerto final não tem prazo, e a data
+       ali é só previsão. Sem esta exceção todo empréstimo desse tipo
+       ficaria vermelho para sempre no mês seguinte. */
+    const atrasado = !quitado && !mensal && !!l.due_on && l.due_on < hojeISO();
+
     const pct      = l.total_due > 0 ? Math.min(1, l.received / l.total_due) : 0;
+    const recebido = l.received + jurosRec;
+    const meses    = mensal && l.installment_amount > 0
+      ? Math.floor(jurosRec / l.installment_amount) : 0;
 
     let status = 'Em aberto', sbg = '#F1F6EE', sfg = '#51705E';
     if (quitado)       { status = 'Quitado';  sbg = '#E9F6D6'; sfg = '#2F6142'; }
     else if (atrasado) { status = 'Atrasado'; sbg = '#FEF0EE'; sfg = '#8C3A2F'; }
+    else if (mensal && jurosRec > 0) { status = 'Rendendo'; sbg = '#EEF3FD'; sfg = '#2E5A8C'; }
     else if (l.received > 0) { status = 'Parcial'; sbg = '#FAF2DF'; sfg = '#8A6A24'; }
 
-    return { juros, emAberto, quitado, atrasado, pct, status, sbg, sfg,
-             jurosPct: l.principal > 0 ? (juros / l.principal) * 100 : 0 };
+    return { juros, jurosRec, emAberto, quitado, atrasado, pct, status, sbg, sfg,
+             mensal, recebido, meses,
+             // na mensalidade a porcentagem é POR MÊS, não do total
+             jurosPct: l.principal > 0
+               ? ((mensal ? (l.installment_amount || 0) : juros) / l.principal) * 100 : 0 };
   }
 
   /** Totais do topo da tela de empréstimos. */
@@ -319,12 +437,17 @@
       const i = loanInfo(l);
       a.aReceber += l.total_due;
       a.juros    += i.juros;
-      a.recebido += Math.min(l.received, l.total_due);
+      // separados porque um está por vir e o outro já entrou
+      if (i.mensal) a.jurosMensal += i.jurosRec;
+      else          a.jurosEmbutido += i.juros;
+      // o que entrou de verdade — mensalidade inclusive
+      a.recebido += Math.min(l.received, l.total_due) + i.jurosRec;
       a.emAberto += i.emAberto;
       if (!i.quitado) a.ativos++;
       if (i.atrasado) a.atrasados++;
       return a;
-    }, { aReceber: 0, juros: 0, recebido: 0, emAberto: 0, ativos: 0, atrasados: 0 });
+    }, { aReceber: 0, juros: 0, jurosEmbutido: 0, jurosMensal: 0,
+         recebido: 0, emAberto: 0, ativos: 0, atrasados: 0 });
   }
 
   function loansFiltrados() {
@@ -410,10 +533,10 @@
   const CAMPOS_DINHEIRO = [
     'si', 'm-si',                                        // saldo inicial
     'famt', 'fmin', 'fmax',                              // entradas
-    'lo-principal', 'lo-f-total', 'lo-f-received',
+    'lo-principal', 'lo-f-total', 'lo-f-received', 'lo-received-interest',
     'lo-installment-amount',                             // empréstimos
     'ct-amount', 'ct-avg',                               // contas
-    'fv-amount', 'fv-paid',                              // favores
+    'fv-amount', 'pg-amount',                            // favores
   ];
 
   /**
@@ -508,11 +631,21 @@
     if (cls === 'ok') statusTimer = setTimeout(function () { setStatus(''); }, 2000);
   }
 
+  /** O estado completo, do jeito que o Store espera receber. */
+  function estadoAtual() {
+    return {
+      entries: entries, saldoInicial: saldoInicial,
+      loans: loans, accounts: contas,
+      favors: favores, payments: pagamentos,
+      hubOrder: hubOrder,
+    };
+  }
+
   /** Toda mudança passa por aqui; o Store decide local vs. nuvem. */
   function triggerSave() {
     clearTimeout(saveTimer);
     saveTimer = setTimeout(function () {
-      Store.save(entries, saldoInicial, loans, contas, hubOrder, favores);
+      Store.save(estadoAtual());
     }, 500);
   }
 
@@ -523,6 +656,7 @@
     loans        = state.loans || [];
     contas       = state.accounts || [];
     favores      = state.favors || [];
+    pagamentos   = state.payments || [];
     if (Array.isArray(state.hubOrder)) hubOrder = state.hubOrder;
   }
 
@@ -533,6 +667,7 @@
       loans: [],
       accounts: [],
       favors: [],
+      payments: [],
     };
   }
 
@@ -703,6 +838,7 @@
   let lastRows = null;
 
   function render() {
+    realocar();
     w12 = get12M();
     if (selMonth > w12.length - 1) selMonth = w12.length - 1;
     const rows = calc();
@@ -1076,7 +1212,14 @@
     late.className = 'lo-late' + (r.atrasados === 0 ? ' zero' : '');
 
     $('lo-total').textContent    = num(r.aReceber);
-    $('lo-interest').textContent = 'inclui R$ ' + num(r.juros) + ' de juros';
+    /* Juro de mensalidade não está embutido no total a receber: ele já
+       entrou, por fora. Dizer 'inclui' ali seria contar duas vezes. */
+    $('lo-interest').textContent = r.jurosMensal > 0
+      ? (r.jurosEmbutido > 0
+          ? 'inclui R$ ' + num(r.jurosEmbutido) + ' de juros · R$ ' +
+            num(r.jurosMensal) + ' já recebidos de mensalidade'
+          : 'mais R$ ' + num(r.jurosMensal) + ' já recebidos de mensalidade')
+      : 'inclui R$ ' + num(r.jurosEmbutido) + ' de juros';
     $('lo-received').textContent = num(r.recebido);
     $('lo-open').textContent     = num(r.emAberto);
 
@@ -1149,14 +1292,24 @@
 
         '<span class="lo-grid">' +
           celula('Emprestado', l.principal, '') +
-          celula('Juros', i.juros, 'juros') +
-          celula('A receber', l.total_due, 'total') +
+          celula(i.mensal ? 'Juros recebidos' : 'Juros', i.juros, 'juros') +
+          celula(i.mensal ? 'Falta voltar' : 'A receber',
+                 i.mensal ? i.emAberto : l.total_due, 'total') +
         '</span>' +
+
+        (i.mensal
+          ? '<span class="lo-mensal-nota">' +
+              'R$ ' + num(l.installment_amount) + '/mês de juro' +
+              (i.meses ? ' · ' + i.meses + (i.meses === 1 ? ' mês recebido' : ' meses recebidos') : '') +
+              ' · entrou R$ ' + num(i.recebido) + ' no total' +
+            '</span>'
+          : '') +
 
         '<span class="lo-bar-row">' +
           '<span class="lo-bar"><span style="width:' + (i.pct * 100).toFixed(1) +
             '%;background:' + barBg + '"></span></span>' +
-          '<span class="lo-bar-lbl">' + Math.round(i.pct * 100) + '% pago</span>' +
+          '<span class="lo-bar-lbl">' + Math.round(i.pct * 100) +
+            (i.mensal ? '% do principal' : '% pago') + '</span>' +
         '</span>' +
       '</button>';
     }).join('');
@@ -1409,37 +1562,102 @@
 
     $('fv-lista').innerHTML = pessoas.map(function (p) {
       const ai = avatarIdx(p.nome);
-      const aberta = pessoaAberta === p.nome.toLowerCase();
+      const aberta = pessoaAberta === p.chave;
       const cor = p.quitado ? 'var(--ok)' : 'var(--lime)';
 
-      const itens = p.itens.map(function (f) {
-        const i = favorInfo(f);
-        return '<button class="fv-item' + (i.quitado ? ' quitado' : '') +
-          '" data-fid="' + f.id + '">' +
-          '<span class="fv-faixa" style="background:' +
-            (i.quitado ? 'var(--ok)' : (f.paid > 0 ? '#B58F3F' : '#C6D5CB')) + '"></span>' +
-          '<span class="fv-item-corpo">' +
-            '<span class="fv-motivo">' + esc(f.reason) + '</span>' +
-            '<span class="fv-quando">pego em ' + dataCurta(f.lent_on) + '</span>' +
-          '</span>' +
-          '<span class="fv-item-val">' +
-            '<span class="fv-item-total">R$' + num(f.amount) + '</span>' +
-            '<span class="fv-item-falta ' + (i.quitado ? 'quitado' : 'aberto') + '">' +
-              (i.quitado ? 'quitado' : 'falta R$ ' + num(i.falta)) + '</span>' +
-          '</span>' +
-        '</button>';
+      /* um bloco por dia: é assim que o gasto acontece — uma saída,
+         várias contas. O pagamento pode fechar o dia inteiro de uma vez. */
+      const dias = p.dias.map(function (d) {
+        const itens = d.itens.map(function (f) {
+          const i = favorInfo(f);
+          const parcial = i.pago > 0 && !i.quitado;
+          return '<div class="fv-item' + (i.quitado ? ' quitado' : '') + '">' +
+            '<span class="fv-faixa" style="background:' +
+              (i.quitado ? 'var(--ok)' : (parcial ? '#B58F3F' : '#C6D5CB')) + '"></span>' +
+            '<button class="fv-item-abrir" data-fid="' + f.id + '">' +
+              '<span class="fv-item-corpo">' +
+                '<span class="fv-motivo">' + esc(f.reason) + '</span>' +
+                (parcial
+                  ? '<span class="fv-quando">pago R$ ' + num(i.pago) +
+                    ' de ' + num(f.amount) + '</span>'
+                  : '') +
+              '</span>' +
+              '<span class="fv-item-val">' +
+                '<span class="fv-item-total">R$' + num(f.amount) + '</span>' +
+                '<span class="fv-item-falta ' + (i.quitado ? 'quitado' : 'aberto') + '">' +
+                  (i.quitado ? 'quitado' : 'falta R$ ' + num(i.falta)) + '</span>' +
+              '</span>' +
+            '</button>' +
+            (i.quitado ? '' :
+              '<button class="fv-mini" data-pay="item" data-alvo="' + f.id +
+                '" aria-label="Registrar pagamento deste item">' + ico('coins') + '</button>') +
+          '</div>';
+        }).join('');
+
+        return '<div class="fv-dia' + (d.quitado ? ' quitado' : '') + '">' +
+          '<div class="fv-dia-cab">' +
+            '<span class="fv-dia-data">' + dataCurta(d.dia) + '</span>' +
+            '<span class="fv-dia-meta">' + d.itens.length +
+              (d.itens.length === 1 ? ' conta · R$ ' : ' contas · R$ ') + num(d.total) + '</span>' +
+            '<span class="fv-dia-falta ' + (d.quitado ? 'quitado' : 'aberto') + '">' +
+              (d.quitado ? 'pago' : 'falta R$ ' + num(d.falta)) + '</span>' +
+            (d.quitado ? '' :
+              '<button class="fv-mini" data-pay="dia" data-alvo="' + esc(p.chave) + '|' + d.dia +
+                '" aria-label="Registrar pagamento deste dia">' + ico('coins') + '</button>') +
+          '</div>' +
+          '<div class="fv-dia-itens">' + itens + '</div>' +
+        '</div>';
       }).join('');
 
+      /* combinados de parcelas: "me paga 250 por 5 meses" */
+      const combinados = combinadosDe(p.chave).map(function (c) {
+        const prox = c.proxima;
+        return '<div class="fv-plano' + (c.quitado ? ' quitado' : '') +
+            (c.atrasada ? ' atrasada' : '') + '">' +
+          '<span class="fv-plano-ico">' + ico('repeat') + '</span>' +
+          '<span class="fv-plano-corpo">' +
+            '<span class="fv-plano-tit">' + c.pagas + ' de ' + c.total +
+              ' · R$ ' + num(c.valor) + ' por mês</span>' +
+            '<span class="fv-plano-meta">' +
+              (c.quitado ? 'combinado cumprido'
+                : c.atrasada
+                  ? 'não caiu em ' + dataCurta(prox.paid_on) + ' — foi para ' + dataCurta(c.vence)
+                  : 'próxima em ' + dataCurta(c.vence)) + '</span>' +
+          '</span>' +
+          (c.quitado ? '' :
+            '<button class="fv-plano-ok" data-recebi="' + prox.id + '">recebi</button>') +
+        '</div>';
+      }).join('');
+
+      /* o que ela já pagou, e onde caiu */
+      const pags = pagamentosDe(p.chave);
+      const historico = pags.length
+        ? '<div class="fv-hist">' +
+            '<span class="fv-hist-tit">' + pags.length +
+              (pags.length === 1 ? ' pagamento' : ' pagamentos') + '</span>' +
+            pags.map(function (pg) {
+              return '<button class="fv-pag" data-pgid="' + pg.id + '">' +
+                '<span class="fv-pag-ico">' + ico('coins') + '</span>' +
+                '<span class="fv-pag-corpo">' +
+                  '<span class="fv-pag-val">R$ ' + num(pg.amount) + '</span>' +
+                  '<span class="fv-pag-meta">' + dataCurta(pg.paid_on) + ' · ' +
+                    alcanceLabel(pg) + '</span>' +
+                '</span>' +
+              '</button>';
+            }).join('') +
+          '</div>'
+        : '';
+
       return '<div class="fv-pessoa' + (aberta ? ' aberta' : '') + '" data-pessoa="' +
-          esc(p.nome.toLowerCase()) + '">' +
-        '<button class="fv-cab" data-abrir="' + esc(p.nome.toLowerCase()) + '">' +
+          esc(p.chave) + '">' +
+        '<button class="fv-cab" data-abrir="' + esc(p.chave) + '">' +
           '<span class="fv-avatar" style="background:' + AVATAR_BG[ai] + ';color:' + AVATAR_FG[ai] + '">' +
             esc(iniciais(p.nome)) + '</span>' +
           '<span class="fv-quem">' +
             '<span class="fv-nome">' + esc(p.nome) + '</span>' +
             '<span class="fv-meta">' + p.itens.length +
               (p.itens.length === 1 ? ' favor' : ' favores') +
-              ' · desde ' + dataCurta(p.desde) + '</span>' +
+              ' · ' + p.dias.length + (p.dias.length === 1 ? ' dia' : ' dias') + '</span>' +
           '</span>' +
           '<span class="fv-valor"><span class="fv-valor-pfx">R$</span>' +
             '<span class="fv-valor-v">' + num(p.quitado ? p.total : p.falta) + '</span></span>' +
@@ -1450,9 +1668,29 @@
             '%;background:' + cor + '"></span></span>' +
           '<span class="fv-barra-lbl">' + Math.round(p.pct) + '% pago</span>' +
         '</span>' +
-        '<div class="fv-itens">' + itens + '</div>' +
+        '<div class="fv-itens">' +
+          '<button class="fv-pagar-tudo" data-pay="total" data-alvo="' + esc(p.chave) + '">' +
+            ico('coins') + '<span>Registrar pagamento</span>' +
+            '<span class="fv-pagar-nota">divide sozinho, do mais antigo</span>' +
+          '</button>' +
+          (p.credito > 0
+            ? '<div class="fv-credito">' + ico('info-circle') +
+              '<span>Pagou R$ ' + num(p.credito) + ' a mais — fica de crédito.</span></div>'
+            : '') +
+          combinados + dias + historico +
+        '</div>' +
       '</div>';
     }).join('');
+  }
+
+  /** Como o pagamento aparece no histórico. */
+  function alcanceLabel(pg) {
+    if (pg.scope === 'item') {
+      const f = favores.find(function (x) { return x.id === pg.favor_id; });
+      return f ? esc(f.reason) : 'item removido';
+    }
+    if (pg.scope === 'dia') return 'dia ' + dataCurta(pg.scope_day);
+    return 'no total';
   }
 
   /* ── cartões do hub ─────────────────────────────────── */
@@ -1767,7 +2005,6 @@
     $('fv-person').value = f ? f.person : (pessoaSugerida || '');
     $('fv-reason').value = f ? f.reason : '';
     $('fv-amount').value = f ? num(f.amount) : '';
-    $('fv-paid').value   = f ? num(f.paid) : '';
     $('fv-date').value   = f ? f.lent_on : Store.hoje();
     $('fv-notes').value  = f && f.notes ? f.notes : '';
 
@@ -1778,27 +2015,34 @@
     }
   }
 
-  /** Mostra quanto falta e a porcentagem paga enquanto digita. */
+  /**
+   * O quanto já voltou não se digita aqui: vem dos pagamentos.
+   * Este quadro só mostra como está o favor que se edita.
+   */
   function onFavorAmounts() {
     const total = parseBRL($('fv-amount').value) || 0;
-    const pago  = parseBRL($('fv-paid').value) || 0;
     const box = $('fv-saldo');
+    const f = editFavorId ? favores.find(function (x) { return x.id === editFavorId; }) : null;
+    const pago = f ? (alocacao.pago[f.id] || 0) : 0;
 
-    if (pago > total && total > 0) {
-      box.className = 'fv-saldo erro';
-      box.textContent = 'Pagou mais do que deve — será ajustado para R$ ' + num(total) + '.';
+    if (!f) {
+      box.className = 'fv-saldo';
+      box.textContent = total > 0
+        ? 'Falta receber: R$ ' + num(total) + ' — registre os pagamentos na lista.'
+        : 'Depois, registre os pagamentos pela lista: por item, por dia ou no total.';
       return;
     }
-    const falta = Math.max(0, total - pago);
-    const pct = total > 0 ? (pago / total) * 100 : 0;
 
-    if (total > 0 && falta === 0) {
+    const falta = Math.max(0, total - pago);
+    const pct = total > 0 ? (Math.min(pago, total) / total) * 100 : 0;
+
+    if (total > 0 && falta < 0.005) {
       box.className = 'fv-saldo quitado';
       box.textContent = 'Quitado — nada a receber.';
     } else {
       box.className = 'fv-saldo';
-      box.textContent = 'Falta receber: R$ ' + num(falta) +
-        (total > 0 ? '  ·  ' + pct.toLocaleString('pt-BR', { maximumFractionDigits: 1 }) + '% pago' : '');
+      box.textContent = 'Já pago R$ ' + num(pago) + '  ·  falta R$ ' + num(falta) +
+        (total > 0 ? '  ·  ' + pct.toLocaleString('pt-BR', { maximumFractionDigits: 1 }) + '%' : '');
     }
   }
 
@@ -1817,7 +2061,6 @@
       person: person,
       reason: reason,
       amount: amount,
-      paid: parseBRL($('fv-paid').value) || 0,
       lent_on: $('fv-date').value,
       notes: $('fv-notes').value.trim() || null,
     });
@@ -1830,21 +2073,240 @@
       favores.push(f);
     }
     // deixa aberta a pessoa que acabou de mexer
-    pessoaAberta = f.person.toLowerCase();
+    pessoaAberta = chavePessoa(f.person);
     closeSheets();
     render(); triggerSave();
     toast(era ? 'Favor atualizado' : 'Favor anotado');
+  }
+
+  /* ── formulário de pagamento ────────────────────────── */
+
+  /* O alcance não é escolhido no formulário: ele vem de ONDE se tocou.
+     Tocar no dia paga o dia; no item, o item; no cabeçalho, o total.
+     Escolher duas vezes a mesma coisa só daria chance de errar. */
+  let pagAlvo = null;   // { scope, person, favor_id, scope_day, aberto }
+
+  function alvoDoPagamento(scope, alvo) {
+    if (scope === 'item') {
+      const f = favores.find(function (x) { return x.id === alvo; });
+      if (!f) return null;
+      return { scope: 'item', person: f.person, favor_id: f.id, scope_day: null,
+               aberto: favorInfo(f).falta, rotulo: f.reason + ' · ' + dataCurta(f.lent_on) };
+    }
+    if (scope === 'dia') {
+      const corte = alvo.indexOf('|');
+      const chave = alvo.slice(0, corte);
+      const dia = alvo.slice(corte + 1);
+      const p = porPessoa().find(function (x) { return x.chave === chave; });
+      const d = p && p.dias.find(function (x) { return x.dia === dia; });
+      if (!d) return null;
+      return { scope: 'dia', person: p.nome, favor_id: null, scope_day: dia,
+               aberto: d.falta,
+               rotulo: 'dia ' + dataCurta(dia) + ' · ' + d.itens.length +
+                       (d.itens.length === 1 ? ' conta' : ' contas') };
+    }
+    const p = porPessoa().find(function (x) { return x.chave === alvo; });
+    if (!p) return null;
+    return { scope: 'total', person: p.nome, favor_id: null, scope_day: null,
+             aberto: p.falta, rotulo: 'tudo que ' + p.nome + ' deve' };
+  }
+
+  function openPagamento(scope, alvo, id) {
+    editPagId = id || null;
+
+    if (editPagId) {
+      const pg = pagamentos.find(function (x) { return x.id === editPagId; });
+      if (!pg) return;
+      pagAlvo = alvoDoPagamento(pg.scope,
+        pg.scope === 'item' ? pg.favor_id
+          : pg.scope === 'dia' ? chavePessoa(pg.person) + '|' + pg.scope_day
+          : chavePessoa(pg.person));
+      // o alvo pode ter sumido; o pagamento continua válido
+      if (!pagAlvo) {
+        pagAlvo = { scope: pg.scope, person: pg.person, favor_id: pg.favor_id,
+                    scope_day: pg.scope_day, aberto: 0, rotulo: alcanceLabel(pg) };
+      }
+      $('pg-amount').value = num(pg.amount);
+      $('pg-date').value = pg.paid_on;
+      $('pg-notes').value = pg.notes || '';
+      $('pg-meses').value = '1';
+      $('pg-ja-caiu').checked = true;
+    } else {
+      pagAlvo = alvoDoPagamento(scope, alvo);
+      if (!pagAlvo) return;
+      $('pg-amount').value = '';
+      $('pg-date').value = Store.hoje();
+      $('pg-notes').value = '';
+      $('pg-meses').value = '1';
+      $('pg-ja-caiu').checked = true;
+    }
+
+    // repetir só faz sentido ao criar: editar uma parcela mexe nela só
+    $('pg-repete').hidden = !!editPagId;
+
+    $('pg-ftitle').textContent = editPagId ? 'Editar pagamento' : 'Registrar pagamento';
+    $('pg-del').hidden = !editPagId;
+    $('pg-quem').textContent = pagAlvo.person;
+    $('pg-alvo').textContent = pagAlvo.rotulo;
+    $('pg-aberto').textContent = 'R$ ' + num(pagAlvo.aberto);
+
+    const ALCANCE_NOTA = {
+      item:  'Entra só nesta conta.',
+      dia:   'Divide entre as contas deste dia, da primeira para a última.',
+      total: 'Divide entre tudo que está em aberto, do mais antigo para o mais novo.',
+    };
+    $('pg-nota').textContent = ALCANCE_NOTA[pagAlvo.scope];
+
+    onPagamentoAmount();
+    openSheet($('sheet-pagamento'));
+    if (!editPagId) setTimeout(function () { $('pg-amount').focus(); }, 320);
+  }
+
+  /** Avisa quanto o combinado cobre, e quando ele passa do devido. */
+  function onPagamentoAmount() {
+    if (!pagAlvo) return;
+    const v = parseBRL($('pg-amount').value) || 0;
+    const meses = mesesDoPlano();
+    const box = $('pg-saldo');
+
+    if (v <= 0) { box.className = 'fv-saldo'; box.textContent = ALVO_VAZIO; return; }
+
+    const soma = v * meses;
+    if (soma > pagAlvo.aberto + 0.005) {
+      box.className = 'fv-saldo erro';
+      box.textContent = (meses > 1 ? meses + '× R$ ' + num(v) + ' = R$ ' + num(soma) + ', que passa '
+                                   : 'Passa ') +
+        'R$ ' + num(soma - pagAlvo.aberto) + ' do que está em aberto — a sobra fica de crédito.';
+      return;
+    }
+
+    box.className = 'fv-saldo';
+    const resta = Math.max(0, pagAlvo.aberto - soma);
+    if (meses > 1) {
+      box.textContent = meses + '× R$ ' + num(v) + ' = R$ ' + num(soma) +
+        (resta < 0.005 ? ' — quita tudo.' : ' — ainda faltariam R$ ' + num(resta) + '.') +
+        ($('pg-ja-caiu').checked ? '' : ' Nenhuma abate até ser recebida.');
+    } else {
+      box.textContent = resta < 0.005
+        ? 'Quita tudo deste alcance.'
+        : 'Depois deste, faltam R$ ' + num(resta) + '.';
+    }
+  }
+  const ALVO_VAZIO = 'Quanto ela te passou?';
+
+  function mesesDoPlano() {
+    if (editPagId) return 1;
+    const n = parseInt($('pg-meses').value, 10);
+    return isFinite(n) && n >= 1 && n <= 60 ? n : 1;
+  }
+
+  /**
+   * Mesmo dia, N meses adiante. Dia 31 em mês curto cai no último dia
+   * do mês, e não escorrega para o mês seguinte como o Date faria.
+   */
+  function mesAdiante(iso, n) {
+    const p = String(iso).split('-').map(Number);
+    const ano = p[0], mes = p[1] - 1 + n, dia = p[2];
+    const ultimo = new Date(Date.UTC(ano, mes + 1, 0)).getUTCDate();
+    const d = new Date(Date.UTC(ano, mes, Math.min(dia, ultimo)));
+    return d.toISOString().slice(0, 10);
+  }
+
+  function savePagamento() {
+    if (!pagAlvo) return;
+    const amount = parseBRL($('pg-amount').value) || 0;
+    if (amount <= 0) { $('pg-amount').focus(); toast('Informe o valor'); return; }
+
+    const pg = Store.normalizePayment({
+      id: editPagId || undefined,
+      person: pagAlvo.person,
+      amount: amount,
+      paid_on: $('pg-date').value,
+      scope: pagAlvo.scope,
+      favor_id: pagAlvo.favor_id,
+      scope_day: pagAlvo.scope_day,
+      notes: $('pg-notes').value.trim() || null,
+    });
+
+    const era = !!editPagId;
+    const meses = mesesDoPlano();
+
+    if (era) {
+      const idx = pagamentos.findIndex(function (x) { return x.id === editPagId; });
+      if (idx >= 0) pagamentos[idx] = pg;
+    } else if (meses > 1) {
+      /* Combinado: a primeira parcela é a que caiu hoje; as outras ficam
+         previstas, mês a mês. Guardar as futuras agora é o que permite
+         mostrar "2 de 5" — mas elas não abatem nada até serem recebidas. */
+      const planoId = Store.newId();
+      const primeiraCaiu = $('pg-ja-caiu').checked;
+      for (let i = 0; i < meses; i++) {
+        pagamentos.push(Store.normalizePayment({
+          person: pg.person, amount: pg.amount,
+          paid_on: mesAdiante(pg.paid_on, i),
+          scope: pg.scope, favor_id: pg.favor_id, scope_day: pg.scope_day,
+          status: (i === 0 && primeiraCaiu) ? 'pago' : 'previsto',
+          plan_id: planoId, plan_index: i + 1, plan_total: meses,
+          notes: pg.notes,
+        }));
+      }
+    } else {
+      pagamentos.push(pg);
+    }
+
+    pessoaAberta = chavePessoa(pg.person);
+    closeSheets();
+    render(); triggerSave();
+    toast(era ? 'Pagamento atualizado'
+              : (meses > 1
+                  ? 'Combinado de ' + meses + '× R$ ' + num(amount) +
+                    ($('pg-ja-caiu').checked ? ' — a 1ª já entrou' : ' — nenhuma caiu ainda')
+                  : 'Pagamento de R$ ' + num(amount) + ' registrado'));
+  }
+
+  /** Marca a próxima parcela do combinado como recebida. */
+  function receberParcela(id) {
+    const i = pagamentos.findIndex(function (x) { return x.id === id; });
+    if (i < 0) return;
+    const antes = pagamentos[i];
+    pagamentos[i] = Store.normalizePayment(
+      Object.assign({}, antes, { status: 'pago', paid_on: Store.hoje() }));
+    render(); triggerSave();
+    toast('Parcela ' + antes.plan_index + ' de ' + antes.plan_total + ' recebida',
+      'Desfazer', function () {
+        pagamentos[i] = antes; render(); triggerSave();
+      });
+  }
+
+  function delPagamento() {
+    const pg = pagamentos.find(function (x) { return x.id === editPagId; });
+    if (!pg) return;
+    const backup = pagamentos.slice();
+    // apagar uma parcela solta deixaria "2 de 5" com quatro linhas:
+    // desfaz o combinado inteiro
+    pagamentos = pg.plan_id
+      ? pagamentos.filter(function (x) { return x.plan_id !== pg.plan_id; })
+      : pagamentos.filter(function (x) { return x.id !== editPagId; });
+    closeSheets();
+    render(); triggerSave();
+    toast(pg.plan_id ? 'Combinado desfeito' : 'Pagamento excluído', 'Desfazer', function () {
+      pagamentos = backup; render(); triggerSave();
+    });
   }
 
   function delFavor() {
     const f = favores.find(function (x) { return x.id === editFavorId; });
     if (!f) return;
     const backup = JSON.parse(JSON.stringify(favores));
+    const backupPag = pagamentos.slice();
     favores = favores.filter(function (x) { return x.id !== editFavorId; });
+    // pagamento amarrado só a este item perde o sentido; os de dia e de
+    // total continuam e simplesmente se redistribuem no que sobrou
+    pagamentos = pagamentos.filter(function (x) { return x.favor_id !== editFavorId; });
     closeSheets();
     render(); triggerSave();
     toast('Favor de “' + f.person + '” excluído', 'Desfazer', function () {
-      favores = backup; render(); triggerSave();
+      favores = backup; pagamentos = backupPag; render(); triggerSave();
     });
   }
 
@@ -1979,6 +2441,7 @@
     $('lo-principal').value  = l ? num(l.principal) : '';
     $('lo-f-total').value    = l ? num(l.total_due) : '';
     $('lo-f-received').value = l ? num(l.received) : '';
+    $('lo-received-interest').value = l && l.received_interest ? num(l.received_interest) : '';
     $('lo-lent').value       = l ? l.lent_on : Store.hoje();
     $('lo-due').value        = l && l.due_on ? l.due_on : '';
     $('lo-method').value     = l ? l.method : 'avista';
@@ -1997,6 +2460,10 @@
     const m = $('lo-method').value;
     $('lo-parc-field').hidden   = m !== 'parcelado';
     $('lo-mensal-field').hidden = m !== 'mensal';
+    $('lo-juros-rec-field').hidden = m !== 'mensal';
+    // no mensal, "já recebido" passa a significar só o principal de volta
+    $('lo-f-received-lbl').textContent = m === 'mensal'
+      ? 'Principal devolvido (R$)' : 'Já recebido (R$)';
 
     // na mensalidade o total a receber é calculado, não digitado
     const derivado = m === 'mensal';
@@ -2012,19 +2479,27 @@
   function onLoanAmounts() {
     const principal = parseBRL($('lo-principal').value) || 0;
     const metodo    = $('lo-method').value;
+    const mensal    = metodo === 'mensal';
 
-    // mensalidade: o total é emprestado + mensalidade, sempre
-    if (metodo === 'mensal') {
-      const mens = parseBRL($('lo-installment-amount').value) || 0;
-      $('lo-f-total').value = (principal + mens)
-        ? num(principal + mens) : '';
-    }
+    /* Na mensalidade o que se deve é o principal, e só ele. A mensalidade
+       corre por fora, todo mês, sem prazo — não é parcela de nada. */
+    if (mensal) $('lo-f-total').value = principal ? num(principal) : '';
 
-    const total     = parseBRL($('lo-f-total').value) || 0;
-    const juros     = total - principal;
+    const total = parseBRL($('lo-f-total').value) || 0;
+    const juros = total - principal;
+    const mens  = parseBRL($('lo-installment-amount').value) || 0;
+    const jurosRec = parseBRL($('lo-received-interest').value) || 0;
 
     const box = $('lo-juros');
-    if (juros < 0 && metodo !== 'mensal') {
+    if (mensal) {
+      box.className = 'lo-juros';
+      const pctMes = principal > 0 ? (mens / principal) * 100 : 0;
+      box.textContent = mens > 0
+        ? 'Juro: R$ ' + num(mens) + ' por mês' +
+          (principal > 0 ? '  (' + pctMes.toLocaleString('pt-BR', { maximumFractionDigits: 1 }) +
+                           '% ao mês)' : '')
+        : 'A mensalidade é o juro — informe quanto ela paga por mês.';
+    } else if (juros < 0) {
       box.className = 'lo-juros neg';
       box.textContent = 'O valor a receber está abaixo do emprestado — será ajustado ao salvar.';
     } else {
@@ -2039,14 +2514,17 @@
       $('lo-parc-hint').textContent = (n > 0 && total > 0)
         ? n + 'x de R$ ' + num(total / n) : '';
       $('lo-parc-hint').hidden = !(n > 0 && total > 0);
-    } else if (metodo === 'mensal') {
-      const v = parseBRL($('lo-installment-amount').value) || 0;
-      const meses = v > 0 ? Math.ceil(total / v) : 0;
-      $('lo-mensal-hint').textContent = meses
-        ? 'A receber vira R$ ' + num(total) + ' — quita em cerca de ' +
-          meses + (meses === 1 ? ' mês' : ' meses')
-        : 'A mensalidade entra como juro e soma ao emprestado.';
+    } else if (mensal) {
+      $('lo-mensal-hint').textContent =
+        'Entra todo mês e não abate a dívida. Ela quita quando devolver os R$ ' +
+        num(principal) + '.';
       $('lo-mensal-hint').hidden = false;
+
+      const meses = mens > 0 ? Math.floor(jurosRec / mens) : 0;
+      $('lo-juros-rec-hint').textContent = jurosRec > 0
+        ? (meses ? meses + (meses === 1 ? ' mês' : ' meses') + ' de mensalidade · ' : '') +
+          'total que já entrou: R$ ' + num(jurosRec + (parseBRL($('lo-f-received').value) || 0))
+        : 'Some aqui cada mensalidade que receber.';
     }
   }
 
@@ -2073,6 +2551,7 @@
       // no mensal o Store recalcula; aqui vai o que está na tela
       total_due: parseBRL($('lo-f-total').value) || principal,
       received: parseBRL($('lo-f-received').value) || 0,
+      received_interest: parseBRL($('lo-received-interest').value) || 0,
       lent_on: $('lo-lent').value,
       due_on: $('lo-due').value,
       method: method,
@@ -2127,6 +2606,7 @@
     $('sheet-loan').classList.remove('open');
     $('sheet-conta').classList.remove('open');
     $('sheet-favor').classList.remove('open');
+    $('sheet-pagamento').classList.remove('open');
     el.backdrop.classList.remove('open');
     openSheetEl = null;
     editId = null;
@@ -2666,6 +3146,12 @@
 
     /* favores */
     $('fv-lista').addEventListener('click', function (ev) {
+      const pagar = ev.target.closest('[data-pay]');
+      if (pagar) { openPagamento(pagar.dataset.pay, pagar.dataset.alvo); return; }
+      const recebi = ev.target.closest('[data-recebi]');
+      if (recebi) { receberParcela(recebi.dataset.recebi); return; }
+      const pag = ev.target.closest('[data-pgid]');
+      if (pag) { openPagamento(null, null, pag.dataset.pgid); return; }
       const item = ev.target.closest('[data-fid]');
       if (item) { openFavor(item.dataset.fid); return; }
       const cab = ev.target.closest('[data-abrir]');
@@ -2675,9 +3161,14 @@
         renderFavores();
       }
     });
-    ['fv-amount', 'fv-paid'].forEach(function (id) {
-      $(id).addEventListener('input', onFavorAmounts);
-    });
+    $('fv-amount').addEventListener('input', onFavorAmounts);
+    $('pg-amount').addEventListener('input', onPagamentoAmount);
+    $('pg-meses').addEventListener('input', onPagamentoAmount);
+    $('pg-ja-caiu').addEventListener('change', onPagamentoAmount);
+    $('pg-save').addEventListener('click', savePagamento);
+    $('pg-del').addEventListener('click', delPagamento);
+    $('pg-cancel').addEventListener('click', function () { closeSheets(); });
+    $('pg-back').addEventListener('click', function () { closeSheets(); });
     $('fv-save').addEventListener('click', saveFavor);
     $('fv-del').addEventListener('click', delFavor);
     $('fv-cancel').addEventListener('click', function () { closeSheets(); });
@@ -2720,7 +3211,8 @@
       if (b) openLoan(b.dataset.id);
     });
     $('lo-method').addEventListener('change', onLoanMethod);
-    ['lo-principal', 'lo-f-total', 'lo-installments', 'lo-installment-amount'].forEach(function (id) {
+    ['lo-principal', 'lo-f-total', 'lo-installments', 'lo-installment-amount',
+     'lo-f-received', 'lo-received-interest'].forEach(function (id) {
       $(id).addEventListener('input', onLoanAmounts);
     });
     $('lo-save').addEventListener('click', saveLoan);
@@ -3042,7 +3534,7 @@
     }
 
     Store.startRealtime();
-    Store.retry(entries, saldoInicial, loans, contas, hubOrder, favores);
+    Store.retry(estadoAtual());
   }
 
   function startLocalOnly() {
@@ -3086,7 +3578,7 @@
     });
 
     // reenvia o que ficou pendente quando a conexão volta
-    window.addEventListener('online', function () { Store.retry(entries, saldoInicial, loans, contas, hubOrder, favores); });
+    window.addEventListener('online', function () { Store.retry(estadoAtual()); });
 
     if (!Store.init()) {
       startLocalOnly();

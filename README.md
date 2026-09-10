@@ -69,21 +69,74 @@ usam os mesmos critérios.
 
 O cartão do topo soma tudo: a receber, juros embutidos, recebido e em aberto.
 
+#### Mensalidade: o juro corre por fora
+
+Nos métodos **à vista** e **parcelado**, o juro está embutido no total a
+receber e cada real que entra abate esse total.
+
+Na **mensalidade** o combinado é outro. A pessoa paga uma quantia fixa todo
+mês — por tempo indeterminado — e isso **não diminui a dívida em nada**. A
+dívida é o principal, e ela só morre quando o principal voltar inteiro.
+
+| Campo | Papel |
+|---|---|
+| `principal` | a dívida. Só ela fecha o empréstimo |
+| `installment_amount` | o juro de cada mês |
+| `received` | principal devolvido |
+| `received_interest` | mensalidades já recebidas — acumula sem limite |
+
+Emprestou 2.500 a 300/mês. Ela paga duas mensalidades e depois devolve os
+2.500: entraram **3.100**, e só nesse momento o empréstimo quita. Antes disso,
+"falta voltar" continua marcando 2.500 — mesmo depois de nove mensalidades.
+
+Empréstimo de mensalidade **nunca aparece como atrasado**: o acerto final não
+tem prazo, e a data ali é só previsão.
+
 ### Favores
 
-Dinheiro emprestado **sem juros**, só para não esquecer. Uma linha por favor em
-`favors`; a tela agrupa por pessoa em acordeão.
+Dinheiro emprestado **sem juros**, só para não esquecer. São três níveis:
 
-| Campo | Observação |
+```
+pessoa ──► dia (uma saída) ──► item (um gasto)
+```
+
+Uma linha por gasto em `favors` (quem, por quê, quanto, que dia). O dia não é
+um cadastro: favores da mesma pessoa na mesma data formam a saída.
+
+#### O pagamento é um lançamento à parte
+
+O quanto já voltou **não** fica no favor. Cada pagamento é uma linha em
+`favor_payments` com um **alcance**:
+
+| Alcance | Entra em |
 |---|---|
-| Quem te deve | agrupa os favores da mesma pessoa |
-| Por que te deve | o motivo, mostrado ao abrir a pessoa |
-| Valor total | quanto foi emprestado |
-| Já pagou | quanto já voltou |
+| `item` | um gasto específico |
+| `dia` | as contas daquela pessoa naquele dia |
+| `total` | tudo que ela deve |
 
-**Quanto falta e a % paga são derivados**, nunca guardados: deve 900 e pagou
-500 ⇒ falta 400, 55,6% pago. Pagar mais que o total é limitado ao total.
-Favores quitados aparecem riscados a lápis.
+O sistema reparte sozinho: **do mais antigo para o mais novo**, enchendo um
+gasto de cada vez. O mais específico entra primeiro (item, depois dia, depois
+total), para um pagamento avulso não engolir o item que se quis quitar de
+propósito. Sobra vira **crédito** da pessoa; nada é perdido.
+
+Exemplo — saída de 10/set com Uber 40, comida 160 e roupa 300, mais farmácia
+100 no dia 15. Ela passa 200 sem dizer de quê: quita o Uber e a comida, e a
+roupa fica intacta.
+
+#### Combinado de parcelas
+
+"Me paga 250 por 5 meses" vira cinco linhas com o mesmo `plan_id`, numeradas
+de 1 a 5. Só as de status `pago` abatem a dívida; as `previsto` existem para
+mostrar "2 de 5" e a próxima data.
+
+**Parcela que não cai no mês desliza para o mês seguinte** — e a série inteira
+vai junto, para duas nunca caírem no mesmo mês. O deslize é recalculado a cada
+desenho: a data guardada nunca muda, então o app não reescreve o banco só
+porque o tempo passou, e acerta a conta mesmo depois de semanas fechado.
+
+**Quanto falta e a % paga são derivados**, nunca guardados: editar o valor de
+um gasto ou apagá-lo recalcula tudo sozinho. Favores quitados aparecem
+riscados a lápis.
 
 ### Contas
 
@@ -156,6 +209,8 @@ nesta ordem:
 2. [`supabase/schema-loans.sql`](supabase/schema-loans.sql) — `loans` (empréstimos)
 3. [`supabase/schema-accounts.sql`](supabase/schema-accounts.sql) — `accounts` (contas)
 4. [`supabase/schema-favors.sql`](supabase/schema-favors.sql) — `favors` (favores)
+5. [`supabase/schema-favors-pagamentos.sql`](supabase/schema-favors-pagamentos.sql) — `favor_payments` e a migração do `paid`
+6. [`supabase/schema-loans-mensalidade.sql`](supabase/schema-loans-mensalidade.sql) — `received_interest` e a mensalidade que não quita
 
 Quem criou `accounts` antes do tipo `economia` precisa rodar também
 [`supabase/schema-accounts-economia.sql`](supabase/schema-accounts-economia.sql).
@@ -291,6 +346,8 @@ supabase/schema.sql        entries + settings, RLS e realtime
 supabase/schema-loans.sql  loans, RLS e realtime
 supabase/schema-accounts.sql accounts, RLS e realtime
 supabase/schema-favors.sql   favors, RLS e realtime
+supabase/schema-favors-pagamentos.sql
+                             favor_payments, parcelas e a saída do paid
 manifest.webmanifest       metadados do PWA
 sw.js                      service worker (app shell offline)
 assets/icons/              ícones 192/512/maskable/apple-touch

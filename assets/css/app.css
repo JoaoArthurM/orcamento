@@ -2144,12 +2144,197 @@ svg { display: block; flex: none; }
 .fv-pessoa.aberta .fv-itens { display: flex; }
 
 .fv-item {
-  width: 100%; text-align: left;
+  width: 100%;
   display: flex; align-items: flex-start; gap: 10px;
   padding: 10px 0;
   border-bottom: 1px solid #F2F6EF;
 }
 .fv-item:last-child { border-bottom: none; }
+
+/* o corpo do item abre o favor; o botão ao lado registra pagamento.
+   Botão dentro de botão não é HTML válido, então o item é um <div>. */
+.fv-item-abrir {
+  flex: 1; min-width: 0; text-align: left;
+  display: flex; align-items: flex-start; gap: 10px;
+}
+
+/* ── um dia é uma saída: várias contas de uma vez ────── */
+.fv-dia {
+  border: 1px solid #EDF3E9; border-radius: 14px;
+  background: #FCFDFB;
+  margin-top: 8px;
+  overflow: hidden;
+}
+.fv-dia.quitado { opacity: .72; }
+
+.fv-dia-cab {
+  display: flex; align-items: center; gap: 8px;
+  padding: 9px 10px 9px 12px;
+  background: #F5F9F2;
+}
+.fv-dia-data {
+  font-size: 12px; font-weight: 700; letter-spacing: -.01em;
+  color: var(--dark); white-space: nowrap;
+}
+.fv-dia-meta {
+  font-size: 10.5px; color: #8FA697; flex: 1; min-width: 0;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.fv-dia-falta {
+  font-size: 10.5px; font-weight: 600; white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.fv-dia-falta.aberto  { color: var(--ui-fg); }
+.fv-dia-falta.quitado { color: var(--ok); }
+.fv-dia-itens { padding: 0 12px 4px; }
+.fv-dia-itens .fv-item:last-child { border-bottom: none; }
+
+/* botãozinho redondo de pagar, no dia e no item */
+.fv-mini {
+  width: 28px; height: 28px; border-radius: 50%; flex: none;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--dark); color: #DDF29A;
+  transition: transform 120ms, background 140ms;
+}
+.fv-mini .ico { width: 14px; height: 14px; }
+.fv-mini:active { transform: scale(.9); }
+.fv-item > .fv-mini { margin-top: 3px; }
+
+/* pagar tudo o que a pessoa deve */
+.fv-pagar-tudo {
+  width: 100%; text-align: left;
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  padding: 11px 13px; margin-top: 8px;
+  border-radius: 14px;
+  background: var(--dark); color: #fff;
+  font-size: 12.5px; font-weight: 600; letter-spacing: -.01em;
+  transition: transform 120ms;
+}
+.fv-pagar-tudo:active { transform: scale(.985); }
+.fv-pagar-tudo .ico { width: 16px; height: 16px; color: var(--lime); flex: none; }
+.fv-pagar-nota {
+  width: 100%; padding-left: 26px;
+  font-size: 10px; font-weight: 500; color: #9FBCAB; letter-spacing: 0;
+}
+
+/* pagou a mais */
+.fv-credito {
+  display: flex; align-items: center; gap: 8px;
+  margin-top: 8px; padding: 9px 12px;
+  border-radius: 12px; background: #FFF8E6;
+  font-size: 11px; color: #8A6D2B;
+}
+.fv-credito .ico { width: 15px; height: 15px; flex: none; }
+
+/* ── combinado de parcelas ───────────────────────────── */
+.fv-plano {
+  display: flex; align-items: center; gap: 10px;
+  margin-top: 8px; padding: 10px 11px 10px 12px;
+  border-radius: 14px;
+  background: #F1F6FD; border: 1px solid #DCE8F8;
+}
+.fv-plano.atrasada { background: #FFF6E9; border-color: #F3E1C4; }
+.fv-plano.quitado  { background: #F2F8EC; border-color: #E0EDD4; opacity: .8; }
+
+.fv-plano-ico {
+  width: 28px; height: 28px; border-radius: 9px; flex: none;
+  display: flex; align-items: center; justify-content: center;
+  background: #DCE8F8; color: #2E5A8C;
+}
+.fv-plano.atrasada .fv-plano-ico { background: #F6E6CC; color: #8A6D2B; }
+.fv-plano.quitado  .fv-plano-ico { background: #E0EDD4; color: #2F6142; }
+.fv-plano-ico .ico { width: 14px; height: 14px; }
+
+.fv-plano-corpo { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.fv-plano-tit {
+  font-size: 12px; font-weight: 700; letter-spacing: -.01em; color: var(--dark);
+  font-variant-numeric: tabular-nums;
+}
+.fv-plano-meta {
+  font-size: 10px; color: #7E93A6;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.fv-plano.atrasada .fv-plano-meta { color: #8A6D2B; }
+
+.fv-plano-ok {
+  flex: none; padding: 7px 13px; border-radius: 99px;
+  background: var(--dark); color: #DDF29A;
+  font-size: 11px; font-weight: 700; letter-spacing: -.01em;
+  transition: transform 120ms;
+}
+.fv-plano-ok:active { transform: scale(.93); }
+
+/* campo de repetição no formulário */
+.pg-meses-linha { display: flex; align-items: center; gap: 10px; }
+.pg-meses-linha .fi { width: 92px; flex: none; }
+.pg-meses-dica { font-size: 11px; color: var(--tx-d); }
+
+.pg-check { display: flex; align-items: center; gap: 9px; margin-top: 11px; cursor: pointer; }
+.pg-check input { position: absolute; opacity: 0; width: 0; height: 0; }
+.pg-check-cx {
+  width: 20px; height: 20px; border-radius: 6px; flex: none;
+  display: flex; align-items: center; justify-content: center;
+  border: 1.5px solid #C6D5CB; background: #fff; color: transparent;
+  transition: background 130ms, border-color 130ms, color 130ms;
+}
+.pg-check-cx .ico { width: 12px; height: 12px; }
+.pg-check input:checked + .pg-check-cx {
+  background: var(--dark); border-color: var(--dark); color: var(--lime);
+}
+.pg-check-txt { font-size: 12px; color: var(--tx); }
+.pg-repete[hidden] { display: none; }
+
+/* ── o que já foi pago ───────────────────────────────── */
+.fv-hist { margin-top: 12px; border-top: 1px dashed #E9F0E4; padding-top: 8px; }
+.fv-hist-tit {
+  display: block; font-size: 10px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: .08em;
+  color: #A8BCAF; margin-bottom: 4px;
+}
+.fv-pag {
+  width: 100%; text-align: left;
+  display: flex; align-items: center; gap: 9px;
+  padding: 7px 0;
+}
+.fv-pag-ico {
+  width: 26px; height: 26px; border-radius: 8px; flex: none;
+  display: flex; align-items: center; justify-content: center;
+  background: #E9F6D6; color: #2F6142;
+}
+.fv-pag-ico .ico { width: 13px; height: 13px; }
+.fv-pag-corpo { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.fv-pag-val {
+  font-size: 12.5px; font-weight: 600; color: var(--ok);
+  font-variant-numeric: tabular-nums;
+}
+.fv-pag-meta {
+  font-size: 10px; color: #9CB2A4;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+
+/* ── folha de pagamento ──────────────────────────────── */
+.pg-alvo-card {
+  display: flex; flex-direction: column; gap: 3px;
+  padding: 13px 15px; border-radius: 16px;
+  background: var(--dark); color: #fff;
+}
+.pg-alvo-quem { font-size: 15px; font-weight: 700; letter-spacing: -.02em; }
+.pg-alvo-o-que {
+  font-size: 11.5px; color: #9FBCAB;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.pg-alvo-aberto { font-size: 11px; color: #9FBCAB; margin-top: 4px; }
+.pg-alvo-aberto b {
+  color: var(--lime); font-weight: 700; font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+.pg-nota {
+  font-size: 11px; color: var(--tx-d); line-height: 1.45;
+  padding: 0 2px; margin-top: -4px;
+}
+
+#pg-del { color: var(--danger); margin-left: auto; }
+#pg-del[hidden] { display: none; }
 .fv-faixa { width: 4px; height: 34px; border-radius: 3px; flex: none; margin-top: 1px; }
 .fv-item-corpo { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
 .fv-motivo {
@@ -2209,4 +2394,11 @@ svg { display: block; flex: none; }
 
 @media (min-width: 1024px) {
   #view-favores { display: none !important; }
+}
+
+/* nota do empréstimo por mensalidade: o juro que já entrou */
+.lo-mensal-nota {
+  display: block; margin-top: 8px; padding: 7px 10px;
+  border-radius: 10px; background: #EEF3FD;
+  font-size: 10.5px; color: #2E5A8C; letter-spacing: -.005em;
 }

@@ -150,7 +150,10 @@
       person:    String(l.person).trim().slice(0, 120),
       principal: principal,
       total_due: total,
+      // só principal devolvido; é ele que fecha o empréstimo
       received:  Math.max(0, Number(l.received) || 0),
+      // mensalidades já recebidas: juro, acumula sem limite e não quita
+      received_interest: Math.max(0, Number(l.received_interest) || 0),
       lent_on:   dataOuNulo(l.lent_on) || hoje(),
       due_on:    dataOuNulo(l.due_on),
       method:    method,
@@ -162,10 +165,17 @@
       out.installments = Math.min(360, Math.max(1, parseInt(l.installments, 10) || 1));
     } else if (method === 'mensal') {
       out.installment_amount = Math.max(0, Number(l.installment_amount) || 0);
-      // aqui a mensalidade É o juro: o total a receber sai de
-      // emprestado + mensalidade, e nunca é digitado à mão
-      out.total_due = principal + out.installment_amount;
+      /* A mensalidade é juro que corre por tempo indeterminado: entra
+         todo mês e não diminui nada. A dívida é, e continua sendo, o
+         principal — some quando o principal voltar.
+
+         Somar a mensalidade ao total a receber (como era antes) fazia
+         nove meses de 300 parecerem 2.700 de 2.800 "quitados", com a
+         pessoa ainda devendo os 2.500 inteiros. */
+      out.total_due = principal;
     }
+    // fora da mensalidade o juro está embutido no total, e não há o que acumular
+    if (method !== 'mensal') out.received_interest = 0;
     return out;
   }
 
@@ -216,20 +226,175 @@
 
   /**
    * Favor: dinheiro emprestado sem juros, só para não esquecer.
-   * Quanto falta e a % paga são derivados — nunca guardados.
+   * Guarda só o que se deve. Quanto já voltou vem dos pagamentos.
    */
   function normalizeFavor(f) {
-    const amount = Math.max(0, Number(f.amount) || 0);
     return {
       id:      isUuid(f.id) ? f.id : newId(),
       person:  String(f.person).trim().slice(0, 120),
       reason:  String(f.reason || '').trim().slice(0, 200) || 'sem motivo',
-      amount:  amount,
-      // não dá para ter pago mais do que deve
-      paid:    Math.min(amount, Math.max(0, Number(f.paid) || 0)),
+      amount:  Math.max(0, Number(f.amount) || 0),
       lent_on: dataOuNulo(f.lent_on) || hoje(),
       notes:   f.notes ? String(f.notes).slice(0, 500) : null,
     };
+  }
+
+  /* ── pagamento de favor ─────────────────────────────── */
+
+  const ALCANCES = ['item', 'dia', 'total'];
+
+  function validPayment(p) {
+    return !!p && typeof p === 'object'
+      && typeof p.person === 'string' && p.person.trim() !== ''
+      && isFinite(Number(p.amount)) && Number(p.amount) > 0;
+  }
+
+  /**
+   * Pagamento: dinheiro que voltou. O alcance diz até onde ele vai —
+   * um favor, um dia, ou o que a pessoa dever.
+   *
+   * Um alcance sem o seu alvo não faz sentido, então cai para 'total',
+   * que não precisa de alvo nenhum. É o que o banco também cobra.
+   *
+   * O status separa o que caiu do que só foi combinado. "Me paga 250 por
+   * 5 meses" vira cinco linhas: a primeira 'pago' e quatro 'previsto'.
+   * Previsto aparece na tela como "2 de 5", mas não abate nada — senão a
+   * dívida sumiria hoje por causa de dinheiro que só chega em janeiro.
+   */
+  function normalizePayment(p) {
+    let alcance = ALCANCES.indexOf(p.scope) >= 0 ? p.scope : 'total';
+    const favorId = isUuid(p.favor_id) ? p.favor_id : null;
+    const dia = dataOuNulo(p.scope_day);
+    if (alcance === 'item' && !favorId) alcance = 'total';
+    if (alcance === 'dia'  && !dia)     alcance = 'total';
+
+    // ou o combinado vem inteiro, ou não vem — meio combinado o banco recusa
+    const i = Math.round(Number(p.plan_index));
+    const t = Math.round(Number(p.plan_total));
+    const planoOk = isUuid(p.plan_id) && isFinite(i) && isFinite(t)
+      && i >= 1 && t >= 1 && i <= t;
+    return {
+      id:        isUuid(p.id) ? p.id : newId(),
+      person:    String(p.person).trim().slice(0, 120),
+      amount:    Math.max(0, Number(p.amount) || 0),
+      paid_on:   dataOuNulo(p.paid_on) || hoje(),
+      scope:     alcance,
+      favor_id:  alcance === 'item' ? favorId : null,
+      scope_day: alcance === 'dia'  ? dia : null,
+      status:    p.status === 'previsto' ? 'previsto' : 'pago',
+      plan_id:    planoOk ? p.plan_id : null,
+      plan_index: planoOk ? Math.round(Number(p.plan_index)) : null,
+      plan_total: planoOk ? Math.round(Number(p.plan_total)) : null,
+      notes:     p.notes ? String(p.notes).slice(0, 500) : null,
+    };
+  }
+
+  /* ══════════════════════════════════════════════════════
+     REPARTIR OS PAGAMENTOS ENTRE OS FAVORES
+
+     Fica aqui, e não na tela, porque é a regra que decide os
+     números que todo o resto mostra — e porque assim dá para
+     testá-la sozinha, sem navegador.
+
+     Duas decisões governam o resultado:
+
+     1. O mais específico manda. Primeiro entram os pagamentos
+        de item, depois os de dia, e só então os de total. Se
+        entrasse ao contrário, um pagamento avulso já teria
+        engolido o item que a pessoa quis quitar de propósito.
+
+     2. Dentro de um alcance, enche-se um favor de cada vez, do
+        mais antigo para o mais novo. Sobrou depois de fechar o
+        último? Vira crédito da pessoa, não some.
+
+     Contas em centavos: 0.1 + 0.2 em ponto flutuante não dá 0.3,
+     e um resto de centavo faria um favor quitado parecer aberto.
+     ══════════════════════════════════════════════════════ */
+
+  const cent = (v) => Math.round((Number(v) || 0) * 100);
+  const real = (c) => c / 100;
+
+  /** Mesma normalização de nome que a tela usa para agrupar. */
+  function chaveNome(n) {
+    return String(n || '').trim().toLowerCase().replace(/\s+/g, ' ');
+  }
+
+  /**
+   * Devolve { pago: {favorId: valor}, credito: {chaveDaPessoa: valor} }.
+   * Ninguém guarda isso: é recalculado a cada desenho, e por isso
+   * editar ou apagar um favor nunca deixa uma divisão velha para trás.
+   */
+  function alocarFavores(favors, payments) {
+    /* Ordem em que o dinheiro entra: dia mais antigo primeiro e, dentro
+       do dia, a ordem em que os favores foram lançados — que é a mesma
+       que a tela mostra. O id NÃO serve de desempate: ele é aleatório, e
+       isso deixaria imprevisível qual conta do dia recebe o troco. */
+    const lista = (favors || []).map(function (f, i) { return { f: f, i: i }; })
+      .sort(function (a, b) {
+        return String(a.f.lent_on).localeCompare(String(b.f.lent_on)) || a.i - b.i;
+      }).map(function (x) { return x.f; });
+
+    const devendo = {};   // favorId → centavos ainda em aberto
+    const pago    = {};
+    lista.forEach(function (f) {
+      devendo[f.id] = Math.max(0, cent(f.amount));
+      pago[f.id] = 0;
+    });
+
+    /** Despeja `resto` centavos na lista, na ordem. Devolve o que sobrou. */
+    function derramar(alvos, resto) {
+      for (let i = 0; i < alvos.length && resto > 0; i++) {
+        const id = alvos[i].id;
+        const cabe = Math.min(resto, devendo[id]);
+        if (cabe <= 0) continue;
+        devendo[id] -= cabe;
+        pago[id] += cabe;
+        resto -= cabe;
+      }
+      return resto;
+    }
+
+    const credito = {};
+    const sobrou = function (p, resto) {
+      if (resto <= 0) return;
+      const k = chaveNome(p.person);
+      credito[k] = (credito[k] || 0) + resto;
+    };
+
+    const daPessoa = function (p) {
+      const k = chaveNome(p.person);
+      return lista.filter(function (f) { return chaveNome(f.person) === k; });
+    };
+
+    const ordem = { item: 0, dia: 1, total: 2 };
+    // parcela combinada ainda não é dinheiro: fica de fora antes de ordenar
+    const pags = (payments || []).filter(function (p) {
+      return p.status !== 'previsto';
+    }).sort(function (a, b) {
+      return ordem[a.scope] - ordem[b.scope]
+        || String(a.paid_on).localeCompare(String(b.paid_on))
+        || String(a.id).localeCompare(String(b.id));
+    });
+
+    pags.forEach(function (p) {
+      const valor = cent(p.amount);
+      if (valor <= 0) return;
+      let alvos;
+      if (p.scope === 'item') {
+        alvos = lista.filter(function (f) { return f.id === p.favor_id; });
+      } else if (p.scope === 'dia') {
+        alvos = daPessoa(p).filter(function (f) { return f.lent_on === p.scope_day; });
+      } else {
+        alvos = daPessoa(p);
+      }
+      sobrou(p, derramar(alvos, valor));
+    });
+
+    const pagoReal = {};
+    Object.keys(pago).forEach(function (id) { pagoReal[id] = real(pago[id]); });
+    const credReal = {};
+    Object.keys(credito).forEach(function (k) { credReal[k] = real(credito[k]); });
+    return { pago: pagoReal, credito: credReal };
   }
 
   /* ── mapeamento app ⇄ banco ─────────────────────────── */
@@ -274,6 +439,9 @@
       method: l.method,
       installments: l.method === 'parcelado' ? l.installments : null,
       installment_amount: l.method === 'mensal' ? l.installment_amount : null,
+      // sem isto, cada mensalidade nova geraria uma linha idêntica
+      // à anterior e o diff nunca a enviaria
+      received_interest: l.received_interest,
       notes: l.notes,
       position: index,
     };
@@ -283,6 +451,7 @@
     return normalizeLoan({
       id: r.id, person: r.person,
       principal: r.principal, total_due: r.total_due, received: r.received,
+      received_interest: r.received_interest,
       lent_on: r.lent_on, due_on: r.due_on,
       method: r.method, installments: r.installments,
       installment_amount: r.installment_amount, notes: r.notes,
@@ -314,7 +483,7 @@
     return {
       id: f.id, user_id: user.id,
       person: f.person, reason: f.reason,
-      amount: f.amount, paid: f.paid,
+      amount: f.amount,
       lent_on: f.lent_on, notes: f.notes,
       position: index,
     };
@@ -323,12 +492,38 @@
   function fromFavorRow(r) {
     return normalizeFavor({
       id: r.id, person: r.person, reason: r.reason,
-      amount: r.amount, paid: r.paid, lent_on: r.lent_on, notes: r.notes,
+      amount: r.amount, lent_on: r.lent_on, notes: r.notes,
     });
   }
 
   function sameFavorRow(a, b) {
     return JSON.stringify(toFavorRow(a, a.__pos)) === JSON.stringify(toFavorRow(b, b.__pos));
+  }
+
+  function toPaymentRow(p, index) {
+    return {
+      id: p.id, user_id: user.id,
+      person: p.person, amount: p.amount, paid_on: p.paid_on,
+      scope: p.scope, favor_id: p.favor_id, scope_day: p.scope_day,
+      // sem o status aqui, marcar uma parcela como recebida geraria
+      // uma linha idêntica e o diff nunca a enviaria
+      status: p.status,
+      plan_id: p.plan_id, plan_index: p.plan_index, plan_total: p.plan_total,
+      notes: p.notes, position: index,
+    };
+  }
+
+  function fromPaymentRow(r) {
+    return normalizePayment({
+      id: r.id, person: r.person, amount: r.amount, paid_on: r.paid_on,
+      scope: r.scope, favor_id: r.favor_id, scope_day: r.scope_day,
+      status: r.status, plan_id: r.plan_id,
+      plan_index: r.plan_index, plan_total: r.plan_total, notes: r.notes,
+    });
+  }
+
+  function samePaymentRow(a, b) {
+    return JSON.stringify(toPaymentRow(a, a.__pos)) === JSON.stringify(toPaymentRow(b, b.__pos));
   }
 
   function sameAccountRow(a, b) {
@@ -344,13 +539,25 @@
     return JSON.stringify(toRow(a, a.__pos)) === JSON.stringify(toRow(b, b.__pos));
   }
 
-  /* As três coleções seguem o mesmo diff: mudou a linha, sobe a linha. */
+  /* Toda coleção segue o mesmo diff: mudou a linha, sobe a linha. */
   const COLECOES = [
-    { chave: 'entries',  tabela: 'entries',  toRow: toRow,        same: sameRow },
-    { chave: 'loans',    tabela: 'loans',    toRow: toLoanRow,    same: sameLoanRow },
-    { chave: 'accounts', tabela: 'accounts', toRow: toAccountRow, same: sameAccountRow },
-    { chave: 'favors',   tabela: 'favors',   toRow: toFavorRow,   same: sameFavorRow },
+    { chave: 'entries',  tabela: 'entries',  toRow: toRow,         same: sameRow },
+    { chave: 'loans',    tabela: 'loans',    toRow: toLoanRow,     same: sameLoanRow },
+    { chave: 'accounts', tabela: 'accounts', toRow: toAccountRow,  same: sameAccountRow },
+    { chave: 'favors',   tabela: 'favors',   toRow: toFavorRow,    same: sameFavorRow },
+    { chave: 'payments', tabela: 'favor_payments',
+                         toRow: toPaymentRow, same: samePaymentRow },
   ];
+
+  /* O estado zerado. Existe como função porque um literal solto em
+     cada ponto é onde uma coleção nova acaba esquecida — e coleção
+     esquecida aqui não fica só de fora: chega como [] e o diff APAGA
+     a tabela inteira. */
+  function estadoVazio(saldo) {
+    const vazio = { saldoInicial: saldo === undefined ? 0 : saldo, hubOrder: null };
+    COLECOES.forEach(function (c) { vazio[c.chave] = []; });
+    return vazio;
+  }
 
   /* ── cache local ────────────────────────────────────── */
   function readLocal() {
@@ -365,6 +572,8 @@
             loans: Array.isArray(d.loans) ? d.loans.filter(validLoan).map(normalizeLoan) : [],
             accounts: Array.isArray(d.accounts) ? d.accounts.filter(validAccount).map(normalizeAccount) : [],
             favors: Array.isArray(d.favors) ? d.favors.filter(validFavor).map(normalizeFavor) : [],
+            payments: Array.isArray(d.payments)
+              ? d.payments.filter(validPayment).map(normalizePayment) : [],
             hubOrder: Array.isArray(d.hubOrder) ? d.hubOrder : null,
           };
         }
@@ -382,8 +591,7 @@
         if (!d || !Array.isArray(d.entries)) continue;
         const clean = d.entries.filter(validEntry).map(normalize);
         if (!clean.length && d.entries.length) continue;   // blob corrompido
-        return { entries: clean, saldoInicial: Number(d.saldoInicial) || 0,
-                 loans: [], accounts: [], favors: [] };
+        return Object.assign(estadoVazio(Number(d.saldoInicial) || 0), { entries: clean });
       } catch (e) {}
     }
     return null;
@@ -397,6 +605,7 @@
       loans: state.loans || [],
       accounts: state.accounts || [],
       favors: state.favors || [],
+      payments: state.payments || [],
       hubOrder: state.hubOrder || null,
       savedAt: Date.now(),
     }));
@@ -453,8 +662,11 @@
     const loans    = await opcional('loans',    fromLoanRow,    'supabase/schema-loans.sql');
     const accounts = await opcional('accounts', fromAccountRow, 'supabase/schema-accounts.sql');
     const favors   = await opcional('favors',   fromFavorRow,   'supabase/schema-favors.sql');
+    const payments = await opcional('favor_payments', fromPaymentRow,
+                                    'supabase/schema-favors-pagamentos.sql');
 
-    if (!er.data.length && !sr.data && !loans.length && !accounts.length && !favors.length) return null;
+    if (!er.data.length && !sr.data && !loans.length
+        && !accounts.length && !favors.length && !payments.length) return null;
     return {
       entries: er.data.map(fromRow),
       saldoInicial: sr.data ? (Number(sr.data.saldo_inicial) || 0) : 0,
@@ -462,6 +674,7 @@
       loans: loans,
       accounts: accounts,
       favors: favors,
+      payments: payments,
     };
   }
 
@@ -558,20 +771,14 @@
   let remoteTimer = null;
   function subscribe() {
     if (!client || !user || channel) return;
-    channel = client.channel('orcamento:' + user.id)
-      .on('postgres_changes',
-          { event: '*', schema: 'public', table: 'entries', filter: 'user_id=eq.' + user.id },
-          scheduleRemote)
-      .on('postgres_changes',
-          { event: '*', schema: 'public', table: 'settings', filter: 'user_id=eq.' + user.id },
-          scheduleRemote)
-      .on('postgres_changes',
-          { event: '*', schema: 'public', table: 'loans', filter: 'user_id=eq.' + user.id },
-          scheduleRemote)
-      .on('postgres_changes',
-          { event: '*', schema: 'public', table: 'accounts', filter: 'user_id=eq.' + user.id },
-          scheduleRemote)
-      .subscribe();
+    // sai de COLECOES para que uma tabela nova não fique fora do
+    // realtime por esquecimento — foi o que aconteceu com favors
+    const tabelas = COLECOES.map(function (c) { return c.tabela; }).concat(['settings']);
+    channel = tabelas.reduce(function (ch, tabela) {
+      return ch.on('postgres_changes',
+        { event: '*', schema: 'public', table: tabela, filter: 'user_id=eq.' + user.id },
+        scheduleRemote);
+    }, client.channel('orcamento:' + user.id)).subscribe();
   }
   function scheduleRemote() {
     // Enquanto houver mudança local pendente, o que está aqui é mais novo:
@@ -593,6 +800,16 @@
     if (channel) { try { client.removeChannel(channel); } catch (e) {} channel = null; }
   }
 
+  /** Preenche o que a chamada não mandou, para o diff não apagar nada. */
+  function completar(state) {
+    const cheio = Object.assign(estadoVazio(), state || {});
+    COLECOES.forEach(function (c) {
+      if (!Array.isArray(cheio[c.chave])) cheio[c.chave] = [];
+    });
+    cheio.hubOrder = cheio.hubOrder || null;
+    return cheio;
+  }
+
   /* ══════════════════════════════════════════════════════
      API PÚBLICA
      ══════════════════════════════════════════════════════ */
@@ -609,6 +826,10 @@
     validAccount: validAccount,
     normalizeFavor: normalizeFavor,
     validFavor: validFavor,
+    normalizePayment: normalizePayment,
+    validPayment: validPayment,
+    alocarFavores: alocarFavores,
+    estadoVazio: estadoVazio,
     FREQ_MES: FREQ_MES,
     hoje: hoje,
 
@@ -741,17 +962,16 @@
           return { state: remote, source: 'cloud' };
         }
         const local = readLocal() || localFallback;
-        const temAlgo = local && (local.entries.length
-          || (local.loans && local.loans.length)
-          || (local.accounts && local.accounts.length)
-          || (local.favors && local.favors.length));
+        const temAlgo = local && COLECOES.some(function (c) {
+          return local[c.chave] && local[c.chave].length;
+        });
         if (temAlgo) {
-          // synced zerado força o diff a enviar tudo
-          writeSynced({ entries: [], saldoInicial: null, loans: [], accounts: [], favors: [], hubOrder: null });
+          // saldoInicial null força o diff a enviar tudo
+          writeSynced(estadoVazio(null));
           await push(local);
           return { state: local, source: 'uploaded' };
         }
-        writeSynced({ entries: [], saldoInicial: 0, loans: [], accounts: [], favors: [], hubOrder: null });
+        writeSynced(estadoVazio());
         return { state: null, source: 'empty' };
       } catch (err) {
         status('offline — usando dados deste aparelho', 'readonly');
@@ -760,11 +980,16 @@
       }
     },
 
-    /** O app chama isto a cada mudança, sempre com o estado completo. */
-    save(entries, saldoInicial, loans, accounts, hubOrder, favors) {
-      const state = { entries: entries, saldoInicial: saldoInicial,
-                      loans: loans || [], accounts: accounts || [],
-                      favors: favors || [], hubOrder: hubOrder || null };
+    /**
+     * O app chama isto a cada mudança, sempre com o estado COMPLETO.
+     *
+     * Recebe um objeto, e não uma lista de argumentos, porque o diff
+     * trata coleção ausente como coleção esvaziada: esquecer um campo
+     * na chamada apagaria a tabela. Com nomes, o esquecimento aparece
+     * na hora de escrever a chamada.
+     */
+    save(state) {
+      state = completar(state);
       const ok = writeLocal(state);
       if (this.mode !== 'cloud' || !user) {
         status(ok ? 'salvo ✓' : 'erro ao salvar', ok ? 'ok' : 'err');
@@ -775,11 +1000,9 @@
     },
 
     /** Reenvia o que ficou pendente (volta da conexão, app reaberto). */
-    retry(entries, saldoInicial, loans, accounts, hubOrder, favors) {
+    retry(state) {
       if (this.mode !== 'cloud' || !user || !dirty) return;
-      push({ entries: entries, saldoInicial: saldoInicial,
-             loans: loans || [], accounts: accounts || [],
-             favors: favors || [], hubOrder: hubOrder || null });
+      push(completar(state));
     },
 
     /** Apaga os dados deste usuário — aqui e na nuvem. */
@@ -794,11 +1017,12 @@
         try {
           await client.from('entries').delete().eq('user_id', user.id);
           await client.from('settings').delete().eq('user_id', user.id);
-          for (const t of ['loans', 'accounts', 'favors']) {
-            const r = await client.from(t).delete().eq('user_id', user.id);
+          for (const c of COLECOES) {
+            if (c.chave === 'entries') continue;   // já apagada acima
+            const r = await client.from(c.tabela).delete().eq('user_id', user.id);
             if (r.error && !/schema cache|does not exist/i.test(r.error.message || '')) throw r.error;
           }
-          writeSynced({ entries: [], saldoInicial: 0, loans: [], accounts: [], favors: [], hubOrder: null });
+          writeSynced(estadoVazio());
         } catch (e) {
           if (window.console) console.warn('[orçamento] falha ao apagar na nuvem:', e.message || e);
           throw e;

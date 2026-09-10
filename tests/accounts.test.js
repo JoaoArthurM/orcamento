@@ -96,7 +96,7 @@ const A2 = 'dddddddd-2222-4222-8222-222222222222';
     const S = load(ops).Store;
     S.init(); S.setUser({ id: 'u1' });
     const a = S.normalizeAccount({ id: A1, kind: 'fixa', name: 'Aluguel', amount: 900, due_day: 10 });
-    S.save([], 0, [], [a]); await tick();
+    S.save({ entries: [], saldoInicial: 0, loans: [], accounts: [a] }); await tick();
     const up = ops.find((o) => o.op === 'upsert' && o.table === 'accounts');
     check('conta sobe para a tabela accounts', up && up.rows.length === 1, up && up.rows.length);
     check('campos vão certos', up && up.rows[0].kind === 'fixa' && up.rows[0].due_day === 10
@@ -112,9 +112,9 @@ const A2 = 'dddddddd-2222-4222-8222-222222222222';
     S.init(); S.setUser({ id: 'u1' });
     const a = S.normalizeAccount({ id: A1, kind: 'fixa', name: 'Aluguel', amount: 900, due_day: 10 });
     const b = S.normalizeAccount({ id: A2, kind: 'assinatura', name: 'Netflix', amount: 44.9 });
-    S.save([], 0, [], [a, b]); await tick();
+    S.save({ entries: [], saldoInicial: 0, loans: [], accounts: [a, b] }); await tick();
     ops.length = 0;
-    S.save([], 0, [], [a, Object.assign({}, b, { amount: 55.9 })]); await tick();
+    S.save({ entries: [], saldoInicial: 0, loans: [], accounts: [a, Object.assign({}, b, { amount: 55.9 })] }); await tick();
     const up = ops.find((o) => o.op === 'upsert' && o.table === 'accounts');
     check('só a conta alterada sobe', up && up.rows.length === 1, up && up.rows.map((r) => r.name));
     check('valor novo é enviado', up && up.rows[0].amount === 55.9);
@@ -127,9 +127,9 @@ const A2 = 'dddddddd-2222-4222-8222-222222222222';
     S.init(); S.setUser({ id: 'u1' });
     const a = S.normalizeAccount({ id: A1, kind: 'fixa', name: 'A', amount: 1, due_day: 5 });
     const b = S.normalizeAccount({ id: A2, kind: 'fixa', name: 'B', amount: 2, due_day: 6 });
-    S.save([], 0, [], [a, b]); await tick();
+    S.save({ entries: [], saldoInicial: 0, loans: [], accounts: [a, b] }); await tick();
     ops.length = 0;
-    S.save([], 0, [], [a]); await tick();
+    S.save({ entries: [], saldoInicial: 0, loans: [], accounts: [a] }); await tick();
     const del = ops.find((o) => o.op === 'delete' && o.table === 'accounts');
     check('exclusão vira DELETE em accounts', del && del.ids[0] === A2, del);
   }
@@ -143,7 +143,7 @@ const A2 = 'dddddddd-2222-4222-8222-222222222222';
     const l = S.normalizeLoan({ id: A2, person: 'B', principal: 200, total_due: 260 });
     const c = S.normalizeAccount({ id: 'eeeeeeee-3333-4333-8333-333333333333',
       kind: 'renda', name: 'Salário', amount: 3000, frequency: 'mensal' });
-    S.save([e], 7, [l], [c]); await tick();
+    S.save({ entries: [e], saldoInicial: 7, loans: [l], accounts: [c] }); await tick();
     const tabelas = ops.filter((o) => o.op === 'upsert').map((o) => o.table).sort();
     check('grava nas quatro tabelas',
       JSON.stringify(tabelas) === '["accounts","entries","loans","settings"]', tabelas);
@@ -153,7 +153,7 @@ const A2 = 'dddddddd-2222-4222-8222-222222222222';
       salvo && { e: salvo.entries.length, l: salvo.loans.length, a: salvo.accounts.length });
 
     ops.length = 0;
-    S.save([e], 7, [l], [c]); await tick();
+    S.save({ entries: [e], saldoInicial: 7, loans: [l], accounts: [c] }); await tick();
     check('reenvio idêntico não gera tráfego', ops.length === 0, ops);
   }
 
@@ -192,18 +192,18 @@ const A2 = 'dddddddd-2222-4222-8222-222222222222';
     const ops = [];
     const S = load(ops).Store;
     S.init(); S.setUser({ id: 'u1' });
-    S.save([], 0, [], [], ['contas', 'eco', 'loans']);
+    S.save({ entries: [], saldoInicial: 0, loans: [], accounts: [], hubOrder: ['contas', 'eco', 'loans'] });
     await tick();
     const st = ops.find((o) => o.op === 'upsert' && o.table === 'settings');
     check('ordem do hub sobe em settings',
       st && JSON.stringify(st.rows.hub_order) === '["contas","eco","loans"]', st && st.rows);
 
     ops.length = 0;
-    S.save([], 0, [], [], ['contas', 'eco', 'loans']); await tick();
+    S.save({ entries: [], saldoInicial: 0, loans: [], accounts: [], hubOrder: ['contas', 'eco', 'loans'] }); await tick();
     check('mesma ordem não gera tráfego', ops.length === 0, ops);
 
     ops.length = 0;
-    S.save([], 0, [], [], ['eco', 'contas', 'loans']); await tick();
+    S.save({ entries: [], saldoInicial: 0, loans: [], accounts: [], hubOrder: ['eco', 'contas', 'loans'] }); await tick();
     check('reordenar dispara gravação',
       ops.some((o) => o.table === 'settings'), ops.map((o) => o.table));
 
@@ -238,7 +238,7 @@ const A2 = 'dddddddd-2222-4222-8222-222222222222';
     vm.createContext(win); vm.runInContext(src, win);
     const S = win.Store;
     S.init(); S.setUser({ id: 'u1' });
-    S.save([], 42, [], [], ['eco']); await tick();
+    S.save({ entries: [], saldoInicial: 42, loans: [], accounts: [], hubOrder: ['eco'] }); await tick();
     const st = ops.find((o) => o.table === 'settings');
     check('sem a coluna, o saldo grava mesmo assim', st && st.rows.saldo_inicial === 42, st && st.rows);
     check('e a ordem não vai junto', st && !('hub_order' in st.rows));
