@@ -2620,3 +2620,9 @@ svg { display: block; flex: none; }
   transition: background 140ms, color 140ms;
 }
 .m-junto button.on { background: var(--dark); color: #fff; }
+
+/* ── folha de confirmação ────────────────────────────── */
+.cf-msg { margin: 0; font-size: 13px; line-height: 1.55; color: var(--tx); }
+.cf-msg b { font-weight: 700; }
+#sheet-confirmar .bsv { background: var(--danger); }
+#sheet-confirmar .bsv:active { filter: brightness(.92); }

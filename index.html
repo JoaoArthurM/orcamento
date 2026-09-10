@@ -1002,6 +1002,22 @@
     </div>
   </div>
 
+  <!-- confirmação: uma pergunta, duas saídas -->
+  <div class="sheet" id="sheet-confirmar" role="dialog" aria-modal="true" aria-labelledby="cf-title">
+    <span class="sheet-grab mobile-only" aria-hidden="true"></span>
+    <div class="fhd">
+      <button class="bbk" id="cf-back" aria-label="Voltar"><svg class="ico" aria-hidden="true"><use href="#i-nav-arrow-left"/></svg></button>
+      <div class="ftitle" id="cf-title">Confirmar</div>
+    </div>
+    <div class="fbody">
+      <p class="cf-msg" id="cf-msg"></p>
+    </div>
+    <div class="ffoot">
+      <button class="bcn" id="cf-nao">Cancelar</button>
+      <button class="bsv" id="cf-sim">Confirmar</button>
+    </div>
+  </div>
+
   <!-- compartilhar a economia com outra conta -->
   <div class="sheet" id="sheet-share" role="dialog" aria-modal="true" aria-labelledby="sh-title">
     <span class="sheet-grab mobile-only" aria-hidden="true"></span>
@@ -1102,7 +1118,7 @@
         </div>
       </div>
 
-      <div class="fv-saldo" id="pg-saldo">Quanto ela te passou?</div>
+      <div class="fv-saldo" id="pg-saldo">Quanto você recebeu?</div>
 
       <div class="pg-nota" id="pg-nota"></div>
 

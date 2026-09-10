@@ -1645,6 +1645,29 @@
 
   const CORES_PASTEL = ['rosa', 'azul', 'laranja', 'roxo', 'amarelo', 'verde'];
 
+  /**
+   * Pergunta antes de fazer. `cfg`: { titulo, msg, acao, fn }.
+   *
+   * A ação fica guardada até o toque no botão — a folha não sabe nada
+   * sobre o que confirma, e serve para qualquer coisa.
+   */
+  let acaoConfirmar = null;
+
+  function confirmar(cfg) {
+    acaoConfirmar = cfg.fn;
+    $('cf-title').textContent = cfg.titulo;
+    $('cf-msg').innerHTML = cfg.msg;
+    $('cf-sim').textContent = cfg.acao || 'Confirmar';
+    /* Camada por cima, sem passar pelo openSheet: ele empilha histórico,
+       e o closeSheets correspondente fecharia também a folha de baixo. */
+    $('sheet-confirmar').classList.add('open');
+  }
+
+  function fecharConfirmar() {
+    $('sheet-confirmar').classList.remove('open');
+    acaoConfirmar = null;
+  }
+
   /** Recarrega quem está conectado e a economia de quem me deu acesso. */
   async function recarregarCompartilhadas() {
     if (Store.mode !== 'cloud') { compartilhadas = []; return; }
@@ -1700,11 +1723,13 @@
         '<span class="sh-pessoa-corpo">' +
           '<span class="sh-pessoa-email">' + esc(c.email || '—') + '</span>' +
           '<span class="sh-pessoa-papel">' +
-            (c.papel === 'espectador' ? 'vê a sua economia' : 'você vê a economia dela') +
+            (c.papel === 'espectador' ? 'vê a sua economia' : 'você vê a economia desta conta') +
           '</span>' +
         '</span>' + cores +
-        '<button class="sh-remover" data-remover="' + c.id + '" aria-label="Remover">' +
-          ico('trash') + '</button>' +
+        '<button class="sh-remover" data-remover="' + c.id +
+          '" data-papel="' + c.papel + '" data-email="' + esc(c.email || '') +
+          '" aria-label="' + (c.papel === 'espectador' ? 'Remover acesso' : 'Sair') + '">' +
+          ico('log-out') + '</button>' +
       '</div>';
     }).join('');
   }
@@ -2483,8 +2508,8 @@
       return;
     }
     if (!quando) {
-      box.textContent = 'Falta dizer quando ela combinou de pagar — sem isso ' +
-        'não há mês onde lançar.';
+      box.textContent = 'Falta dizer a data combinada para o pagamento — sem ' +
+        'isso não há mês onde lançar.';
       return;
     }
     const total = parseBRL($('fv-amount').value) || 0;
@@ -2519,14 +2544,14 @@
        então as N linhas sairiam idênticas. */
     if (mesesDoFavor() > 1 && !$('fv-due').value) {
       $('fv-due').focus();
-      toast('Para repetir, diga quando ela combinou de pagar');
+      toast('Para repetir, informe a data combinada para o pagamento');
       return;
     }
 
     /* E não dá para projetar sem saber em que mês o dinheiro entra. */
     if ($('fv-eco').getAttribute('aria-pressed') === 'true' && !$('fv-due').value) {
       $('fv-due').focus();
-      toast('Para entrar na economia, diga quando ela combinou de pagar');
+      toast('Para entrar na economia, informe a data combinada para o pagamento');
       return;
     }
 
@@ -2696,7 +2721,7 @@
       ? 'Quita tudo deste alcance.'
       : 'Depois deste, faltam R$ ' + num(resta) + '.';
   }
-  const ALVO_VAZIO = 'Quanto ela te passou?';
+  const ALVO_VAZIO = 'Quanto você recebeu?';
 
   /**
    * Mesmo dia, N meses adiante — é assim que um favor que se repete
@@ -3082,7 +3107,7 @@
         ? 'Juro: R$ ' + num(mens) + ' por mês' +
           (principal > 0 ? '  (' + pctMes.toLocaleString('pt-BR', { maximumFractionDigits: 1 }) +
                            '% ao mês)' : '')
-        : 'A mensalidade é o juro — informe quanto ela paga por mês.';
+        : 'A mensalidade é o juro — informe quanto entra por mês.';
     } else if (juros < 0) {
       box.className = 'lo-juros neg';
       box.textContent = 'O valor a receber está abaixo do emprestado — será ajustado ao salvar.';
@@ -3101,8 +3126,8 @@
       onLoanEco();
     } else if (mensal) {
       $('lo-mensal-hint').textContent =
-        'Entra todo mês e não abate a dívida. Ela quita quando devolver os R$ ' +
-        num(principal) + '.';
+        'Entra todo mês e não abate a dívida. Quita quando o principal de R$ ' +
+        num(principal) + ' voltar.';
       $('lo-mensal-hint').hidden = false;
 
       const meses = mens > 0 ? Math.floor(jurosRec / mens) : 0;
@@ -3127,7 +3152,7 @@
     }
     if (method === 'mensal' && !(parseBRL($('lo-installment-amount').value) > 0)) {
       $('lo-installment-amount').focus();
-      toast('Informe a mensalidade — ela é o juro do empréstimo'); return;
+      toast('Informe a mensalidade — é ela que rende o juro'); return;
     }
 
     const l = Store.normalizeLoan({
@@ -3197,6 +3222,7 @@
     $('sheet-excluir').classList.remove('open');
     $('sheet-horizonte').classList.remove('open');
     $('sheet-share').classList.remove('open');
+    $('sheet-confirmar').classList.remove('open');
     el.backdrop.classList.remove('open');
     openSheetEl = null;
     editId = null;
@@ -3626,13 +3652,48 @@
         return;
       }
       const rm = ev.target.closest('[data-remover]');
-      if (rm) {
-        await Store.removerConexao(rm.dataset.remover);
-        await listarConexoes();
-        await recarregarCompartilhadas();
-        toast('Conexão removida');
-      }
+      if (!rm) return;
+
+      /* Os dois lados do mesmo vínculo são coisas diferentes: tirar o
+         acesso de alguém, ou sair da economia de alguém. */
+      const dono = rm.dataset.papel === 'dono';
+      const quem = '<b>' + esc(rm.dataset.email || 'esta conta') + '</b>';
+      confirmar({
+        titulo: dono ? 'Sair desta economia' : 'Remover acesso',
+        msg: dono
+          ? 'Você deixa de ver a economia de ' + quem +
+            '. Para voltar, vai precisar do código de novo.'
+          : quem + ' deixa de ver a sua economia. Nada seu é apagado.',
+        acao: dono ? 'Sair' : 'Remover',
+        fn: async function () {
+          /* Sem try, uma falha de rede deixaria a folha aberta e travada:
+             o botão já foi tocado e nada mais acontece. */
+          const b = $('cf-sim');
+          b.disabled = true;
+          const antes = b.textContent;
+          b.textContent = '…';
+          try {
+            await Store.removerConexao(rm.dataset.remover);
+            fecharConfirmar();
+            await listarConexoes();
+            await recarregarCompartilhadas();
+            toast(dono ? 'Você saiu dessa economia' : 'Acesso removido');
+          } catch (e) {
+            $('cf-msg').innerHTML = 'Não deu para desfazer agora. ' +
+              'Verifique a conexão e tente de novo.';
+          } finally {
+            b.disabled = false;
+            b.textContent = antes;
+          }
+        },
+      });
     });
+    $('cf-sim').addEventListener('click', function () {
+      if (acaoConfirmar) acaoConfirmar();
+    });
+    $('cf-nao').addEventListener('click', fecharConfirmar);
+    $('cf-back').addEventListener('click', fecharConfirmar);
+
     $('sh-fechar').addEventListener('click', function () { closeSheets(); });
     $('sh-back').addEventListener('click', function () { closeSheets(); });
 

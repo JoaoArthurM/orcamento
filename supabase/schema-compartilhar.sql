@@ -240,7 +240,9 @@ begin
 
   insert into public.economy_shares (owner_id, viewer_id, color)
   values (v_owner, auth.uid(), coalesce(v_livre, 'rosa'))
-  on conflict (owner_id, viewer_id) do nothing;
+  -- pelo NOME da constraint: `owner_id` também é parâmetro de saída
+  -- desta função, e a lista de colunas do ON CONFLICT seria ambígua
+  on conflict on constraint economy_shares_par_unico do nothing;
 
   return query
     select v_owner, (select u.email::text from auth.users u where u.id = v_owner);

@@ -108,6 +108,20 @@ primeira entrada: gravar vazio é o mesmo caminho de "apaguei tudo".
 A semente antiga tinha nomes e valores reais, e o repositório é público. Não
 reponha dados de pessoa nenhuma em teste, fixture ou placeholder.
 
+## RETURNS TABLE cria variáveis com o nome das colunas
+
+`returns table (owner_id uuid, ...)` faz de `owner_id` uma variável dentro do
+corpo. Onde o mesmo nome for coluna, o Postgres recusa:
+
+    column reference "owner_id" is ambiguous
+
+Em `ON CONFLICT (col)` não dá para qualificar com o nome da tabela — a saída é
+apontar a constraint: `on conflict on constraint <nome> do nothing`. Foi o que
+quebrou `usar_codigo` na primeira versão.
+
+O teste de SQL não pega isto: é semântico, não estrutural. Função com
+`returns table` só se prova rodando.
+
 ## Economia compartilhada: o RLS é a única barreira
 
 Quem entra com um código ganha **SELECT** nas tabelas da economia do dono. Não
