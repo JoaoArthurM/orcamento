@@ -1025,7 +1025,7 @@
        mesmo sem login — esconder um botão que o usuário procura é pior
        que abrir a folha e explicar que compartilhar precisa de conta. */
     $('btn-share').hidden = noHub || screen !== 'eco';
-    $('m-avatares').hidden = $('btn-share').hidden || !compartilhadas.length;
+    $('m-avatares').hidden = !pilhaVisivel();
     $('appbar-title').textContent =
       noHub ? 'orçamento.' :
       tab === 'settings' ? 'ajustes.' :
@@ -1681,11 +1681,19 @@
    * Quem só me vê não muda nada na minha tela, e a bolinha dele ali
    * sugeriria o contrário.
    */
+  /** A pilha aparece onde a chave aparece: só na economia. */
+  function pilhaVisivel() {
+    return !$('btn-share').hidden && compartilhadas.length > 0;
+  }
+
   function renderAvatares() {
     const cx = $('m-avatares');
     if (!cx) return;
     const gente = compartilhadas;
-    cx.hidden = !gente.length;
+    /* Sem consultar a tela aqui, esta função desfazia o que o setScreen
+       tinha decidido: ela roda depois, quando os dados chegam, e a pilha
+       reaparecia em qualquer módulo. */
+    cx.hidden = !pilhaVisivel();
     if (!gente.length) { cx.innerHTML = ''; return; }
 
     const mostra = gente.slice(0, 3);

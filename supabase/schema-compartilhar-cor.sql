@@ -27,4 +27,6 @@ as $$
 $$;
 
 revoke all on function public.trocar_cor(uuid, text) from public;
+-- o Supabase concede a anon por padrão; revoke de PUBLIC não desfaz
+revoke execute on function public.trocar_cor(uuid, text) from anon;
 grant execute on function public.trocar_cor(uuid, text) to authenticated;

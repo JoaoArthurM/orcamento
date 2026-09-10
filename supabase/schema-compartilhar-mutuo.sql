@@ -42,6 +42,8 @@ as $$
 $$;
 
 revoke all on function public.cor_livre(uuid) from public;
+-- o Supabase concede a anon por padrão; revoke de PUBLIC não desfaz
+revoke execute on function public.cor_livre(uuid) from anon;
 grant execute on function public.cor_livre(uuid) to authenticated;
 
 -- ══════════════════════════════════════════════════════
@@ -103,6 +105,8 @@ end;
 $$;
 
 revoke all on function public.usar_codigo(text) from public;
+-- o Supabase concede a anon por padrão; revoke de PUBLIC não desfaz
+revoke execute on function public.usar_codigo(text) from anon;
 grant execute on function public.usar_codigo(text) to authenticated;
 
 -- ══════════════════════════════════════════════════════
@@ -139,4 +143,6 @@ end;
 $$;
 
 revoke all on function public.desconectar(uuid) from public;
+-- o Supabase concede a anon por padrão; revoke de PUBLIC não desfaz
+revoke execute on function public.desconectar(uuid) from anon;
 grant execute on function public.desconectar(uuid) to authenticated;

@@ -122,6 +122,21 @@ quebrou `usar_codigo` na primeira versão.
 O teste de SQL não pega isto: é semântico, não estrutural. Função com
 `returns table` só se prova rodando.
 
+## revoke de PUBLIC não tira o grant do Supabase a anon
+
+O Supabase concede EXECUTE ao papel `anon` por padrão em funções do `public`.
+`revoke all ... from public` revoga do pseudo-papel PUBLIC e **não** desfaz
+isso: as sete funções do compartilhamento respondiam com a chave pública.
+
+Sempre acompanhe de `revoke execute on function ... from anon`. Vale mais para
+`security definer`, que roda com os poderes do dono.
+
+## Quem desenha depois do async não pode ignorar a tela
+
+`renderAvatares` decidia a visibilidade só pela quantidade de pessoas. Como ela
+roda quando os dados chegam — depois do `setScreen` —, desfazia a decisão dele
+e a pilha reaparecia em qualquer módulo. Os dois passam por `pilhaVisivel()`.
+
 ## A conexão é mútua, mas são DUAS linhas
 
 `usar_codigo` insere os dois sentidos, e `minhas_conexoes` devolve dois

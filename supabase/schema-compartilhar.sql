@@ -104,6 +104,8 @@ as $$
 $$;
 
 revoke all on function public.pode_ver_economia(uuid) from public;
+-- o Supabase concede a anon por padrão; revoke de PUBLIC não desfaz
+revoke execute on function public.pode_ver_economia(uuid) from anon;
 grant execute on function public.pode_ver_economia(uuid) to authenticated;
 
 -- ══════════════════════════════════════════════════════
@@ -194,6 +196,8 @@ end;
 $$;
 
 revoke all on function public.gerar_codigo() from public;
+-- o Supabase concede a anon por padrão; revoke de PUBLIC não desfaz
+revoke execute on function public.gerar_codigo() from anon;
 grant execute on function public.gerar_codigo() to authenticated;
 
 -- ══════════════════════════════════════════════════════
@@ -250,6 +254,8 @@ end;
 $$;
 
 revoke all on function public.usar_codigo(text) from public;
+-- o Supabase concede a anon por padrão; revoke de PUBLIC não desfaz
+revoke execute on function public.usar_codigo(text) from anon;
 grant execute on function public.usar_codigo(text) to authenticated;
 
 -- ══════════════════════════════════════════════════════
@@ -288,6 +294,8 @@ as $$
 $$;
 
 revoke all on function public.minhas_conexoes() from public;
+-- o Supabase concede a anon por padrão; revoke de PUBLIC não desfaz
+revoke execute on function public.minhas_conexoes() from anon;
 grant execute on function public.minhas_conexoes() to authenticated;
 
 -- ══════════════════════════════════════════════════════
@@ -309,4 +317,6 @@ as $$
 $$;
 
 revoke all on function public.trocar_cor(uuid, text) from public;
+-- o Supabase concede a anon por padrão; revoke de PUBLIC não desfaz
+revoke execute on function public.trocar_cor(uuid, text) from anon;
 grant execute on function public.trocar_cor(uuid, text) to authenticated;
