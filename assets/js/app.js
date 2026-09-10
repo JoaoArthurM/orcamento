@@ -169,19 +169,49 @@
     const pago  = alocacao.pago[f.id] || 0;
     const falta = Math.max(0, f.amount - pago);
     const pct   = f.amount > 0 ? (pago / f.amount) * 100 : 0;
-    return { pago: pago, falta: falta, pct: pct,
-             quitado: falta < 0.005 && f.amount > 0 };
+    const quitado = falta < 0.005 && f.amount > 0;
+
+    /* Passou do combinado e ainda falta dinheiro: está atrasado, e a
+       cobrança escorrega para o mês seguinte — o mesmo que se faz com
+       a parcela que não caiu.
+
+       A data guardada NÃO muda: o deslize é recalculado a cada desenho.
+       Assim o app não reescreve o banco só porque o tempo passou, e
+       acerta a conta mesmo depois de semanas fechado.
+
+       Nada disto entra em Store.alocarFavores: lá a ordem é a da dívida
+       mais antiga, e um favor atrasado continua sendo o mais antigo. Se
+       a data deslizada vazasse para lá, o pagamento cairia no favor
+       errado. */
+    let atrasado = false, vence = f.due_on, meses = 0;
+    if (f.due_on && !quitado) {
+      const hoje = Store.hoje();
+      while (mesAdiante(f.due_on, meses) < hoje) {
+        meses++;
+        if (meses > 600) break;          // trava contra data absurda
+      }
+      atrasado = meses > 0;
+      vence = mesAdiante(f.due_on, meses);
+    }
+
+    return { pago: pago, falta: falta, pct: pct, quitado: quitado,
+             atrasado: atrasado, vence: vence, mesesAtraso: meses };
   }
 
   /** Agrupa os favores de uma pessoa por dia — cada dia é uma saída. */
   function porDia(itens) {
     const mapa = {};
     itens.forEach(function (f) {
-      if (!mapa[f.lent_on]) mapa[f.lent_on] = { dia: f.lent_on, itens: [], total: 0, pago: 0 };
+      if (!mapa[f.lent_on]) mapa[f.lent_on] = { dia: f.lent_on, itens: [], total: 0,
+                                                pago: 0, atrasados: 0, vence: null };
       const d = mapa[f.lent_on];
+      const i = favorInfo(f);
       d.itens.push(f);
       d.total += f.amount;
-      d.pago  += favorInfo(f).pago;
+      d.pago  += i.pago;
+      if (i.atrasado) d.atrasados++;
+      // o dia não tem prazo próprio: mostra o vencimento mais próximo
+      if (i.vence && (!d.vence || i.vence < d.vence)) d.vence = i.vence;
     });
     return Object.keys(mapa).sort().reverse().map(function (k) {
       const d = mapa[k];
@@ -199,12 +229,16 @@
       const chave = chavePessoa(f.person);
       if (!mapa[chave]) {
         mapa[chave] = { chave: chave, nome: f.person, itens: [],
-                        total: 0, pago: 0, desde: f.lent_on };
+                        total: 0, pago: 0, desde: f.lent_on,
+                        atrasados: 0, vence: null };
       }
       const p = mapa[chave];
+      const i = favorInfo(f);
       p.itens.push(f);
       p.total += f.amount;
-      p.pago  += favorInfo(f).pago;
+      p.pago  += i.pago;
+      if (i.atrasado) p.atrasados++;
+      if (i.vence && (!p.vence || i.vence < p.vence)) p.vence = i.vence;
       if (f.lent_on < p.desde) p.desde = f.lent_on;
     });
     return Object.keys(mapa).map(function (k) {
@@ -215,9 +249,11 @@
       // pagou mais do que devia: fica de crédito
       p.credito = alocacao.credito[k] || 0;
       p.dias    = porDia(p.itens);
-      // quem deve mais aparece primeiro
       return p;
-    }).sort(function (a, b) { return b.falta - a.falta; });
+    }).sort(function (a, b) {
+      // atrasado primeiro; depois quem deve mais
+      return (b.atrasados > 0) - (a.atrasados > 0) || b.falta - a.falta;
+    });
   }
 
   /** Os pagamentos que já caíram, do mais recente para o mais antigo. */
@@ -236,6 +272,7 @@
       pct: total > 0 ? (pago / total) * 100 : 0,
       pessoas: pessoas.filter(function (p) { return !p.quitado; }).length,
       favores: favores.length,
+      atrasados: pessoas.reduce(function (a, p) { return a + p.atrasados; }, 0),
     };
   }
 
@@ -367,22 +404,35 @@
                ? ((mensal ? (l.installment_amount || 0) : juros) / l.principal) * 100 : 0 };
   }
 
-  /** Totais do topo da tela de empréstimos. */
+  /**
+   * Totais do topo da tela de empréstimos.
+   *
+   * "A receber" é o que ainda vem — nunca o volume emprestado. Somar
+   * `total_due` de tudo contava o empréstimo já quitado como se ele
+   * ainda estivesse por vir, e contava de novo o que já tinha entrado.
+   * Por isso é o mesmo acumulado do "em aberto".
+   *
+   * O juro embutido segue a mesma regra: só o que ainda não caiu, dos
+   * empréstimos ainda abertos. Na mensalidade o juro não é previsão —
+   * ele já entrou, por fora — então ele nunca entra nesse "inclui".
+   */
   function loansResumo() {
     return loans.reduce(function (a, l) {
       const i = loanInfo(l);
-      a.aReceber += l.total_due;
-      a.juros    += i.juros;
-      // separados porque um está por vir e o outro já entrou
+      a.emprestado += l.principal;
+      if (!i.mensal && !i.quitado) {
+        // juro embutido ainda por vir, na proporção do que falta
+        a.jurosEmbutido += l.total_due > 0
+          ? i.juros * (i.emAberto / l.total_due) : 0;
+      }
       if (i.mensal) a.jurosMensal += i.jurosRec;
-      else          a.jurosEmbutido += i.juros;
       // o que entrou de verdade — mensalidade inclusive
       a.recebido += Math.min(l.received, l.total_due) + i.jurosRec;
       a.emAberto += i.emAberto;
       if (!i.quitado) a.ativos++;
       if (i.atrasado) a.atrasados++;
       return a;
-    }, { aReceber: 0, juros: 0, jurosEmbutido: 0, jurosMensal: 0,
+    }, { emprestado: 0, jurosEmbutido: 0, jurosMensal: 0,
          recebido: 0, emAberto: 0, ativos: 0, atrasados: 0 });
   }
 
@@ -1150,17 +1200,19 @@
     late.textContent = r.atrasados + (r.atrasados === 1 ? ' atrasado' : ' atrasados');
     late.className = 'lo-late' + (r.atrasados === 0 ? ' zero' : '');
 
-    $('lo-total').textContent    = num(r.aReceber);
-    /* Juro de mensalidade não está embutido no total a receber: ele já
+    $('lo-total').textContent    = num(r.emAberto);
+    /* Juro de mensalidade não está embutido no que falta receber: ele já
        entrou, por fora. Dizer 'inclui' ali seria contar duas vezes. */
     $('lo-interest').textContent = r.jurosMensal > 0
       ? (r.jurosEmbutido > 0
           ? 'inclui R$ ' + num(r.jurosEmbutido) + ' de juros · R$ ' +
             num(r.jurosMensal) + ' já recebidos de mensalidade'
           : 'mais R$ ' + num(r.jurosMensal) + ' já recebidos de mensalidade')
-      : 'inclui R$ ' + num(r.jurosEmbutido) + ' de juros';
+      : (r.jurosEmbutido > 0
+          ? 'inclui R$ ' + num(r.jurosEmbutido) + ' de juros'
+          : (loans.length ? 'sem juros a receber' : 'nada emprestado ainda'));
     $('lo-received').textContent = num(r.recebido);
-    $('lo-open').textContent     = num(r.emAberto);
+    $('lo-open').textContent     = num(r.emprestado);
 
     /* cartões de pessoa — só aparecem quando há mais de uma */
     const pessoas = pessoasDosEmprestimos();
@@ -1484,9 +1536,12 @@
       : (r.total > 0 ? 'de R$ ' + num(r.total) + ' · nada pago ainda' : 'nada emprestado ainda');
 
     $('fv-pessoas').textContent = r.pessoas;
-    $('fv-favores-note').textContent = r.favores
-      ? r.favores + (r.favores === 1 ? ' favor no total' : ' favores no total')
-      : 'nenhum favor';
+    $('fv-favores-note').textContent = r.atrasados
+      ? r.atrasados + (r.atrasados === 1 ? ' favor atrasado' : ' favores atrasados')
+      : (r.favores
+          ? r.favores + (r.favores === 1 ? ' favor no total' : ' favores no total')
+          : 'nenhum favor');
+    $('fv-favores-note').classList.toggle('atraso', r.atrasados > 0);
 
     const pessoas = porPessoa();
     if (!pessoas.length) {
@@ -1510,16 +1565,25 @@
         const itens = d.itens.map(function (f) {
           const i = favorInfo(f);
           const parcial = i.pago > 0 && !i.quitado;
-          return '<div class="fv-item' + (i.quitado ? ' quitado' : '') + '">' +
+          return '<div class="fv-item' + (i.quitado ? ' quitado' : '') +
+              (i.atrasado ? ' atrasado' : '') + '">' +
             '<span class="fv-faixa" style="background:' +
-              (i.quitado ? 'var(--ok)' : (parcial ? '#B58F3F' : '#C6D5CB')) + '"></span>' +
+              (i.quitado ? 'var(--ok)'
+                : (i.atrasado ? '#C05848' : (parcial ? '#B58F3F' : '#C6D5CB'))) + '"></span>' +
             '<button class="fv-item-abrir" data-fid="' + f.id + '">' +
               '<span class="fv-item-corpo">' +
                 '<span class="fv-motivo">' + esc(f.reason) + '</span>' +
-                (parcial
-                  ? '<span class="fv-quando">pago R$ ' + num(i.pago) +
-                    ' de ' + num(f.amount) + '</span>'
-                  : '') +
+                (function () {
+                  const partes = [];
+                  if (parcial) partes.push('pago R$ ' + num(i.pago) + ' de ' + num(f.amount));
+                  if (i.atrasado) {
+                    partes.push('venceu ' + dataCurta(f.due_on) + ' — foi para ' + dataCurta(i.vence));
+                  } else if (i.vence && !i.quitado) {
+                    partes.push('paga ' + dataCurta(i.vence));
+                  }
+                  return partes.length
+                    ? '<span class="fv-quando">' + partes.join(' · ') + '</span>' : '';
+                })() +
               '</span>' +
               '<span class="fv-item-val">' +
                 '<span class="fv-item-total">R$' + num(f.amount) + '</span>' +
@@ -1533,12 +1597,14 @@
           '</div>';
         }).join('');
 
-        return '<div class="fv-dia' + (d.quitado ? ' quitado' : '') + '">' +
+        return '<div class="fv-dia' + (d.quitado ? ' quitado' : '') +
+            (d.atrasados ? ' atrasado' : '') + '">' +
           '<div class="fv-dia-cab">' +
             '<span class="fv-dia-data">' + dataCurta(d.dia) + '</span>' +
             '<span class="fv-dia-meta">' + d.itens.length +
               (d.itens.length === 1 ? ' conta · R$ ' : ' contas · R$ ') + num(d.total) + '</span>' +
-            '<span class="fv-dia-falta ' + (d.quitado ? 'quitado' : 'aberto') + '">' +
+            '<span class="fv-dia-falta ' +
+              (d.quitado ? 'quitado' : (d.atrasados ? 'vencido' : 'aberto')) + '">' +
               (d.quitado ? 'pago' : 'falta R$ ' + num(d.falta)) + '</span>' +
             (d.quitado ? '' :
               '<button class="fv-mini" data-pay="dia" data-alvo="' + esc(p.chave) + '|' + d.dia +
@@ -1574,9 +1640,13 @@
             esc(iniciais(p.nome)) + '</span>' +
           '<span class="fv-quem">' +
             '<span class="fv-nome">' + esc(p.nome) + '</span>' +
-            '<span class="fv-meta">' + p.itens.length +
-              (p.itens.length === 1 ? ' favor' : ' favores') +
-              ' · ' + p.dias.length + (p.dias.length === 1 ? ' dia' : ' dias') + '</span>' +
+            '<span class="fv-meta' + (p.atrasados ? ' atraso' : '') + '">' +
+              (p.atrasados
+                ? p.atrasados + (p.atrasados === 1 ? ' favor atrasado' : ' favores atrasados')
+                : (p.vence && !p.quitado
+                    ? 'paga ' + dataCurta(p.vence)
+                    : p.itens.length + (p.itens.length === 1 ? ' favor' : ' favores'))) +
+            '</span>' +
           '</span>' +
           '<span class="fv-valor"><span class="fv-valor-pfx">R$</span>' +
             '<span class="fv-valor-v">' + num(p.quitado ? p.total : p.falta) + '</span></span>' +
@@ -1925,6 +1995,7 @@
     $('fv-reason').value = f ? f.reason : '';
     $('fv-amount').value = f ? num(f.amount) : '';
     $('fv-date').value   = f ? f.lent_on : Store.hoje();
+    $('fv-due').value    = f && f.due_on ? f.due_on : '';
     $('fv-notes').value  = f && f.notes ? f.notes : '';
     // repetir só faz sentido ao criar: editando, mexeria num favor só
     $('fv-meses').value  = 1;
@@ -1995,6 +2066,7 @@
       reason: reason,
       amount: amount,
       lent_on: $('fv-date').value,
+      due_on: $('fv-due').value || null,
       notes: $('fv-notes').value.trim() || null,
     });
 
@@ -2010,7 +2082,10 @@
       for (let i = 0; i < meses; i++) {
         favores.push(Store.normalizeFavor({
           person: f.person, reason: f.reason, amount: f.amount,
-          lent_on: mesAdiante(f.lent_on, i), notes: f.notes,
+          lent_on: mesAdiante(f.lent_on, i),
+          // sem isto, os N favores dividiriam o mesmo vencimento
+          due_on: f.due_on ? mesAdiante(f.due_on, i) : null,
+          notes: f.notes,
         }));
       }
     } else {

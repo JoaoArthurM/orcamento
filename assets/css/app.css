@@ -1698,6 +1698,11 @@ svg { display: block; flex: none; }
 .lo-late.zero { font-weight: 500; color: #4C6B3D; }
 
 .lo-hero .m-hero-val-wrap { padding-top: 4px; }
+/* "inclui R$ X de juros · R$ Y já recebidos de mensalidade" não cabe em
+   uma linha a 400px, e o nowrap herdado cortava o fim da frase */
+.lo-hero .m-hero-period {
+  display: block; margin-left: 0; white-space: normal; line-height: 1.35;
+}
 
 .lo-split { width: 100%; display: flex; gap: 10px; padding-top: 16px; }
 .lo-box {
@@ -2370,3 +2375,16 @@ svg { display: block; flex: none; }
   font-size: 11.5px; line-height: 1.5; color: var(--tx-d); max-width: 30ch;
 }
 .m-empty.primeira .m-empty-sub b { color: var(--tx); font-weight: 600; }
+
+/* ── favor vencido ───────────────────────────────────── */
+.fv-item.atrasado .fv-quando { color: #A8442F; font-weight: 600; }
+
+.fv-dia.atrasado { border-color: #F0D6CF; background: #FFFAF8; }
+.fv-dia.atrasado .fv-dia-cab { background: #FDF0EC; }
+.fv-dia.atrasado .fv-dia-data { color: #8C3A2F; }
+.fv-dia-falta.vencido { color: #A8442F; }
+
+.fv-meta.atraso { color: #A8442F; font-weight: 600; }
+
+/* nota do topo quando há favor vencido */
+#fv-favores-note.atraso { color: #8C3A2F; font-weight: 600; }

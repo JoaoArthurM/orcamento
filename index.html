@@ -349,7 +349,7 @@
               </span>
             </div>
             <div class="lo-box">
-              <span class="lo-box-k">Em aberto</span>
+              <span class="lo-box-k">Emprestado</span>
               <span class="lo-box-v-wrap">
                 <span class="lo-box-pfx">R$</span>
                 <span class="lo-box-v" id="lo-open">0</span>
@@ -892,6 +892,14 @@
         <div class="ff">
           <label class="fl" for="fv-date">Do dia</label>
           <input type="date" class="fi" id="fv-date">
+        </div>
+      </div>
+
+      <div class="frow">
+        <div class="ff">
+          <!-- vazio = sem prazo, e sem prazo não existe atraso -->
+          <label class="fl" for="fv-due">Combinou de pagar</label>
+          <input type="date" class="fi" id="fv-due">
         </div>
       </div>
 

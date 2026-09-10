@@ -345,7 +345,56 @@ const P2 = 'bbbbbbbb-2222-4222-8222-bbbbbbbbbbbb';
       && up.rows[0].plan_id === P2, up && up.rows[0]);
   }
 
-  /* 11: tabela ausente não derruba o resto */
+  /* 11: vencimento do favor */
+  {
+    const ops = [];
+    const S = load(ops).Store;
+
+    const semPrazo = S.normalizeFavor({ person: 'A', reason: 'x', amount: 10 });
+    check('favor sem prazo tem due_on nulo', semPrazo.due_on === null, semPrazo.due_on);
+
+    const comPrazo = S.normalizeFavor({ person: 'A', reason: 'x', amount: 10,
+      due_on: '2026-12-05' });
+    check('favor com prazo guarda a data', comPrazo.due_on === '2026-12-05', comPrazo.due_on);
+
+    const lixo = S.normalizeFavor({ person: 'A', reason: 'x', amount: 10, due_on: 'amanhã' });
+    check('data inválida vira nulo', lixo.due_on === null, lixo.due_on);
+
+    // o vencimento tem que chegar ao banco, senão mudar o prazo de um
+    // favor geraria a mesma linha de antes e o diff a descartaria
+    S.init(); S.setUser({ id: 'u1' });
+    const f = S.normalizeFavor({ id: F1, person: 'A', reason: 'x', amount: 10,
+      lent_on: '2026-09-01', due_on: '2026-10-01' });
+    S.save({ favors: [f] }); await tick();
+    const up = ops.find((o) => o.op === 'upsert' && o.table === 'favors');
+    check('due_on vai na linha', up && up.rows[0].due_on === '2026-10-01', up && up.rows[0]);
+
+    ops.length = 0;
+    S.save({ favors: [S.normalizeFavor(Object.assign({}, f, { due_on: '2026-11-01' }))] });
+    await tick();
+    const up2 = ops.find((o) => o.op === 'upsert' && o.table === 'favors');
+    check('mudar só o prazo sobe', up2 && up2.rows.length === 1
+      && up2.rows[0].due_on === '2026-11-01', up2 && up2.rows[0]);
+  }
+
+  /* 12: o prazo não pode mexer na ordem da repartição.
+         Um favor atrasado continua sendo a dívida mais antiga, e é ele
+         que o pagamento tem que preencher primeiro. */
+  {
+    const S = load([]).Store;
+    const velho = S.normalizeFavor({ id: F1, person: 'A', reason: 'antigo', amount: 100,
+      lent_on: '2026-01-10', due_on: '2026-02-10' });
+    const novo = S.normalizeFavor({ id: F2, person: 'A', reason: 'novo', amount: 100,
+      lent_on: '2026-06-10', due_on: '2026-01-01' });   // prazo bem anterior
+
+    const r = S.alocarFavores([velho, novo], [
+      S.normalizePayment({ id: P1, person: 'A', amount: 100, scope: 'total' }),
+    ]);
+    check('a ordem segue lent_on, não due_on',
+      r.pago[F1] === 100 && r.pago[F2] === 0, r.pago);
+  }
+
+  /* 13: tabela ausente não derruba o resto */
   {
     const ops = [];
     const win = makeEnv(ops, null);

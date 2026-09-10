@@ -235,6 +235,9 @@
       reason:  String(f.reason || '').trim().slice(0, 200) || 'sem motivo',
       amount:  Math.max(0, Number(f.amount) || 0),
       lent_on: dataOuNulo(f.lent_on) || hoje(),
+      // quando ela combinou de pagar. Nulo = sem prazo, e sem prazo
+      // não existe atraso
+      due_on:  dataOuNulo(f.due_on),
       notes:   f.notes ? String(f.notes).slice(0, 500) : null,
     };
   }
@@ -484,7 +487,7 @@
       id: f.id, user_id: user.id,
       person: f.person, reason: f.reason,
       amount: f.amount,
-      lent_on: f.lent_on, notes: f.notes,
+      lent_on: f.lent_on, due_on: f.due_on, notes: f.notes,
       position: index,
     };
   }
@@ -492,7 +495,7 @@
   function fromFavorRow(r) {
     return normalizeFavor({
       id: r.id, person: r.person, reason: r.reason,
-      amount: r.amount, lent_on: r.lent_on, notes: r.notes,
+      amount: r.amount, lent_on: r.lent_on, due_on: r.due_on, notes: r.notes,
     });
   }
 
