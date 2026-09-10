@@ -444,7 +444,75 @@ const P2 = 'bbbbbbbb-2222-4222-8222-bbbbbbbbbbbb';
       S.alocarFavores([g], [novo]).pago[F2] === 60);
   }
 
-  /* 13: tabela ausente não derruba o resto */
+  /* 13: excluir favor que se repete — só este, este e os próximos, todos */
+  {
+    const S = load([]).Store;
+    const SERIE = 'aaaa1111-1111-4111-8111-aaaaaaaaaaaa';
+    const OUTRA = 'bbbb2222-2222-4222-8222-bbbbbbbbbbbb';
+
+    // 5 parcelas da mesma série, mesma data de saída, vencimentos mensais
+    const serie = [1, 2, 3, 4, 5].map((i) => S.normalizeFavor({
+      id: 'ccc' + i + '1111-1111-4111-8111-cccccccccccc',
+      person: 'Marina', reason: 'Acordo', amount: 500,
+      lent_on: '2026-11-10', due_on: '2026-1' + (1 + (i - 1) % 2) + '-07',
+      series_id: SERIE,
+    }));
+    // datas explícitas, para o teste não depender de aritmética de mês
+    const meses = ['2026-12-07', '2027-01-07', '2027-02-07', '2027-03-07', '2027-04-07'];
+    serie.forEach((f, i) => { f.due_on = meses[i]; });
+
+    const avulso = S.normalizeFavor({ id: F1, person: 'Marina', reason: 'uber',
+      amount: 40, lent_on: '2026-11-10', due_on: '2027-01-07' });
+    const deOutraSerie = S.normalizeFavor({ id: F2, person: 'Marina', reason: 'Outro',
+      amount: 90, lent_on: '2026-11-10', due_on: '2027-01-07', series_id: OUTRA });
+
+    const todos = serie.concat([avulso, deOutraSerie]);
+    const ids = (lista) => lista.map((f) => f.id).sort();
+
+    check('série guarda o series_id', serie[0].series_id === SERIE, serie[0].series_id);
+
+    // só este
+    const so = S.favoresDaExclusao(todos, serie[2].id, 'este');
+    check('“somente este” tira um só', so.length === 1 && so[0].id === serie[2].id, ids(so));
+
+    // este e os próximos: o 3º, 4º e 5º vencimento
+    const prox = S.favoresDaExclusao(todos, serie[2].id, 'proximos');
+    check('“este e os próximos” pega deste vencimento em diante',
+      JSON.stringify(ids(prox)) === JSON.stringify(ids([serie[2], serie[3], serie[4]])), ids(prox));
+    check('e não toca no que vence antes',
+      prox.every((f) => f.id !== serie[0].id && f.id !== serie[1].id));
+
+    // todos
+    const tudo = S.favoresDaExclusao(todos, serie[2].id, 'todos');
+    check('“todos” pega a série inteira',
+      JSON.stringify(ids(tudo)) === JSON.stringify(ids(serie)), ids(tudo));
+
+    // nada disso pode vazar para fora da série
+    [so, prox, tudo].forEach(function (r, k) {
+      check('alcance ' + ['este', 'proximos', 'todos'][k] + ' não pega avulso nem outra série',
+        r.every((f) => f.id !== F1 && f.id !== F2), ids(r));
+    });
+
+    // favor sem série é sempre só ele, qualquer que seja o alcance
+    ['este', 'proximos', 'todos'].forEach(function (a) {
+      const r = S.favoresDaExclusao(todos, F1, a);
+      check('avulso com alcance ' + a + ' tira só ele', r.length === 1 && r[0].id === F1, ids(r));
+    });
+
+    // empate no vencimento: o alvo entra, o empatado não é arrastado
+    const empateA = S.normalizeFavor({ id: F3, person: 'A', reason: 'a', amount: 10,
+      lent_on: '2026-01-01', due_on: '2026-05-05', series_id: OUTRA });
+    const empateB = S.normalizeFavor({ id: F4, person: 'A', reason: 'b', amount: 10,
+      lent_on: '2026-01-01', due_on: '2026-05-05', series_id: OUTRA });
+    const emp = S.favoresDaExclusao([empateA, empateB], F3, 'proximos');
+    check('empate no vencimento não arrasta o outro',
+      emp.length === 1 && emp[0].id === F3, ids(emp));
+
+    check('id inexistente devolve vazio',
+      S.favoresDaExclusao(todos, 'nao-existe', 'todos').length === 0);
+  }
+
+  /* 14: tabela ausente não derruba o resto */
   {
     const ops = [];
     const win = makeEnv(ops, null);

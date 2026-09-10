@@ -2388,3 +2388,25 @@ svg { display: block; flex: none; }
 
 /* nota do topo quando há favor vencido */
 #fv-favores-note.atraso { color: #8C3A2F; font-weight: 600; }
+
+/* ── excluir favor que se repete ─────────────────────── */
+.ex-sub { font-size: 12.5px; color: var(--tx-d); line-height: 1.5; margin: 0 2px 4px; }
+
+.ex-op {
+  width: 100%; text-align: left;
+  display: flex; flex-direction: column; gap: 2px;
+  padding: 13px 15px; border-radius: 14px;
+  background: #F5F9F2; border: 1px solid #E4EEDD;
+  transition: background 130ms, transform 120ms;
+}
+.ex-op:active { transform: scale(.985); }
+.ex-op:hover  { background: #EDF4E7; }
+.ex-op-tit {
+  font-size: 13.5px; font-weight: 700; letter-spacing: -.02em; color: var(--tx);
+}
+.ex-op-sub { font-size: 11px; color: var(--tx-d); }
+
+.ex-op.perigo { background: #FDF3F1; border-color: #F2DBD5; }
+.ex-op.perigo:hover { background: #FBE9E5; }
+.ex-op.perigo .ex-op-tit { color: var(--danger); }
+.ex-op.perigo .ex-op-sub { color: #A8695C; }

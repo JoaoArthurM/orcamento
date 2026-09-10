@@ -929,6 +929,36 @@
     </div>
   </div>
 
+  <!-- excluir favor que se repete: três saídas, como em qualquer agenda -->
+  <div class="sheet" id="sheet-excluir" role="dialog" aria-modal="true" aria-labelledby="ex-title">
+    <span class="sheet-grab mobile-only" aria-hidden="true"></span>
+    <div class="fhd">
+      <button class="bbk" id="ex-back" aria-label="Voltar"><svg class="ico" aria-hidden="true"><use href="#i-nav-arrow-left"/></svg></button>
+      <div class="ftitle" id="ex-title">Excluir favor</div>
+    </div>
+    <div class="fbody">
+      <p class="ex-sub" id="ex-sub">Este favor se repete. O que você quer apagar?</p>
+
+      <button class="ex-op" data-alcance="este">
+        <span class="ex-op-tit">Somente este</span>
+        <span class="ex-op-sub" id="ex-n-este">—</span>
+      </button>
+
+      <button class="ex-op" data-alcance="proximos">
+        <span class="ex-op-tit">Este e os próximos</span>
+        <span class="ex-op-sub" id="ex-n-proximos">—</span>
+      </button>
+
+      <button class="ex-op perigo" data-alcance="todos">
+        <span class="ex-op-tit">Todos da série</span>
+        <span class="ex-op-sub" id="ex-n-todos">—</span>
+      </button>
+    </div>
+    <div class="ffoot">
+      <button class="bcn" id="ex-cancel">Cancelar</button>
+    </div>
+  </div>
+
   <!-- pagamento de favor: o alcance vem de onde se tocou na lista -->
   <div class="sheet" id="sheet-pagamento" role="dialog" aria-modal="true" aria-labelledby="pg-ftitle">
     <span class="sheet-grab mobile-only" aria-hidden="true"></span>

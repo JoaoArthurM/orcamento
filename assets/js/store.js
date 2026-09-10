@@ -238,6 +238,8 @@
       // quando ela combinou de pagar. Nulo = sem prazo, e sem prazo
       // não existe atraso
       due_on:  dataOuNulo(f.due_on),
+      // liga os favores nascidos de um "repete por N meses". Nulo = avulso
+      series_id: isUuid(f.series_id) ? f.series_id : null,
       notes:   f.notes ? String(f.notes).slice(0, 500) : null,
     };
   }
@@ -290,6 +292,35 @@
       plan_total: planoOk ? Math.round(Number(p.plan_total)) : null,
       notes:     p.notes ? String(p.notes).slice(0, 500) : null,
     };
+  }
+
+  /**
+   * Quais favores uma exclusão leva junto.
+   *
+   *   'este'     — só ele, mesmo fazendo parte de uma série
+   *   'proximos' — ele e os que vencem DEPOIS, na mesma série
+   *   'todos'    — a série inteira
+   *
+   * "Próximos" se decide pelo VENCIMENTO, não pela ordem em que as
+   * linhas foram criadas: basta editar uma para as duas divergirem, e
+   * quem olha a tela está vendo a ordem dos vencimentos.
+   *
+   * Favor sem série é sempre só ele — não há série de que falar.
+   */
+  function favoresDaExclusao(favors, id, alcance) {
+    const lista = favors || [];
+    const alvo = lista.find(function (f) { return f.id === id; });
+    if (!alvo) return [];
+    if (!alvo.series_id || alcance === 'este') return [alvo];
+
+    const daSerie = lista.filter(function (f) { return f.series_id === alvo.series_id; });
+    if (alcance === 'todos') return daSerie;
+
+    return daSerie.filter(function (f) {
+      // o próprio alvo entra sempre, mesmo que outro empate no vencimento
+      if (f.id === alvo.id) return true;
+      return ordemFavor(f) > ordemFavor(alvo);
+    });
   }
 
   /* ══════════════════════════════════════════════════════
@@ -509,7 +540,8 @@
       id: f.id, user_id: user.id,
       person: f.person, reason: f.reason,
       amount: f.amount,
-      lent_on: f.lent_on, due_on: f.due_on, notes: f.notes,
+      lent_on: f.lent_on, due_on: f.due_on, series_id: f.series_id,
+      notes: f.notes,
       position: index,
     };
   }
@@ -517,7 +549,8 @@
   function fromFavorRow(r) {
     return normalizeFavor({
       id: r.id, person: r.person, reason: r.reason,
-      amount: r.amount, lent_on: r.lent_on, due_on: r.due_on, notes: r.notes,
+      amount: r.amount, lent_on: r.lent_on, due_on: r.due_on,
+      series_id: r.series_id, notes: r.notes,
     });
   }
 
@@ -886,6 +919,7 @@
     validPayment: validPayment,
     alocarFavores: alocarFavores,
     ordemFavor: ordemFavor,
+    favoresDaExclusao: favoresDaExclusao,
     estadoVazio: estadoVazio,
     FREQ_MES: FREQ_MES,
     hoje: hoje,

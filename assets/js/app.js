@@ -2105,8 +2105,13 @@
       return;
     }
 
+    const atual = editFavorId
+      ? favores.find(function (x) { return x.id === editFavorId; }) : null;
+
     const f = Store.normalizeFavor({
       id: editFavorId || undefined,
+      // editar um favor não o tira da série a que pertence
+      series_id: atual ? atual.series_id : null,
       person: person,
       reason: reason,
       amount: amount,
@@ -2128,11 +2133,14 @@
          N linhas: a saída aconteceu uma vez só, num dia só — o que se
          repete é a promessa de pagar. Fazer as duas andarem punha o
          dinheiro saindo em meses em que ninguém pegou nada. */
+      // o que liga as N linhas — sem isto só daria para excluir uma a uma
+      const serie = Store.newId();
       for (let i = 0; i < meses; i++) {
         favores.push(Store.normalizeFavor({
           person: f.person, reason: f.reason, amount: f.amount,
           lent_on: f.lent_on,
           due_on: f.due_on ? mesAdiante(f.due_on, i) : null,
+          series_id: serie,
           notes: f.notes,
         }));
       }
@@ -2304,20 +2312,56 @@
     });
   }
 
+  /* Favor solto some direto; favor que se repete pergunta antes, porque
+     as três saídas não têm como caber num toque só. */
   function delFavor() {
     const f = favores.find(function (x) { return x.id === editFavorId; });
     if (!f) return;
+    if (!f.series_id) { excluirFavores('este'); return; }
+
+    const conta = function (alcance) {
+      return Store.favoresDaExclusao(favores, f.id, alcance).length;
+    };
+    const plural = function (n) { return n + (n === 1 ? ' favor' : ' favores'); };
+
+    $('ex-sub').textContent = '“' + f.reason + '” de ' + f.person +
+      ' faz parte de uma repetição' +
+      (f.due_on ? ', com vencimento em ' + dataCurta(f.due_on) : '') + '.';
+    $('ex-n-este').textContent      = plural(conta('este'));
+    $('ex-n-proximos').textContent  = plural(conta('proximos')) + ', deste vencimento em diante';
+    $('ex-n-todos').textContent     = plural(conta('todos')) + ', a série inteira';
+
+    openSheet($('sheet-excluir'));
+  }
+
+  /** Apaga o alcance escolhido e deixa o desfazer pronto. */
+  function excluirFavores(alcance) {
+    const alvo = favores.find(function (x) { return x.id === editFavorId; });
+    if (!alvo) return;
+    const sair = Store.favoresDaExclusao(favores, alvo.id, alcance);
+    if (!sair.length) return;
+
+    const ids = {};
+    sair.forEach(function (f) { ids[f.id] = true; });
+
     const backup = JSON.parse(JSON.stringify(favores));
     const backupPag = pagamentos.slice();
-    favores = favores.filter(function (x) { return x.id !== editFavorId; });
-    // pagamento amarrado só a este item perde o sentido; os de dia e de
-    // total continuam e simplesmente se redistribuem no que sobrou
-    pagamentos = pagamentos.filter(function (x) { return x.favor_id !== editFavorId; });
+
+    favores = favores.filter(function (x) { return !ids[x.id]; });
+    /* Pagamento amarrado a um item que saiu perde o sentido. Os de dia e
+       de total ficam e se redistribuem sozinhos no que sobrou — por isso
+       o desfazer tem de repor os DOIS arrays: só os favores traria a
+       divisão de volta errada. */
+    pagamentos = pagamentos.filter(function (x) { return !ids[x.favor_id]; });
+
     closeSheets();
     render(); triggerSave();
-    toast('Favor de “' + f.person + '” excluído', 'Desfazer', function () {
-      favores = backup; pagamentos = backupPag; render(); triggerSave();
-    });
+    toast(sair.length === 1
+        ? 'Favor de “' + alvo.person + '” excluído'
+        : sair.length + ' favores de “' + alvo.person + '” excluídos',
+      'Desfazer', function () {
+        favores = backup; pagamentos = backupPag; render(); triggerSave();
+      });
   }
 
   /* ── formulário de conta ────────────────────────────── */
@@ -2618,6 +2662,7 @@
     $('sheet-conta').classList.remove('open');
     $('sheet-favor').classList.remove('open');
     $('sheet-pagamento').classList.remove('open');
+    $('sheet-excluir').classList.remove('open');
     el.backdrop.classList.remove('open');
     openSheetEl = null;
     editId = null;
@@ -3181,6 +3226,13 @@
     $('pg-del').addEventListener('click', delPagamento);
     $('pg-cancel').addEventListener('click', function () { closeSheets(); });
     $('pg-back').addEventListener('click', function () { closeSheets(); });
+    $('sheet-excluir').addEventListener('click', function (ev) {
+      const b = ev.target.closest('[data-alcance]');
+      if (b) excluirFavores(b.dataset.alcance);
+    });
+    $('ex-cancel').addEventListener('click', function () { closeSheets(); });
+    $('ex-back').addEventListener('click', function () { closeSheets(); });
+
     $('fv-save').addEventListener('click', saveFavor);
     $('fv-send').addEventListener('click', function () {
       const f = favores.find(function (x) { return x.id === editFavorId; });

@@ -136,6 +136,19 @@ linhas sairiam idênticas.
 Essa lógica mora em `saveFavor` (app.js), que precisa de DOM — os testes de VM
 não a alcançam. Verifique no navegador ao mexer nela.
 
+As N linhas compartilham `series_id`, e é só isso que liga uma repetição. Nada
+de deduzir série por (pessoa, motivo, valor): o usuário edita essas linhas, e
+uma assinatura que se desfaz ao corrigir um typo é pior que não agrupar.
+
+`Store.favoresDaExclusao(favors, id, alcance)` decide quem sai numa exclusão —
+`este` · `proximos` · `todos`. "Próximos" é por **vencimento**, não por ordem de
+criação. Está em store.js de propósito, para ter teste; o seletor em si vive no
+app.js.
+
+Ao excluir vários, o desfazer tem de repor favores **e** pagamentos: os de dia e
+de total se redistribuem sozinhos no que sobra, então repor só os favores traz a
+divisão de volta errada.
+
 `due_on` ordena e agrupa; `lent_on` fica registrado e não ordena nada.
 `Store.ordemFavor()` é a regra única — sem prazo vai para o fim da fila
 (`9999-12-31`), e `porDia` no app.js usa o mesmo critério.

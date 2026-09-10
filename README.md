@@ -150,6 +150,22 @@ cairia num favor diferente do que está na tela.
 
 Quando a lista atravessa a virada do ano, a data mostra o ano: `07/jan/27`.
 
+#### Excluir o que se repete
+
+As linhas de uma repetição compartilham `series_id`. Ao excluir uma delas o app
+pergunta o alcance, como qualquer agenda:
+
+| Opção | O que sai |
+|---|---|
+| Somente este | só a linha aberta |
+| Este e os próximos | ela e as de vencimento posterior |
+| Todos da série | a repetição inteira |
+
+Favor avulso some direto, sem perguntar. Todo caso tem **Desfazer**, que repõe
+também os pagamentos — sem isso a divisão voltaria errada.
+
+Favores criados antes desta mudança não têm série e contam como avulsos.
+
 #### Prazo e atraso
 
 `due_on` guarda quando ela combinou de pagar — **nulo é normal** ("paga quando
@@ -241,6 +257,7 @@ nesta ordem:
 4. [`supabase/schema-favors.sql`](supabase/schema-favors.sql) — `favors` (favores)
 5. [`supabase/schema-favors-pagamentos.sql`](supabase/schema-favors-pagamentos.sql) — `favor_payments` e a migração do `paid`
 6. [`supabase/schema-favors-vencimento.sql`](supabase/schema-favors-vencimento.sql) — `favors.due_on`
+7. [`supabase/schema-favors-serie.sql`](supabase/schema-favors-serie.sql) — `favors.series_id`
 6. [`supabase/schema-loans-mensalidade.sql`](supabase/schema-loans-mensalidade.sql) — `received_interest` e a mensalidade que não quita
 
 Quem criou `accounts` antes do tipo `economia` precisa rodar também
