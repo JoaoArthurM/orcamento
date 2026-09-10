@@ -47,7 +47,7 @@ create table if not exists public.economy_shares (
   -- quem ganhou permissão de ver
   viewer_id  uuid        not null references auth.users(id) on delete cascade,
 
-  -- cor pastel dos lançamentos dessa pessoa na tela do dono
+  -- cor pastel dos lançamentos do dono na tela do espectador
   color      text        not null default 'rosa'
              check (color in ('rosa','azul','laranja','roxo','amarelo','verde')),
 
@@ -291,7 +291,9 @@ revoke all on function public.minhas_conexoes() from public;
 grant execute on function public.minhas_conexoes() to authenticated;
 
 -- ══════════════════════════════════════════════════════
--- trocar_cor() — a cor é escolha de quem recebe
+-- trocar_cor() — a cor é escolha de quem OLHA
+-- Ela pinta os lançamentos do dono na tela do espectador,
+-- então é o espectador que decide.
 -- ══════════════════════════════════════════════════════
 create or replace function public.trocar_cor(p_share uuid, p_color text)
 returns void
@@ -302,7 +304,7 @@ as $$
   update public.economy_shares
      set color = p_color
    where id = p_share
-     and owner_id = auth.uid()
+     and viewer_id = auth.uid()
      and p_color in ('rosa','azul','laranja','roxo','amarelo','verde');
 $$;
 

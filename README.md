@@ -155,7 +155,8 @@ passa a ver a sua economia — e só ela.
 então não há o que burlar pela interface.
 
 Os lançamentos de cada pessoa aparecem numa **cor pastel**, escolhida por quem
-recebe. O botão **Juntos / Separados** decide se eles entram na sua projeção ou
+olha — a cor existe na tela de quem vê, então é essa pessoa que decide. As
+iniciais de quem está conectado ficam empilhadas ao lado do seu avatar. O botão **Juntos / Separados** decide se eles entram na sua projeção ou
 só aparecem na lista.
 
 Gerar um código novo desliga o anterior. Qualquer um dos dois lados desfaz a

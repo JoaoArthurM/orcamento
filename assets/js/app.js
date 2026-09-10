@@ -1025,6 +1025,7 @@
        mesmo sem login — esconder um botão que o usuário procura é pior
        que abrir a folha e explicar que compartilhar precisa de conta. */
     $('btn-share').hidden = noHub || screen !== 'eco';
+    $('m-avatares').hidden = $('btn-share').hidden || !compartilhadas.length;
     $('appbar-title').textContent =
       noHub ? 'orçamento.' :
       tab === 'settings' ? 'ajustes.' :
@@ -1646,6 +1647,38 @@
   const CORES_PASTEL = ['rosa', 'azul', 'laranja', 'roxo', 'amarelo', 'verde'];
 
   /**
+   * A inicial do e-mail. Uma letra só: as bolinhas se sobrepõem, e a
+   * segunda letra acabaria escondida atrás da vizinha.
+   */
+  function iniciaisEmail(email) {
+    const nome = String(email || '').split('@')[0].replace(/[^a-zA-Z0-9]/g, '');
+    return (nome[0] || '?').toUpperCase();
+  }
+
+  /**
+   * A pilha ao lado do meu avatar: quem tem economia entrando na minha.
+   *
+   * Só quem eu VEJO — são esses que somam nos números e coloriram linhas.
+   * Quem só me vê não muda nada na minha tela, e a bolinha dele ali
+   * sugeriria o contrário.
+   */
+  function renderAvatares() {
+    const cx = $('m-avatares');
+    if (!cx) return;
+    const gente = compartilhadas;
+    cx.hidden = !gente.length;
+    if (!gente.length) { cx.innerHTML = ''; return; }
+
+    const mostra = gente.slice(0, 3);
+    const resto = gente.length - mostra.length;
+    cx.innerHTML = mostra.map(function (p) {
+      return '<span class="av-outro cor-' + p.color + '" title="' + esc(p.email) + '">' +
+        esc(iniciaisEmail(p.email)) + '</span>';
+    }).join('') + (resto > 0
+      ? '<span class="av-outro av-mais">+' + resto + '</span>' : '');
+  }
+
+  /**
    * Pergunta antes de fazer. `cfg`: { titulo, msg, acao, fn }.
    *
    * A ação fica guardada até o toque no botão — a folha não sabe nada
@@ -1675,6 +1708,7 @@
     const alguem = compartilhadas.length > 0;
     $('m-junto').hidden = !alguem;
     $('btn-share').classList.toggle('ligado', alguem);
+    renderAvatares();
     render();
   }
 
@@ -1709,9 +1743,10 @@
     $('btn-share').classList.toggle('ligado', lista.length > 0);
 
     $('sh-conexoes').innerHTML = lista.map(function (c) {
-      /* Só quem é dono escolhe a cor: ela pinta os lançamentos daquela
-         pessoa NA MINHA tela, então é decisão de quem olha. */
-      const cores = c.papel === 'espectador'
+      /* A cor pinta os lançamentos desta pessoa NA MINHA tela — então
+         quem escolhe é quem olha, ou seja, eu. Só aparece nas conexões
+         em que eu sou o espectador. */
+      const cores = c.papel === 'dono'
         ? '<span class="sh-cores">' + CORES_PASTEL.map(function (k) {
             return '<button class="sh-cor cor-' + k + (k === c.color ? ' on' : '') +
               '" data-cor="' + k + '" data-share="' + c.id +
