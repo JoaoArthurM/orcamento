@@ -42,13 +42,14 @@ const check = (n, c, x) => { if (c) console.log('  ok   ' + n);
  * `entries`, `saldoInicial`, `contas` e `loans` são o que calc() lê do
  * escopo de cima no app.js; `Store.FREQ_MES` converte a frequência.
  */
-function motor(entries, saldoInicial, mesInicial, contas, loans, meses, favores, alocacao, compartilhadas) {
+function motor(entries, saldoInicial, mesInicial, contas, loans, meses, favores, alocacao, compartilhadas, junto) {
   const Store = { FREQ_MES: { mensal: 1, quinzenal: 2, semanal: 4.345, anual: 1 / 12, pontual: 0 },
                   alocarFavores: function () { return { pago: {}, credito: {} }; } };
   const ctx = { entries: entries, saldoInicial: saldoInicial, contas: contas || [],
                 loans: loans || [], favores: favores || [],
                 alocacao: alocacao || { pago: {}, credito: {} },
-                compartilhadas: compartilhadas || [], verJunto: true, Store: Store,
+                compartilhadas: compartilhadas || [],
+                verJunto: junto === undefined ? true : junto, Store: Store,
                 Math: Math, Number: Number, Array: Array, String: String };
   ctx.window = ctx;
   vm.createContext(ctx);
@@ -70,6 +71,35 @@ function motor(entries, saldoInicial, mesInicial, contas, loans, meses, favores,
 }
 
 const E = (o) => Object.assign({ hidden: false, months: [] }, o);
+/**
+ * As entradas que o cálculo enxerga — a mesma lista que a tela do mês usa.
+ * Serve para provar o que APARECE, não só o que soma.
+ */
+function motorEntradas(entries, mesInicial, compartilhadas, junto) {
+  const Store = { FREQ_MES: { mensal: 1, quinzenal: 2, semanal: 4.345, anual: 1 / 12, pontual: 0 },
+                  alocarFavores: function () { return { pago: {}, credito: {} }; } };
+  const ctx = { entries: entries, saldoInicial: 0, contas: [], loans: [], favores: [],
+                alocacao: { pago: {}, credito: {} },
+                compartilhadas: compartilhadas || [],
+                verJunto: junto === undefined ? true : junto, Store: Store,
+                Math: Math, Number: Number, Array: Array, String: String };
+  ctx.window = ctx;
+  vm.createContext(ctx);
+  vm.runInContext(fonte, ctx);
+  const inicio = (mesInicial === undefined ? 9 : mesInicial) - 1;
+  ctx.horizonte = 12;
+  ctx.get12M = function (q) {
+    const out = [];
+    for (let k = 0; k < (q || 12); k++) {
+      const idx = (inicio + k) % 12;
+      out.push({ m: idx + 1, y: 2026 + Math.floor((inicio + k) / 12) });
+    }
+    return out;
+  };
+  vm.runInContext('var __e = entradasDoCalculo();', ctx);
+  return ctx.__e;
+}
+
 
 (function () {
 
@@ -430,6 +460,37 @@ const E = (o) => Object.assign({ hidden: false, months: [] }, o);
     const colisao = motor([], 0, 9, [], [], 12, [], null, [dela, mesmoId]);
     check('mesmo id de duas pessoas conta duas vezes',
       colisao[0].inC === 1000, colisao[0].inC);
+  }
+
+  /* 11: Juntos × Separados */
+  {
+    const meu = [E({ type: 'ci', amount: 1000, months: [9] })];
+    const dela = { dono: 'u2', email: 'ela@x.com', color: 'rosa', saldoInicial: 400,
+      entries: [E({ id: 'x1', type: 'ci', amount: 500, months: [9] })],
+      accounts: [], loans: [], favors: [], payments: [] };
+
+    const juntos = motor(meu, 100, 9, [], [], 12, [], null, [dela], true);
+    check('juntos: soma os dois', juntos[0].inC === 1500, juntos[0].inC);
+    check('juntos: soma os dois saldos iniciais',
+      juntos[0].netP === 2000, juntos[0].netP);
+
+    const separados = motor(meu, 100, 9, [], [], 12, [], null, [dela], false);
+    check('separados: só o meu lançamento', separados[0].inC === 1000, separados[0].inC);
+    check('separados: só o meu saldo inicial',
+      separados[0].netP === 1100, separados[0].netP);
+
+    /* Separados tem de sumir da LISTA também, não só das contas. Deixar
+       as linhas à vista sem elas somarem confundia: o olho soma o que vê.
+       A lista usa a mesma função, então basta ela não devolver o de fora. */
+    const ctxSep = motorEntradas(meu, 9, [dela], false);
+    check('separados: nenhuma linha de fora na lista',
+      ctxSep.every(function (e) { return !e.deOutro; }),
+      ctxSep.map(function (e) { return e.name + (e.deOutro ? '(fora)' : ''); }));
+
+    const ctxJun = motorEntradas(meu, 9, [dela], true);
+    check('juntos: a linha de fora aparece e vem colorida',
+      ctxJun.some(function (e) { return e.deOutro && e.cor === 'rosa'; }),
+      ctxJun.map(function (e) { return e.name + ':' + (e.cor || '-'); }));
   }
 
   console.log(fails === 0 ? '\nTODOS OS TESTES DE CÁLCULO PASSARAM' : '\n' + fails + ' FALHA(S)');

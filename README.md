@@ -156,8 +156,11 @@ então não há o que burlar pela interface.
 
 Os lançamentos de cada pessoa aparecem numa **cor pastel**, escolhida por quem
 olha — a cor existe na tela de quem vê, então é essa pessoa que decide. As
-iniciais de quem está conectado ficam empilhadas ao lado do seu avatar. O botão **Juntos / Separados** decide se eles entram na sua projeção ou
-só aparecem na lista.
+iniciais de quem está conectado ficam empilhadas ao lado do seu avatar. O botão **Juntos / Separados** decide se a economia da outra pessoa entra na
+sua: em *Separados* ela some da conta e da lista.
+
+O **saldo inicial** de cada um também soma, e aparece como uma linha no mês
+vigente — senão o acumulado partiria de um número invisível.
 
 A conexão vale **nos dois sentidos**: um código digitado e as duas pessoas
 passam a ver a economia uma da outra. Desfazer também derruba os dois lados.

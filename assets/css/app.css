@@ -190,6 +190,10 @@ svg { display: block; flex: none; }
   background: #fff; color: var(--dark);
   box-shadow: 0 8px 26px rgba(0,0,0,.22);
 }
+/* sobre fundo escuro o anel claro sumiria: vira o próprio escuro */
+.appbar .avatar.claro {
+  box-shadow: 0 0 0 2.5px rgba(255,255,255,.5), 0 8px 26px rgba(0,0,0,.22);
+}
 
 /* a transição evita o pisca ao rolar */
 .appbar-back, .avatar { transition: background 160ms, color 160ms, box-shadow 160ms; }
@@ -206,6 +210,13 @@ svg { display: block; flex: none; }
   display: flex; align-items: center; justify-content: center;
   font-size: 12px; font-weight: 600; flex: none;
   box-shadow: 0 8px 26px rgba(18,58,44,.28);
+}
+
+/* O mesmo anel das bolinhas de quem compartilha. Só na barra: no
+   desktop o avatar fica sobre outro fundo, e o anel apareceria solto.
+   A sombra vem junto — box-shadow não acumula entre regras. */
+.appbar .avatar {
+  box-shadow: 0 0 0 2.5px var(--bg, #F4F8F1), 0 8px 26px rgba(18,58,44,.28);
 }
 
 /* alternador de cenário */

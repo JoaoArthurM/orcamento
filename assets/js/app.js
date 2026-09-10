@@ -1404,10 +1404,29 @@
 
     // agrupadas na ordem dos tipos, como no resto do app
     const linhas = [];
+
+    /* O saldo inicial de quem compartilha entra na conta do 1º mês, mas o
+       campo "Saldo inicial" mostra só o meu — sem esta linha, o acumulado
+       partiria de um número que não está em lugar nenhum da tela. */
+    if (i === 0 && verJunto) {
+      compartilhadas.forEach(function (p) {
+        if (!(Number(p.saldoInicial) > 0)) return;
+        linhas.push('<div class="m-erow de-outro cor-' + p.color + '">' +
+          '<span class="m-erow-icon cor-' + p.color + '">' + ico('wallet', 'ei-ico') + '</span>' +
+          '<span class="m-erow-body">' +
+            '<span class="m-erow-name">Saldo inicial</span>' +
+            '<span class="m-erow-grp">' + esc(p.email) + '</span>' +
+          '</span>' +
+          '<span class="m-erow-amt"><span class="m-erow-pfx">R$</span>' +
+            '<span class="m-erow-val">' + num(p.saldoInicial) + '</span></span>' +
+        '</div>');
+      });
+    }
     ORDER.forEach(function (type) {
-      // separados: o de fora não entra na conta, mas continua à vista
-      entradasDoCalculo().concat(verJunto ? [] : entradasCompartilhadas(w12))
-        .forEach(function (e) {
+      /* Separados: o de fora some da lista também, não só das contas.
+         Deixar as linhas à vista sem elas somarem confundia — o olho
+         soma o que vê. */
+      entradasDoCalculo().forEach(function (e) {
         if (e.hidden || e.type !== type) return;
         const v = mv(e, mo.m, i === 0, mo.y);
         if (!v) return;
