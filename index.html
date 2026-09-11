@@ -22,6 +22,7 @@
 <link rel="stylesheet" href="assets/css/app.css">
 <link rel="stylesheet" href="assets/css/entry.css">
 <link rel="stylesheet" href="assets/css/accounts.css">
+<link rel="stylesheet" href="assets/css/favors.css">
 </head>
 <body>
 
@@ -246,11 +247,13 @@
     <section class="view" id="view-favores" aria-label="Favores">
       <div class="view-scroll" id="slot-favores">
 
-        <p class="fv-sub">quem te deve, sem juros — só pra lembrar</p>
-
         <div class="fv-topo">
+          <div class="fv-summary-head">
+            <span class="fv-summary-icon"><svg class="ico" aria-hidden="true"><use href="#i-donate"/></svg></span>
+            <span><strong>Seus favores</strong><small>Valores a receber, sem juros</small></span>
+          </div>
           <div class="fv-box fv-box-dark">
-            <span class="fv-box-k">esperando no total</span>
+            <span class="fv-box-k">Total a receber</span>
             <span class="fv-box-v-wrap">
               <span class="fv-box-pfx">R$</span>
               <span class="fv-box-v" id="fv-total">0</span>
@@ -258,14 +261,15 @@
             <span class="fv-box-note" id="fv-pago-note">nada recebido ainda</span>
           </div>
           <div class="fv-box fv-box-lime">
-            <span class="fv-box-k">pessoas te devendo</span>
+            <span class="fv-box-k">Pessoas com<br>saldo pendente</span>
             <span class="fv-box-v-wrap">
               <span class="fv-box-v" id="fv-pessoas">0</span>
             </span>
-            <span class="fv-box-note" id="fv-favores-note">nenhum favor</span>
           </div>
+          <span class="fv-summary-status" id="fv-favores-note">nenhum favor</span>
         </div>
 
+        <h2 class="fv-list-heading">Por pessoa</h2>
         <div class="fv-lista" id="fv-lista"></div>
       </div>
     </section>
