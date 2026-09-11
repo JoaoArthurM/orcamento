@@ -1042,6 +1042,12 @@
       noHub ? 'orçamento.' :
       tab === 'settings' ? 'ajustes.' :
       tab === 'tabelas'  ? 'tabelas.' : mod.titulo;
+    if (noHub) {
+      const ponto = document.createElement('span');
+      ponto.className = 'brand-dot';
+      ponto.textContent = '.';
+      $('appbar-title').replaceChildren('orçamento', ponto);
+    }
 
     /* a barra de baixo só existe dentro de um módulo */
     const semNavbar = noHub || tab === 'settings';
@@ -3782,6 +3788,7 @@
     ligarArrasto();
 
     $('btn-back').addEventListener('click', voltar);
+    $('btn-account').addEventListener('click', function () { setScreen('settings'); });
 
     /* ── compartilhar ─────────────────────────────── */
     $('btn-share').addEventListener('click', abrirShare);

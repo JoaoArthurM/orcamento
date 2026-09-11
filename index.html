@@ -20,6 +20,8 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="assets/css/app.css">
+<link rel="stylesheet" href="assets/css/entry.css">
+<link rel="stylesheet" href="assets/css/accounts.css">
 </head>
 <body>
 
@@ -66,9 +68,11 @@
 <!-- ══ TELA DE ENTRADA ═══════════════════════════════ -->
 <div class="auth" id="auth" hidden>
 
-  <span class="auth-glow" aria-hidden="true"></span>
-  <span class="auth-dots auth-dots-r" aria-hidden="true"></span>
-  <span class="auth-dots auth-dots-l" aria-hidden="true"></span>
+  <div class="auth-decor" aria-hidden="true">
+    <span class="auth-glow"></span>
+    <span class="auth-dots auth-dots-r"></span>
+    <span class="auth-dots auth-dots-l"></span>
+  </div>
 
   <div class="auth-inner">
 
@@ -77,7 +81,7 @@
       <button class="auth-back" type="button" id="auth-back" hidden aria-label="Voltar">
         <svg class="ico" aria-hidden="true"><use href="#i-nav-arrow-left"/></svg>
       </button>
-      <span class="wordmark auth-wordmark">orçamento.</span>
+      <span class="wordmark auth-wordmark">orçamento<span class="brand-dot">.</span></span>
     </header>
 
     <div class="auth-greet">
@@ -86,19 +90,26 @@
       <span class="auth-sub" id="auth-sub">Entre para ver suas projeções</span>
     </div>
 
+    <div class="auth-motto" aria-hidden="true">
+      <span class="auth-mark"><i></i><i></i><i></i><i></i></span>
+      <span>Planeje hoje,<br>conquiste amanhã.</span>
+    </div>
+
     <form class="auth-card" id="auth-form" novalidate>
 
       <div class="auth-tabs">
-        <div class="auth-tab"><svg class="ico" aria-hidden="true"><use href="#i-shield-check"/></svg>Acesso seguro</div>
-        <div class="auth-tab-corner" aria-hidden="true"></div>
+        <div class="auth-security">
+          <div class="auth-tab"><svg class="ico" aria-hidden="true"><use href="#i-shield-check"/></svg><span><strong>Acesso seguro</strong><small>Seus dados protegidos</small></span></div>
+          <div class="auth-security-note"><svg class="ico" aria-hidden="true"><use href="#i-lock"/></svg><span>Simulador<br>econômico</span></div>
+        </div>
         <div class="auth-tab-row">
+          <svg class="auth-flag" viewBox="0 0 32 24" role="img" aria-label="Brasil"><rect width="32" height="24" rx="4" fill="#009B3A"/><path d="M16 3 29 12 16 21 3 12Z" fill="#FFDF00"/><circle cx="16" cy="12" r="6" fill="#002776"/><path d="M10.5 10.2c4-.5 8 1.1 10.9 3.5" fill="none" stroke="#fff" stroke-width="1.1"/></svg>
           <span class="auth-tab-lbl">Simulador econômico</span>
           <span class="auth-tab-br">BR</span>
         </div>
       </div>
 
       <div class="auth-fields">
-        <span class="auth-fields-icon" aria-hidden="true">R$</span>
 
         <label class="auth-field" id="auth-email-field">
           <span class="auth-lbl">E-mail</span>
@@ -123,9 +134,9 @@
         <div class="auth-row" id="auth-options">
           <button class="auth-remember" type="button" id="auth-remember" aria-pressed="true">
             <span class="auth-check" aria-hidden="true"><svg class="ico"><use href="#i-check"/></svg></span>
-            Lembrar
+            Lembrar meu acesso
           </button>
-          <button class="auth-forgot" type="button" id="auth-to-reset">Esqueci a senha</button>
+          <button class="auth-forgot" type="button" id="auth-to-reset">Esqueci a senha?</button>
         </div>
       </div>
 
@@ -149,14 +160,17 @@
   <!-- ══ APP BAR (mobile) ══════════════════════════════ -->
   <header class="appbar mobile-only">
     <button class="appbar-back" id="btn-back" hidden aria-label="Voltar"><svg class="ico" aria-hidden="true"><use href="#i-nav-arrow-left"/></svg></button>
-    <span class="wordmark" id="appbar-title">orçamento.</span>
+    <span class="wordmark" id="appbar-title">orçamento<span class="brand-dot">.</span></span>
     <!-- só na economia: é a única tela que se compartilha -->
     <button class="appbar-share" id="btn-share" hidden aria-label="Compartilhar a economia">
       <svg class="ico" aria-hidden="true"><use href="#i-share-android"/></svg>
     </button>
     <!-- quem compartilha economia comigo, sobreposto ao meu avatar -->
     <span class="avatares" id="m-avatares" hidden></span>
-    <span class="avatar" id="m-avatar">AM</span>
+    <button class="appbar-account" id="btn-account" type="button" aria-label="Abrir ajustes e conta">
+      <span class="avatar" id="m-avatar">AM</span>
+      <svg class="ico hub-avatar-chevron" aria-hidden="true"><use href="#i-nav-arrow-down"/></svg>
+    </button>
   </header>
 
   <!-- ══ VIEWS (mobile) ════════════════════════════════ -->
@@ -169,6 +183,7 @@
         <div class="hub-greet">
           <span class="hub-eyebrow">Suas contas</span>
           <h1 class="hub-title">Por onde vamos?</h1>
+          <p class="hub-sub">Acompanhe sua vida financeira<br>de forma simples e organizada.</p>
         </div>
 
         <div class="hub-cards" id="hub-cards">
@@ -259,30 +274,30 @@
     <section class="view" id="view-contas" aria-label="Contas">
       <div class="view-scroll" id="slot-contas">
 
-        <div class="m-tabcard">
-          <div class="m-tab">Fluxo mensal</div>
-          <div class="m-tab-corner" aria-hidden="true"></div>
-          <div class="m-tab-row">
-            <span class="m-tab-lbl">Renda total</span>
-            <span class="ct-renda" id="ct-renda">R$ 0,00</span>
-          </div>
-        </div>
-
         <!-- Um cartão só: a sobra e o destino do dinheiro são a mesma
              conta vista de dois lados. Com a sobra virando fatia, a rosca
              fecha 100% da renda e a tela passa a ter UMA base de
              percentual — antes o hero dividia pela renda e a rosca pelos
              gastos, e a mesma economia aparecia como 25% e 60%. -->
         <div class="m-hero ct-hero" id="ct-pizza-card">
+          <div class="ct-income">
+            <span class="ct-income-icon"><svg class="ico" aria-hidden="true"><use href="#i-coins"/></svg></span>
+            <span class="ct-income-copy"><span>Fluxo mensal</span><strong>Renda total</strong></span>
+            <span class="ct-renda" id="ct-renda">R$ 0,00</span>
+          </div>
+          <div class="ct-overview">
+          <div class="ct-balance">
           <span class="m-hero-k">Sobra no mês</span>
           <span class="m-hero-val-wrap">
             <span class="m-hero-pfx">R$</span>
             <span class="m-hero-val" id="ct-sobra">0</span>
           </span>
           <span class="m-hero-period" id="ct-sobra-note">0% da renda não comprometida</span>
+          </div>
+          <div class="ct-pizza-svg" id="ct-pizza"></div>
+          </div>
 
           <div class="ct-fluxo">
-            <div class="ct-pizza-svg" id="ct-pizza"></div>
             <div class="ct-pizza-leg" id="ct-pizza-leg"></div>
           </div>
           <span class="ct-fluxo-base" id="ct-pizza-total">de R$ 0,00 de renda</span>
@@ -500,7 +515,7 @@
   <aside class="sb desktop-only" id="sb">
     <div class="sb-scroll" id="sb-scroll">
       <div class="sb-wordmark">
-        <span class="wordmark">orçamento.</span>
+        <span class="wordmark">orçamento<span class="brand-dot">.</span></span>
         <span class="avatar" id="avatar">AM</span>
       </div>
       <div id="slot-sb-hero"></div>
