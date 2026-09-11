@@ -179,6 +179,16 @@ primeira correção.
 Não é tempo real: o canal do Realtime filtra `user_id=eq.meu`. A atualização
 acontece ao abrir a aba de economia.
 
+## Tipo não é origem
+
+Favor e empréstimo entram no cálculo como `em` — a conta é a mesma, renda
+certa. Mas na lista do mês o rótulo vem de `origemDaLinha()`, que olha
+`deFavor`/`deEmprestimo`: usar `TYPES[type].section` fazia favor aparecer como
+"Empréstimo".
+
+Derivada nova com origem própria: acrescente o caso lá, não um tipo novo — o
+tipo mexe no motor.
+
 ## Três derivadas, e uma folha de alcance só
 
 `entradasDoCalculo(win)` soma `entries` + economia de contas + empréstimos +

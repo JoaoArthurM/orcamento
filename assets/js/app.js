@@ -1454,15 +1454,16 @@
         const ts = TYPE_STYLE[type];
         const valTxt = v.kind === 'range' ? num(v.lo) + '–' + num(v.hi) : num(v.val);
         const fora = e.deOutro ? ' de-outro cor-' + e.cor : '';
+        const org = origemDaLinha(e, type);
         linhas.push('<div class="m-erow' + (e.deContas ? ' de-contas' : '') + fora + '">' +
           '<span class="m-erow-icon' + (e.deOutro ? ' cor-' + e.cor : '') + '"' +
             // a cor de quem compartilha vem da classe; a minha, do tipo
             (e.deOutro ? '' : ' style="background:' + ICON_BG[type] +
               ';color:' + DOT_COLOR[type] + '"') + '>' +
-            ico(TYPE_ICON[type], 'ei-ico') + '</span>' +
+            ico(org.ico, 'ei-ico') + '</span>' +
           '<span class="m-erow-body">' +
             '<span class="m-erow-name">' + esc(e.name) + '</span>' +
-            '<span class="m-erow-grp">' + TYPES[type].section +
+            '<span class="m-erow-grp">' + org.sec +
               // deixa claro que essa linha se edita em outro lugar
               (e.deContas ? ' · de contas' : '') +
               (e.deOutro ? ' · ' + esc(e.email || 'compartilhado') : '') + '</span>' +
@@ -1687,6 +1688,19 @@
      ══════════════════════════════════════════════════════ */
 
   const CORES_PASTEL = ['rosa', 'azul', 'laranja', 'roxo', 'amarelo', 'verde'];
+
+  /**
+   * Como a linha se apresenta: de onde ela veio, não só o tipo.
+   *
+   * Favor e empréstimo entram no cálculo como 'em' — é a mesma conta,
+   * renda certa. Mas na lista precisam dizer a verdade: o que veio de
+   * favor não é empréstimo.
+   */
+  function origemDaLinha(e, type) {
+    if (e.deFavor)      return { sec: 'Favor', ico: 'donate' };
+    if (e.deEmprestimo) return { sec: 'Empréstimo', ico: 'hand-cash' };
+    return { sec: TYPES[type].section, ico: TYPE_ICON[type] };
+  }
 
   /**
    * A inicial do e-mail. Uma letra só: as bolinhas se sobrepõem, e a
