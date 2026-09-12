@@ -1,0 +1,73 @@
+/* Empréstimos — resumo unificado e escala mobile compartilhada. */
+#view-loans { position: relative; overflow: hidden; color: #063c30; background: radial-gradient(ellipse at 100% 5%, #e7edcf, transparent 52%), radial-gradient(ellipse at 0 75%, #e0eee6, transparent 58%), #f8faf6; }
+#view-loans::before { content: ''; position: absolute; inset: 0; pointer-events: none; background-image: linear-gradient(#6584690c 1px, transparent 1px), linear-gradient(90deg, #6584690c 1px, transparent 1px); background-size: 36px 36px; mask-image: linear-gradient(150deg, transparent 10%, #000 70%, transparent); -webkit-mask-image: linear-gradient(150deg, transparent 10%, #000 70%, transparent); }
+#slot-loans { position: relative; padding-top: calc(var(--sat) + 76px); padding-bottom: calc(var(--navbar-h) + var(--sab) + 40px); }
+#slot-loans > * { margin-left: max(18px, var(--sal)); margin-right: max(18px, var(--sar)); }
+#slot-loans .lo-hero { margin-top: 0; padding: 18px; border-radius: 26px; background: radial-gradient(ellipse at 100% 0, #48744150, transparent 65%), linear-gradient(135deg, #084936, #03372c); border: 1px solid #326c5040; box-shadow: 0 12px 30px #123a2c12; }
+#slot-loans .lo-hero::after { display: none; }
+.lo-summary-head { width: 100%; display: flex; align-items: center; gap: 10px; padding-bottom: 15px; margin-bottom: 17px; border-bottom: 1px solid #ffffff20; }
+.lo-summary-icon { display: grid; place-items: center; width: 36px; height: 38px; flex: none; border-radius: 12px; background: #cef29b; color: #063c30; }
+.lo-summary-icon .ico { width: 23px; height: 23px; }
+.lo-summary-copy { flex: 1; min-width: 0; }
+.lo-summary-copy strong, .lo-summary-copy small { display: block; }
+.lo-summary-copy strong { font-size: 14px; font-weight: 500; color: #fff; }
+.lo-summary-copy small { font-size: 12px; margin-top: 2px; color: #bed6ca; }
+#slot-loans .lo-late { font-size: 12px; background: #ffe0a11a; color: #ffe0a1; padding: 5px 8px; border-radius: 99px; white-space: normal; text-align: center; max-width: 90px; }
+#slot-loans .lo-late.zero { color: #c8dfbd; background: #ffffff0a; }
+#slot-loans .m-hero-k { font-size: 13px; color: #bed6ca; }
+#slot-loans .m-hero-val-wrap { gap: 5px; padding-top: 3px; }
+#slot-loans .m-hero-val { font-size: 29px; font-weight: 700; line-height: 1.2; min-width: 0; overflow-wrap: anywhere; }
+#slot-loans .m-hero-pfx { font-size: 12px; color: #bed6ca; align-self: baseline; padding: 0; }
+#slot-loans .m-hero-period { font-size: 12px; color: #bed6ca; line-height: 1.5; padding-top: 5px; }
+#slot-loans .lo-split { padding-top: 15px; margin-top: 16px; border-top: 1px solid #ffffff20; gap: 0; }
+#slot-loans .lo-box { background: none; padding: 0; border-radius: 0; }
+#slot-loans .lo-box + .lo-box { padding-left: 16px; margin-left: 12px; border-left: 1px solid #ffffff20; }
+#slot-loans .lo-box-k { font-size: 12px; color: #bed6ca; }
+#slot-loans .lo-box-v-wrap { flex-wrap: wrap; gap: 4px; padding-top: 4px; }
+#slot-loans .lo-box-pfx { font-size: 12px; color: #bed6ca; padding: 0; align-self: baseline; }
+#slot-loans .lo-box-v { font-size: 18px; line-height: 1.3; min-width: 0; overflow-wrap: anywhere; }
+#slot-loans .lo-box-v.lime { color: #cef29b; }
+#slot-loans .lo-pessoas, #slot-loans .lo-filters { padding: 2px 0 4px; gap: 8px; }
+#slot-loans .lo-pessoas { margin-top: 18px; }
+#slot-loans .lo-pcard { border: 1px solid #e1e9dd; box-shadow: none; min-height: 48px; padding: 7px 12px 7px 7px; }
+#slot-loans .lo-pcard.on { background: #084936; border-color: #084936; }
+#slot-loans .lo-pnome b { font-size: 13px; }
+#slot-loans .lo-pnome span { font-size: 12px; color: #617e72; }
+#slot-loans .lo-pcard.on .lo-pnome span { color: #bed6ca; }
+#slot-loans .lo-chip { min-height: 44px; font-size: 12px; padding: 9px 14px; border: 1px solid #e1e9dd; box-shadow: none; color: #567161; }
+#slot-loans .lo-chip.on { background: #d5edb3; border-color: #c8dfa5; color: #063c30; }
+#slot-loans .m-sel-hd { margin-top: 18px; padding: 0 4px; gap: 8px; }
+#slot-loans .m-sel-lbl { font-size: 14px; font-weight: 600; gap: 8px; }
+#slot-loans .m-sel-note { font-size: 12px; color: #617e72; }
+#slot-loans .lo-list { gap: 10px; }
+#slot-loans .lo-card { padding: 15px 14px; border-radius: 22px; border: 1px solid #e1e9dd; box-shadow: 0 4px 16px #18452e05; }
+#slot-loans .lo-head { gap: 10px; }
+#slot-loans .lo-avatar { width: 36px; height: 38px; border-radius: 12px; }
+#slot-loans .lo-meta { font-size: 12px; color: #617e72; white-space: normal; line-height: 1.5; }
+#slot-loans .lo-status { font-size: 12px; padding: 5px 8px; }
+#slot-loans .lo-grid { margin-top: 14px; padding-top: 12px; border-top: 1px solid #e7eee3; gap: 8px; }
+#slot-loans .lo-cell-k { font-size: 12px; color: #617e72; }
+#slot-loans .lo-cell-v-wrap { flex-wrap: wrap; gap: 3px; }
+#slot-loans .lo-cell-pfx { font-size: 12px; color: #617e72; padding: 0; align-self: baseline; }
+#slot-loans .lo-cell-v { font-size: 14px; min-width: 0; overflow-wrap: anywhere; }
+#slot-loans .lo-bar { height: 5px; background: #edf2e9; }
+#slot-loans .lo-bar-lbl { font-size: 12px; font-weight: 500; color: #617e72; }
+#slot-loans .lo-mensal-nota { font-size: 12px; line-height: 1.5; }
+#slot-loans .empty-list { border-radius: 22px; background: #ffffffb3; border: 1px solid #e1e9dd; }
+#slot-loans button:focus-visible { outline: 2px solid #68a978; outline-offset: 3px; }
+@media (max-width: 1023px) {
+  #app:has(#view-loans.on) .appbar { padding: calc(var(--sat) + 14px) 20px 10px; }
+  #app:has(#view-loans.on) .navbar-pill { background: #043d30; box-shadow: 0 8px 24px #123a2c26; }
+}
+@media (min-width: 600px) { #slot-loans > * { width: calc(100% - 64px); max-width: 650px; margin-left: auto; margin-right: auto; } }
+@media (max-width: 359px) {
+  #slot-loans .lo-hero { padding: 15px; }
+  .lo-summary-head { gap: 8px; flex-wrap: wrap; }
+  .lo-summary-copy strong { font-size: 13px; }
+  #slot-loans .lo-late { max-width: 70px; font-size: 12px; }
+  #slot-loans .lo-card { padding: 13px 11px; }
+  #slot-loans .lo-head { gap: 8px; flex-wrap: wrap; }
+  #slot-loans .lo-who { min-width: 120px; }
+  #slot-loans .lo-cell-v { font-size: 13px; }
+}
+@media (prefers-reduced-motion: reduce) { #slot-loans * { transition: none !important; } }

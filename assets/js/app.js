@@ -4453,9 +4453,38 @@
      BOOT
      ══════════════════════════════════════════════════════ */
 
+  /** Dados de apresentação da conta; nunca usados para autorização. */
+  function renderProfile(u) {
+    const meta = u && u.user_metadata || {};
+    const texto = (value) => typeof value === 'string' ? value.trim() : '';
+    const emailNome = texto(u && u.email).split('@')[0];
+    const username = texto(meta.user_name) || texto(meta.preferred_username) ||
+      texto(meta.username) || emailNome;
+    const nome = texto(meta.full_name) || texto(meta.name) ||
+      texto(meta.display_name) || username || (u ? 'Minha conta' : 'Perfil local');
+    $('profile-name').textContent = nome;
+    $('profile-username').textContent = username ? '@' + username.replace(/^@+/, '') : (u ? 'Minha conta' : 'Neste aparelho');
+    $('profile-initials').textContent = nome.split(/[\s._-]+/).filter(Boolean).slice(0, 2)
+      .map(function (p) { return Array.from(p)[0]; }).join('').toUpperCase();
+    const foto = $('profile-photo');
+    foto.hidden = true;
+    foto.removeAttribute('src');
+    foto.alt = 'Foto de ' + nome;
+    foto.onload = function () { foto.hidden = false; };
+    foto.onerror = function () { foto.hidden = true; };
+    const url = texto(meta.avatar_url) || texto(meta.picture);
+    if (url) {
+      try {
+        const parsed = new URL(url);
+        if (parsed.protocol === 'https:') foto.src = parsed.href;
+      } catch (e) { /* Foto inválida mantém as iniciais. */ }
+    }
+  }
+
   /** Entra no app com um usuário autenticado. */
   async function enterApp(u) {
     Store.setUser(u);
+    renderProfile(u);
     hideAuth();
     $('account-card').hidden = false;
     $('password-card').hidden = false;
@@ -4503,6 +4532,7 @@
 
   function startLocalOnly() {
     hideAuth();
+    renderProfile(null);
     $('account-card').hidden = true;
     $('password-card').hidden = true;
     $('delete-account-card').hidden = true;
@@ -4551,6 +4581,10 @@
       Store.onAuthChange(function (event, session) {
         if (event === 'PASSWORD_RECOVERY') { showAuth('recovery'); return; }
         if (event === 'SIGNED_IN' && session && !Store.user) enterApp(session.user);
+        if (event === 'USER_UPDATED' && session && session.user) {
+          Store.setUser(session.user);
+          renderProfile(session.user);
+        }
         if (event === 'SIGNED_OUT') { Store.stopRealtime(); showAuth('signin'); }
       });
       bootCloud();

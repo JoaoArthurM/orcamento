@@ -1,0 +1,83 @@
+/* Economia — controles agrupados, acumulado e evolução integrados. */
+#view-sim { position: relative; overflow: hidden; color: #063c30; background: radial-gradient(ellipse at 100% 0, #e4f1d6, transparent 55%), radial-gradient(ellipse at 0 80%, #e0eee5, transparent 55%), #f8faf6; }
+#view-sim::before { content: ''; position: absolute; inset: 0; pointer-events: none; background: repeating-linear-gradient(0deg, transparent 0 47px, #79946310 47px 48px); mask-image: linear-gradient(140deg, transparent, #000 65%, transparent); -webkit-mask-image: linear-gradient(140deg, transparent, #000 65%, transparent); }
+#slot-sim { position: relative; padding-top: calc(var(--sat) + 76px); padding-bottom: calc(var(--navbar-h) + var(--sab) + 40px); }
+#slot-sim > * { margin-left: max(18px, var(--sal)); margin-right: max(18px, var(--sar)); }
+.eco-opening { display: flex; align-items: center; gap: 10px; padding: 13px 14px; border-radius: 20px; background: #ffffffcf; border: 1px solid #dfe9d9; }
+.eco-opening-icon { display: grid; place-items: center; width: 36px; height: 38px; flex: none; border-radius: 12px; background: #d5edb3; color: #063c30; }
+.eco-opening-icon .ico { width: 22px; height: 22px; }
+.eco-opening-copy { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.eco-opening-copy > span { font-size: 12px; color: #617e72; }
+.eco-opening-copy label { font-size: 14px; font-weight: 500; }
+#slot-sim .m-si-wrap { display: flex; align-items: baseline; gap: 4px; flex: 0 1 120px; min-width: 70px; }
+#slot-sim .m-si-pfx { font-size: 12px; color: #617e72; }
+#slot-sim #m-si { width: 100%; min-width: 0; min-height: 44px; font-size: 16px; font-weight: 600; text-align: right; background: transparent; border: 0; border-bottom: 1px solid #a9c58f; border-radius: 0; color: #063c30; }
+#slot-sim .m-ctrl { margin-top: 12px; margin-bottom: 8px; gap: 8px; }
+#slot-sim .m-seg { background: #e8f0e3; padding: 3px; }
+#slot-sim .m-seg button { min-height: 44px; padding: 8px; font-size: 12px; }
+#slot-sim .m-seg button.on { background: #084936; color: #fff; }
+#slot-sim .m-ctrl-hz { min-height: 44px; padding: 9px 12px; font-size: 12px; background: #fff; color: #063c30; border: 1px solid #dfe9d9; }
+#slot-sim .m-ctrl-hz .ico { color: #567b60; }
+#slot-sim .m-months { padding: 2px 0 4px; margin-top: 0; margin-bottom: 12px; gap: 8px; }
+#slot-sim .m-chip { min-height: 48px; border-radius: 15px; padding: 7px 13px; border: 1px solid #e0e9d9; box-shadow: none; }
+#slot-sim .m-chip.on { min-height: 48px; min-width: 66px; background: #d5edb3; color: #063c30; border-color: #c6dda5; padding: 7px 13px; }
+#slot-sim .m-chip .mn { font-size: 13px; }
+#slot-sim .m-chip .yr { font-size: 12px; height: auto; line-height: 1.2; opacity: .85; }
+#slot-sim .m-chip.on :is(.mn, .yr) { color: #063c30; opacity: 1; }
+.eco-summary { border-radius: 26px; padding: 18px; background: radial-gradient(ellipse at 100% 0, #46764355, transparent 65%), linear-gradient(135deg, #084936, #03372c); border: 1px solid #326c5040; box-shadow: 0 12px 30px #123a2c12; }
+#slot-sim .m-hero { padding: 0; margin: 0; background: none; border-radius: 0; }
+#slot-sim .m-hero::after { display: none; }
+#slot-sim .m-hero-k { color: #bed6ca; font-size: 13px; }
+#slot-sim .m-hero-val-wrap { gap: 5px; padding-top: 4px; }
+#slot-sim .m-hero-val { font-size: 29px; font-weight: 700; line-height: 1.2; overflow-wrap: anywhere; min-width: 0; }
+#slot-sim .m-hero-pfx { font-size: 12px; align-self: baseline; padding: 0; color: #bed6ca; }
+#slot-sim .m-hero-period { width: 100%; margin-left: 0; padding-top: 2px; font-size: 12px; white-space: normal; color: #bed6ca; }
+#slot-sim .m-hero-pct { font-size: 12px; color: #cef29b; }
+#slot-sim .m-curve { padding: 14px 0 0; margin-top: 16px; background: none; border-radius: 0; border-top: 1px solid #ffffff20; }
+#slot-sim .m-curve-hd { flex-wrap: wrap; gap: 5px; }
+#slot-sim .m-curve-k { font-size: 12px; color: #bed6ca; }
+#slot-sim .m-curve-final { font-size: 12px; color: #cef29b; }
+#slot-sim .m-curve-body { height: 88px; margin-top: 10px; }
+#slot-sim .m-curve-axis span { color: #aac8ba; font-size: 10px; min-width: 0; overflow: visible; }
+#slot-sim .m-curve-axis span:nth-child(even) { visibility: hidden; }
+#slot-sim .m-curve-axis:has(span:nth-child(13)) span { visibility: hidden; }
+#slot-sim .m-curve-axis:has(span:nth-child(13)):not(:has(span:nth-child(25))) span:nth-child(4n + 1) { visibility: visible; }
+#slot-sim .m-curve-axis:has(span:nth-child(25)) span { visibility: hidden; }
+#slot-sim .m-curve-axis:has(span:nth-child(25)) span:nth-child(8n + 1) { visibility: visible; }
+#slot-sim .m-curve-axis span:last-child { visibility: visible; }
+#slot-sim .m-curve-axis span.on { color: #cef29b; }
+#slot-sim .m-kpis { gap: 10px; padding: 0 0 4px; margin-top: 14px; }
+#slot-sim .m-kpi { width: 146px; padding: 13px; border-radius: 20px; border: 1px solid #ffffff80; gap: 8px; }
+#slot-sim .m-kpi::before { display: none; }
+#slot-sim .m-kpi-lbl { font-size: 12px; white-space: normal; }
+#slot-sim .m-kpi-val { font-size: 20px; }
+#slot-sim .m-kpi-pfx { font-size: 12px; align-self: baseline; padding: 0; }
+#slot-sim .m-sel-hd { margin-top: 20px; padding: 0 4px; gap: 8px; flex-wrap: wrap; }
+#slot-sim .m-sel-lbl { font-size: 14px; }
+#slot-sim .m-sel-note { font-size: 12px; color: #617e72; }
+#slot-sim .m-card { margin-top: 10px; border-radius: 20px; border: 1px solid #e1e9dd; box-shadow: 0 4px 16px #18452e05; overflow: hidden; }
+#slot-sim .m-erow { padding: 14px 13px; gap: 10px; }
+#slot-sim .m-erow-icon { width: 36px; height: 38px; border-radius: 12px; }
+#slot-sim .m-erow-name, #slot-sim .m-erow-val { font-size: 14px; }
+#slot-sim .m-erow-grp, #slot-sim .m-erow-pfx { font-size: 12px; color: #617e72; }
+#slot-sim .m-thead { background: #edf5e5; }
+#slot-sim .m-thead span { font-size: 12px; color: #567161; }
+#slot-sim .m-trow { min-height: 48px; border-bottom-color: #eaf0e5; }
+#slot-sim .m-trow.on { background: #e7f3d8; }
+#slot-sim :is(button, input):focus-visible { outline: 2px solid #68a978; outline-offset: 3px; }
+@media (max-width: 1023px) {
+  #app:has(#view-sim.on) .appbar { padding: calc(var(--sat) + 14px) 20px 10px; }
+  #app:has(#view-sim.on) .navbar-pill { background: #043d30; box-shadow: 0 8px 24px #123a2c26; }
+}
+@media (min-width: 600px) { #slot-sim > * { width: calc(100% - 64px); max-width: 650px; margin-left: auto; margin-right: auto; } }
+@media (max-width: 359px) {
+  .eco-opening { padding: 11px; gap: 8px; }
+  .eco-opening-icon { width: 30px; height: 34px; }
+  #slot-sim .m-si-wrap { flex-basis: 92px; }
+  #slot-sim .m-ctrl { flex-wrap: wrap; }
+  #slot-sim .m-ctrl-hz { padding: 9px; }
+  #slot-sim .m-seg button { font-size: 12px; padding: 7px 5px; }
+  .eco-summary { padding: 15px; }
+  #slot-sim .m-thead, #slot-sim .m-trow { padding: 10px; grid-template-columns: 80px 1fr 1fr; }
+}
+@media (prefers-reduced-motion: reduce) { #slot-sim * { transition: none !important; } }

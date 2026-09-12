@@ -23,6 +23,10 @@
 <link rel="stylesheet" href="assets/css/entry.css">
 <link rel="stylesheet" href="assets/css/accounts.css">
 <link rel="stylesheet" href="assets/css/favors.css">
+<link rel="stylesheet" href="assets/css/loans.css">
+<link rel="stylesheet" href="assets/css/economy.css">
+<link rel="stylesheet" href="assets/css/records.css">
+<link rel="stylesheet" href="assets/css/settings.css">
 </head>
 <body>
 
@@ -350,16 +354,12 @@
     <section class="view" id="view-loans" aria-label="Empréstimos">
       <div class="view-scroll" id="slot-loans">
 
-        <div class="m-tabcard">
-          <div class="m-tab">Resumo geral</div>
-          <div class="m-tab-corner" aria-hidden="true"></div>
-          <div class="m-tab-row">
-            <span class="m-tab-lbl" id="lo-active">0 empréstimos ativos</span>
+        <div class="m-hero lo-hero">
+          <div class="lo-summary-head">
+            <span class="lo-summary-icon"><svg class="ico" aria-hidden="true"><use href="#i-hand-cash"/></svg></span>
+            <span class="lo-summary-copy"><strong>Seus empréstimos</strong><small id="lo-active">0 empréstimos ativos</small></span>
             <span class="lo-late" id="lo-late">0 atrasados</span>
           </div>
-        </div>
-
-        <div class="m-hero lo-hero">
           <span class="m-hero-k">A receber no total</span>
           <span class="m-hero-val-wrap">
             <span class="m-hero-pfx">R$</span>
@@ -403,17 +403,17 @@
       <div class="view-scroll" id="slot-sim">
 
         <!-- aba do cenário + saldo inicial -->
-        <div class="m-tabcard">
-          <div class="m-tab" id="m-scenario-tab">Cenário pessimista</div>
-          <div class="m-tab-corner" aria-hidden="true"></div>
-          <div class="m-tab-row">
-            <label class="m-tab-lbl" for="m-si">Saldo inicial</label>
+        <div class="eco-opening">
+          <span class="eco-opening-icon"><svg class="ico" aria-hidden="true"><use href="#i-piggy-bank"/></svg></span>
+          <div class="eco-opening-copy">
+            <span id="m-scenario-tab">Cenário pessimista</span>
+            <label for="m-si">Saldo inicial</label>
+          </div>
             <span class="m-si-wrap">
               <span class="m-si-pfx">R$</span>
               <input type="text" id="m-si" value="0" inputmode="decimal"
                      autocomplete="off" enterkeyhint="done" aria-label="Saldo inicial em reais">
             </span>
-          </div>
         </div>
 
         <!-- Controles do número, todos juntos e ANTES dele: cenário,
@@ -442,7 +442,8 @@
         <!-- o recorte fecha a faixa de controles, colado no cartão que ele filtra -->
         <div class="m-months" id="m-months" role="tablist" aria-label="Meses"></div>
 
-        <!-- o cartão escuro ficou só com o resultado -->
+        <!-- Resultado e evolução compartilham o mesmo cartão. -->
+        <div class="eco-summary">
         <div class="m-hero">
           <span class="m-hero-k">Acumulado</span>
           <span class="m-hero-val-wrap">
@@ -453,9 +454,6 @@
           <span class="m-hero-pct" id="m-acum-pct" hidden></span>
         </div>
 
-        <!-- KPIs em faixa rolante -->
-        <div class="m-kpis" id="m-kpis"></div>
-
         <!-- curva do acumulado -->
         <div class="m-curve">
           <div class="m-curve-hd">
@@ -465,6 +463,10 @@
           <div class="m-curve-body" id="m-curve-body"></div>
           <div class="m-curve-axis" id="m-curve-axis"></div>
         </div>
+        </div>
+
+        <!-- Indicadores do recorte selecionado -->
+        <div class="m-kpis" id="m-kpis"></div>
 
         <!-- mês selecionado -->
         <div class="m-sel-hd">
@@ -614,6 +616,17 @@
 
   <!-- ajustes -->
   <div id="c-settings" style="display:flex;flex-direction:column;gap:14px">
+    <div class="settings-profile" aria-label="Seu perfil">
+      <div class="settings-profile-avatar">
+        <span id="profile-initials" aria-hidden="true">PL</span>
+        <img id="profile-photo" alt="" referrerpolicy="no-referrer" hidden>
+      </div>
+      <div class="settings-profile-copy">
+        <span class="settings-profile-label">Seu perfil</span>
+        <strong id="profile-name">Perfil local</strong>
+        <span id="profile-username">Neste aparelho</span>
+      </div>
+    </div>
 
     <div class="card" id="account-card" hidden>
       <div class="set-block">
@@ -702,7 +715,7 @@
   <div class="sheet-backdrop" id="backdrop"></div>
 
   <!-- formulário de entrada -->
-  <div class="sheet" id="sheet-form" role="dialog" aria-modal="true" aria-labelledby="ftitle">
+  <div class="sheet record-sheet" id="sheet-form" role="dialog" aria-modal="true" aria-labelledby="ftitle">
     <span class="sheet-grab mobile-only" aria-hidden="true"></span>
     <div class="fhd">
       <button class="bbk" id="form-back" aria-label="Voltar">
@@ -773,7 +786,7 @@
   </div>
 
   <!-- formulário de empréstimo -->
-  <div class="sheet" id="sheet-loan" role="dialog" aria-modal="true" aria-labelledby="lo-ftitle">
+  <div class="sheet record-sheet" id="sheet-loan" role="dialog" aria-modal="true" aria-labelledby="lo-ftitle">
     <span class="sheet-grab mobile-only" aria-hidden="true"></span>
     <div class="fhd">
       <button class="bbk" id="lo-back" aria-label="Voltar"><svg class="ico" aria-hidden="true"><use href="#i-nav-arrow-left"/></svg></button>
@@ -870,7 +883,7 @@
   </div>
 
   <!-- formulário de conta -->
-  <div class="sheet" id="sheet-conta" role="dialog" aria-modal="true" aria-labelledby="ct-ftitle">
+  <div class="sheet record-sheet" id="sheet-conta" role="dialog" aria-modal="true" aria-labelledby="ct-ftitle">
     <span class="sheet-grab mobile-only" aria-hidden="true"></span>
     <div class="fhd">
       <button class="bbk" id="ct-back" aria-label="Voltar"><svg class="ico" aria-hidden="true"><use href="#i-nav-arrow-left"/></svg></button>
@@ -938,7 +951,7 @@
   </div>
 
   <!-- formulário de favor -->
-  <div class="sheet" id="sheet-favor" role="dialog" aria-modal="true" aria-labelledby="fv-ftitle">
+  <div class="sheet record-sheet" id="sheet-favor" role="dialog" aria-modal="true" aria-labelledby="fv-ftitle">
     <span class="sheet-grab mobile-only" aria-hidden="true"></span>
     <div class="fhd">
       <button class="bbk" id="fv-back" aria-label="Voltar"><svg class="ico" aria-hidden="true"><use href="#i-nav-arrow-left"/></svg></button>
@@ -1016,7 +1029,7 @@
   </div>
 
   <!-- até onde a projeção vai -->
-  <div class="sheet" id="sheet-horizonte" role="dialog" aria-modal="true" aria-labelledby="hz-title">
+  <div class="sheet record-sheet" id="sheet-horizonte" role="dialog" aria-modal="true" aria-labelledby="hz-title">
     <span class="sheet-grab mobile-only" aria-hidden="true"></span>
     <div class="fhd">
       <button class="bbk" id="hz-back" aria-label="Voltar"><svg class="ico" aria-hidden="true"><use href="#i-nav-arrow-left"/></svg></button>
@@ -1029,7 +1042,7 @@
   </div>
 
   <!-- confirmação: uma pergunta, duas saídas -->
-  <div class="sheet" id="sheet-confirmar" role="dialog" aria-modal="true" aria-labelledby="cf-title">
+  <div class="sheet record-sheet" id="sheet-confirmar" role="dialog" aria-modal="true" aria-labelledby="cf-title">
     <span class="sheet-grab mobile-only" aria-hidden="true"></span>
     <div class="fhd">
       <button class="bbk" id="cf-back" aria-label="Voltar"><svg class="ico" aria-hidden="true"><use href="#i-nav-arrow-left"/></svg></button>
@@ -1045,7 +1058,7 @@
   </div>
 
   <!-- compartilhar a economia com outra conta -->
-  <div class="sheet" id="sheet-share" role="dialog" aria-modal="true" aria-labelledby="sh-title">
+  <div class="sheet record-sheet" id="sheet-share" role="dialog" aria-modal="true" aria-labelledby="sh-title">
     <span class="sheet-grab mobile-only" aria-hidden="true"></span>
     <div class="fhd">
       <button class="bbk" id="sh-back" aria-label="Voltar"><svg class="ico" aria-hidden="true"><use href="#i-nav-arrow-left"/></svg></button>
@@ -1089,7 +1102,7 @@
 
   <!-- favor que se repete: mexer em um, nos próximos ou em todos.
        Serve para excluir e para ligar/desligar a projeção. -->
-  <div class="sheet" id="sheet-excluir" role="dialog" aria-modal="true" aria-labelledby="ex-title">
+  <div class="sheet record-sheet" id="sheet-excluir" role="dialog" aria-modal="true" aria-labelledby="ex-title">
     <span class="sheet-grab mobile-only" aria-hidden="true"></span>
     <div class="fhd">
       <button class="bbk" id="ex-back" aria-label="Voltar"><svg class="ico" aria-hidden="true"><use href="#i-nav-arrow-left"/></svg></button>
@@ -1119,7 +1132,7 @@
   </div>
 
   <!-- pagamento de favor: o alcance vem de onde se tocou na lista -->
-  <div class="sheet" id="sheet-pagamento" role="dialog" aria-modal="true" aria-labelledby="pg-ftitle">
+  <div class="sheet record-sheet" id="sheet-pagamento" role="dialog" aria-modal="true" aria-labelledby="pg-ftitle">
     <span class="sheet-grab mobile-only" aria-hidden="true"></span>
     <div class="fhd">
       <button class="bbk" id="pg-back" aria-label="Voltar"><svg class="ico" aria-hidden="true"><use href="#i-nav-arrow-left"/></svg></button>
@@ -1160,7 +1173,7 @@
   </div>
 
   <!-- ajustes (sheet no desktop) -->
-  <div class="sheet" id="sheet-settings" role="dialog" aria-modal="true" aria-label="Ajustes">
+  <div class="sheet record-sheet" id="sheet-settings" role="dialog" aria-modal="true" aria-label="Ajustes">
     <span class="sheet-grab mobile-only" aria-hidden="true"></span>
     <div class="fhd">
       <button class="bbk" id="settings-back" aria-label="Voltar">
