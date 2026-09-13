@@ -20,7 +20,7 @@
   #c-settings .card { border-radius: 20px; border: 1px solid #e1e9dd; box-shadow: 0 4px 16px #18452e05; overflow: hidden; }
   #c-settings .set-block { padding: 15px; gap: 11px; }
   #c-settings .set-title { font-size: 14px; font-weight: 600; text-transform: none; letter-spacing: 0; color: #063c30; }
-  #c-settings .set-desc { font-size: 13px; line-height: 1.6; color: #617e72; overflow-wrap: anywhere; }
+  #c-settings .set-desc { font-size: 13px; line-height: 1.6; color: #526a60; overflow-wrap: anywhere; }
   #c-settings .fl { font-size: 13px; font-weight: 500; letter-spacing: 0; text-transform: none; color: #456954; }
   #c-settings .fi { min-height: 48px; border-color: #dbe5d6; border-radius: 14px; background: #f9fbf7; font-size: 16px; }
   #c-settings .fi:focus { border-color: #6e9c6a; box-shadow: 0 0 0 3px #86b37418; }
@@ -33,13 +33,13 @@
   #c-settings .btn-danger { background: #a13e3e; color: #fff; }
   #c-settings .btn-sair { background: #fff; border: 1px solid #dfe8d9; color: #456954; }
   #c-settings .fb { font-size: 12px; line-height: 1.5; }
-  #c-settings .about { font-size: 12px; color: #617e72; padding: 8px 0; }
+  #c-settings .about { font-size: 12px; color: #526a60; padding: 8px 0; }
   #c-settings :is(button, input):focus-visible { outline: 2px solid #68a978; outline-offset: 3px; }
   #sheet-settings .settings-intro { display: none; }
 
   #sheet-horizonte .hz-op { min-height: 58px; border-radius: 16px; padding: 12px 14px; background: #fff; border: 1px solid #dfe8d9; gap: 10px; }
   #sheet-horizonte .hz-op-tit { font-size: 15px; font-weight: 600; }
-  #sheet-horizonte .hz-op-sub { font-size: 12px; color: #617e72; }
+  #sheet-horizonte .hz-op-sub { font-size: 12px; color: #526a60; }
   #sheet-horizonte .hz-op.on { background: #d8edbd; border-color: #a8c88a; }
   #sheet-horizonte .hz-op.on .hz-op-tit { color: #063c30; }
   #sheet-horizonte .hz-op.on .hz-op-sub { color: #456954; }
@@ -48,27 +48,27 @@
   #sheet-confirmar .bsv { background: #a13e3e; border-top-color: #f1c6bb; }
   #sheet-excluir .ex-op { padding: 13px; min-height: 60px; border: 1px solid #dfe8d9; border-radius: 16px; background: #fff; }
   #sheet-excluir .ex-op-tit { font-size: 14px; color: #063c30; }
-  #sheet-excluir .ex-op-sub { font-size: 12px; color: #617e72; line-height: 1.5; }
+  #sheet-excluir .ex-op-sub { font-size: 12px; color: #526a60; line-height: 1.5; }
   #sheet-excluir .ex-op.perigo { background: #fff1eb; border-color: #ebc9bc; }
   #sheet-excluir .ex-op.perigo .ex-op-tit { color: #a13e3e; }
 
   #sheet-share { --record-accent: #d5e7fa; }
   #sheet-share .sh-bloco { padding: 14px; border-radius: 18px; background: #fff; border-color: #e1e9dd; gap: 10px; }
   #sheet-share .sh-rot { font-size: 14px; text-transform: none; letter-spacing: 0; color: #063c30; }
-  #sheet-share .sh-desc { font-size: 13px; line-height: 1.6; color: #617e72; }
-  #sheet-share .sh-nota { font-size: 12px; line-height: 1.5; color: #617e72; }
+  #sheet-share .sh-desc { font-size: 13px; line-height: 1.6; color: #526a60; }
+  #sheet-share .sh-nota { font-size: 12px; line-height: 1.5; color: #526a60; }
   #sheet-share .sh-codigo { padding: 13px 8px; min-height: 48px; border-radius: 14px; background: #e7f1df; color: #063c30; font-size: 16px; letter-spacing: .08em; overflow-wrap: anywhere; white-space: normal; }
   #sheet-share .sh-mini { min-height: 48px; border-radius: 14px; padding: 11px 13px; font-size: 13px; border-color: #dbe5d6; color: #456954; }
   #sheet-share .sh-mini.forte { background: #063f31; color: #fff; }
-  #sheet-share .btn-ghost { min-height: 44px; font-size: 13px; border-radius: 99px; color: #456954; background: #f1f6ed; border: 1px solid #dfe8d9; }
+  #sheet-share .btn-ghost { min-height: 44px; font-size: 13px; border-radius: 99px; color: #456954; background: #f1f6ed; border: 1px solid #dfe8d9; text-transform: none; letter-spacing: 0; }
   #sheet-share .sh-pessoa { display: flex; flex-wrap: wrap; gap: 10px; padding: 13px 0; border-color: #e5ece1; }
   #sheet-share .sh-pessoa-corpo { flex-basis: calc(100% - 54px); }
   #sheet-share .sh-pessoa-email { font-size: 13px; white-space: normal; overflow-wrap: anywhere; }
-  #sheet-share .sh-pessoa-papel { font-size: 12px; color: #617e72; }
+  #sheet-share .sh-pessoa-papel { font-size: 12px; color: #526a60; }
   #sheet-share .sh-cores { flex-wrap: wrap; gap: 5px; }
   #sheet-share .sh-cor { width: 32px; height: 32px; border-width: 3px; }
   #sheet-share .sh-remover { width: 44px; height: 44px; border-radius: 13px; }
-  #sheet-share .fb { font-size: 12px; line-height: 1.5; }
+  #sheet-share .fb { font-size: 12px; line-height: 1.5; text-align: left; }
   #sheet-settings .fbody { padding-top: 16px; }
 }
 @media (min-width: 600px) and (max-width: 1023px) { #slot-settings > * { width: calc(100% - 64px); max-width: 650px; margin-left: auto; margin-right: auto; } }

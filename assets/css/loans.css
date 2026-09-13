@@ -33,26 +33,26 @@
 #slot-loans .lo-pcard { border: 1px solid #e1e9dd; box-shadow: none; min-height: 46px; padding: 6px 11px 6px 6px; }
 #slot-loans .lo-pcard.on { background: #084936; border-color: #084936; }
 #slot-loans .lo-pnome b { font-size: 13px; }
-#slot-loans .lo-pnome span { font-size: 12px; color: #617e72; }
+#slot-loans .lo-pnome span { font-size: 12px; color: #526a60; }
 #slot-loans .lo-pcard.on .lo-pnome span { color: #bed6ca; }
 #slot-loans .lo-chip { min-height: 44px; font-size: 12px; padding: 9px 12px; border: 1px solid #e1e9dd; box-shadow: none; color: #567161; }
 #slot-loans .lo-chip.on { background: #d5edb3; border-color: #c8dfa5; color: #063c30; }
 #slot-loans .m-sel-hd { margin-top: 14px; padding: 0 4px; gap: 8px; }
 #slot-loans .m-sel-lbl { font-size: 14px; font-weight: 600; gap: 8px; }
-#slot-loans .m-sel-note { font-size: 12px; color: #617e72; }
+#slot-loans .m-sel-note { font-size: 12px; color: #526a60; }
 #slot-loans .lo-list { gap: 9px; }
 #slot-loans .lo-card { padding: 12px 12px; border-radius: 20px; border: 1px solid #e1e9dd; box-shadow: 0 4px 16px #18452e05; }
 #slot-loans .lo-head { gap: 10px; }
 #slot-loans .lo-avatar { width: 32px; height: 34px; border-radius: 11px; }
-#slot-loans .lo-meta { font-size: 12px; color: #617e72; white-space: normal; line-height: 1.5; }
+#slot-loans .lo-meta { font-size: 12px; color: #526a60; white-space: normal; line-height: 1.5; }
 #slot-loans .lo-status { font-size: 12px; padding: 5px 8px; }
 #slot-loans .lo-grid { margin-top: 9px; padding-top: 9px; border-top: 1px solid #e7eee3; gap: 7px; }
-#slot-loans .lo-cell-k { font-size: 12px; color: #617e72; }
+#slot-loans .lo-cell-k { font-size: 12px; color: #526a60; }
 #slot-loans .lo-cell-v-wrap { flex-wrap: wrap; gap: 3px; }
-#slot-loans .lo-cell-pfx { font-size: 12px; color: #617e72; padding: 0; align-self: baseline; }
+#slot-loans .lo-cell-pfx { font-size: 12px; color: #526a60; padding: 0; align-self: baseline; }
 #slot-loans .lo-cell-v { font-size: 14px; min-width: 0; overflow-wrap: anywhere; }
 #slot-loans .lo-bar { height: 5px; background: #edf2e9; }
-#slot-loans .lo-bar-lbl { font-size: 12px; font-weight: 500; color: #617e72; }
+#slot-loans .lo-bar-lbl { font-size: 12px; font-weight: 500; color: #526a60; }
 #slot-loans .lo-mensal-nota { font-size: 12px; line-height: 1.45; }
 #slot-loans .empty-list { border-radius: 22px; background: #ffffffb3; border: 1px solid #e1e9dd; }
 #slot-loans button:focus-visible { outline: 2px solid #68a978; outline-offset: 3px; }

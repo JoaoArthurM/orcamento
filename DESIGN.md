@@ -8,8 +8,8 @@ colors:
   lima-de-aval: "#C9E88E"
   papel: "#F8FAF6"
   superficie: "#FFFFFF"
-  tinta-media: "#6F8C7C"
-  tinta-fraca: "#9CB2A4"
+  tinta-media: "#5D7668"
+  tinta-fraca: "#637169"
   traco: "#EAF1E5"
   traco-cartao: "#E1E9DD"
   lima-selo: "#D5EDB3"
@@ -20,13 +20,13 @@ colors:
   azul-favores: "#DCEBF6"
   azul-favores-tinta: "#14405C"
   alerta: "#C84B4B"
-  confirmado: "#4A8A5F"
+  confirmado: "#417A54"
   pilula-fs-fundo: "#F1F6EE"
   pilula-os-tinta: "#51705E"
   pilula-ci-fundo: "#E9F6D6"
   pilula-ci-tinta: "#2F6142"
   pilula-ui-fundo: "#FAF2DF"
-  pilula-ui-tinta: "#8A6A24"
+  pilula-ui-tinta: "#856623"
   pilula-em-fundo: "#FEF0EE"
   pilula-em-tinta: "#8C3A2F"
   pilula-co-fundo: "#EEF3FD"
@@ -244,22 +244,22 @@ Acentos de módulo. Cada um identifica um território e não sai dele.
 
 - **Papel** (`#F8FAF6`): fundo de toda view de módulo, sob os gradientes radiais e a trama.
 - **Superfície** (`#FFFFFF`): cartão, folha inferior, rodapé de formulário.
-- **Tinta Média** (`#6F8C7C`, e o par de módulo `#617E72`): metadados, rótulos secundários, prefixo `R$`.
-- **Tinta Fraca** (`#9CB2A4`): texto desabilitado, ícone inerte, rodapé "sobre".
+- **Tinta Média** (`#5D7668`, e o par de módulo `#526A60`): metadados, rótulos secundários, prefixo `R$`. Ambos batem 4,9:1 sobre branco.
+- **Tinta Fraca** (`#637169`): o degrau mais claro que ainda se lê — 5,1:1 sobre branco. Marca inerte, ícone apagado, rodapé "sobre".
 - **Traço** (`#EAF1E5`) e **Traço Cartão** (`#E1E9DD`): a borda de 1px que faz o trabalho que a sombra não faz.
 - **Verde sobre Escuro** (`#BED6CA`): rótulo e legenda dentro dos cartões-herói. É o único claro-neutro do sistema, e ele é verde.
 
 ### Semantic
 
 - **Alerta** (`#C84B4B`): excluir, sair, erro de formulário. O cartão de perigo é `#FFFBFA` com borda `#F6DAD5` — o vermelho chega antes da leitura.
-- **Confirmado** (`#4A8A5F`): retorno positivo de formulário.
+- **Confirmado** (`#417A54`): retorno positivo de formulário.
 
 ### Pílulas por tipo de entrada
 
 Seis pares fundo/tinta, um por tipo do simulador, todos de baixa saturação por
 projeto: são etiquetas, não estados. `fs` poupança frequente
 (`#F1F6EE` / `#123A2C`) · `os` pontual (`#F1F6EE` / `#51705E`) · `ci` renda
-certa (`#E9F6D6` / `#2F6142`) · `ui` renda incerta (`#FAF2DF` / `#8A6A24`) ·
+certa (`#E9F6D6` / `#2F6142`) · `ui` renda incerta (`#FAF2DF` / `#856623`) ·
 `em` empréstimo (`#FEF0EE` / `#8C3A2F`) · `co` consórcio (`#EEF3FD` / `#2E5A8C`).
 
 ### Named Rules
@@ -271,6 +271,12 @@ verde dessaturado, e toda sombra é `rgba(18,58,44,…)`. Um `#888` ou um
 **A Regra do Aval.** O Lima de Aval marca **uma** coisa por tela: o que foi
 confirmado, ou o que o usuário veio ver. Dois limas competindo na mesma viewport
 significa que um deles não conquistou o lugar.
+
+**A Regra dos Dois Degraus.** Este verde só comporta **dois** níveis de texto
+legível: primário (`#123A2C`, 12,6:1) e secundário (`#5D7668` / `#526A60`,
+~4,9:1). A Tinta Fraca fica em 5,1:1 e é para marca inerte, não para um
+terceiro nível — qualquer verde mais claro que ela reprova em 4,5:1. Hierarquia
+abaixo do secundário se faz com **tamanho e peso**, nunca clareando a cor.
 
 **A Regra do Território.** Âmbar é de contas, azul é de favores. Um acento de
 módulo aparecendo fora do seu módulo — ou dois deles na mesma tela, fora do hub
@@ -546,6 +552,7 @@ vez de aviso de que rola. Os KPIs da economia mostram 2,7 cartões de 320 a
 ### Do:
 
 - **Do** usar `var(--dark)` / `#123A2C` para toda tinta e toda sombra. Sombra é `rgba(18,58,44, α)`.
+- **Do** medir todo par texto/fundo novo contra 4,5:1 (3:1 acima de 24px). Toda a paleta de texto foi calibrada com margem para 4,7 — um verde escolhido a olho volta a reprovar.
 - **Do** manter `font-size: 16px` em todo campo editável — abaixo disso o iOS dá zoom ao focar.
 - **Do** somar as áreas seguras (`--sat --sab --sal --sar`) em qualquer padding que encoste na borda da tela.
 - **Do** garantir `min-height: var(--tap)` (44px) em tudo que se toca. Quando a marca visível precisa ser menor, expanda a área com um `::after` de `var(--tap)` e confirme com `document.elementFromPoint()` nas quatro bordas.

@@ -25,16 +25,16 @@
 .auth-wordmark { font-size: 30px; letter-spacing: -.065em; }
 .wordmark .brand-dot { color: #92ca7b; }
 .auth-greet { padding-top: 40px; gap: 6px; }
-.auth-eyebrow { font-size: 17px; color: #64867e; }
+.auth-eyebrow { font-size: 17px; color: #56736c; }
 .auth-title { font-size: clamp(32px, 8.7vw, 43px); font-weight: 700; line-height: 1.13; letter-spacing: -.055em; }
-.auth-sub { font-size: 16px; color: #64867e; padding-top: 2px; }
+.auth-sub { font-size: 16px; color: #56736c; padding-top: 2px; }
 .auth-motto { display: none; }
 .auth-card {
   margin-top: 28px; padding: 10px 10px 24px; border-radius: 29px;
   background: linear-gradient(125deg, #084b39, #03372c 65%, #064333);
   box-shadow: 0 8px 14px #144b3010;
 }
-.auth-security { display: flex; min-height: 70px; border-radius: 24px 24px 0 0; background: #002e2580; }
+.auth-security { display: flex; min-height: 70px; }
 .auth-tab {
   width: 64%; height: auto; gap: 10px; padding: 16px 12px;
   border-radius: 24px 30px 0 24px; background: #fff;
@@ -42,8 +42,6 @@
 .auth-tab .ico { width: 24px; height: 24px; color: var(--dark); }
 .auth-tab strong { display: block; font-size: 14px; font-weight: 600; }
 .auth-tab small { display: block; font-size: 12px; font-weight: 400; margin-top: 2px; }
-.auth-security-note { flex: 1; display: flex; align-items: center; justify-content: center; gap: 8px; color: #b2cdc3; font-size: 12px; line-height: 1.5; }
-.auth-security-note .ico { width: 23px; height: 23px; }
 .auth-tab-row {
   margin-top: 12px; padding: 14px 18px; border-radius: 99px;
   background: linear-gradient(105deg, #d4f5a2, #c7ed95); justify-content: flex-start; gap: 14px;
@@ -73,7 +71,7 @@
 .auth-primary { min-height: 58px; height: auto; padding: 14px 44px; font-size: 20px; box-shadow: none; }
 .auth-primary::after, .auth-foot-link::after { content: '→'; position: absolute; right: 22px; font-weight: 400; }
 .auth-primary::after { font-size: 27px; top: 50%; transform: translateY(-50%); }
-.auth-foot { margin-top: 18px; padding-top: 20px; font-size: 14px; color: #64867e; }
+.auth-foot { margin-top: 18px; padding-top: 20px; font-size: 14px; color: #56736c; }
 .auth-foot-link { position: relative; font-size: 14px; min-height: 44px; padding: 10px 28px 10px 7px; }
 .auth-foot-link::after { right: 0; font-size: 20px; top: 5px; }
 .auth :is(button, input):focus-visible, #slot-hub button:focus-visible { outline: 3px solid #68a978; outline-offset: 4px; }
@@ -89,9 +87,9 @@
 #slot-hub { padding-top: calc(var(--sat) + 84px); padding-bottom: calc(var(--sab) + 30px); gap: 18px; }
 #slot-hub > * { margin-left: max(18px, var(--sal)); margin-right: max(18px, var(--sar)); }
 #slot-hub .hub-greet { padding: 8px 10px 7px; gap: 5px; }
-.hub-eyebrow { font-size: 16px; color: #64867e; }
+.hub-eyebrow { font-size: 16px; color: #56736c; }
 .hub-title { font-size: clamp(29px, 7.6vw, 38px); font-weight: 700; line-height: 1.16; }
-.hub-sub { margin-top: 5px; font-size: 15px; line-height: 1.5; color: #64867e; letter-spacing: -.025em; }
+.hub-sub { margin-top: 5px; font-size: 15px; line-height: 1.5; color: #56736c; letter-spacing: -.025em; }
 #slot-hub > .hub-cards { display: grid; grid-template-rows: repeat(4, 1fr); flex: 1 0 auto; margin-bottom: 0; gap: 14px; }
 .hub-cards > .hub-card { flex: 1 0 auto; min-height: 108px; }
 .hub-card { border-radius: 25px; gap: 18px; padding: 14px 16px; isolation: isolate; }
@@ -157,7 +155,7 @@
   .auth-sub { font-size: 18px; }
   .auth-card { grid-column: 2; grid-row: 1 / 3; align-self: center; margin-top: 0; }
   .auth-foot { grid-column: 2; grid-row: 3; margin-top: 12px; padding-top: 0; }
-  .auth-motto { display: flex; flex-direction: column; gap: 20px; grid-column: 1; grid-row: 3; font-size: 12px; text-transform: uppercase; letter-spacing: .2em; color: #64867e; }
+  .auth-motto { display: flex; flex-direction: column; gap: 20px; grid-column: 1; grid-row: 3; font-size: 12px; text-transform: uppercase; letter-spacing: .2em; color: #56736c; }
   .auth-mark { display: flex; align-items: end; gap: 4px; height: 34px; }
   .auth-mark i { width: 7px; height: 13px; background: #064334; border-radius: 5px; }
   .auth-mark i:nth-child(2) { height: 23px; }
@@ -175,12 +173,10 @@
   .auth-title { font-size: 29px; }
   .auth-sub { font-size: 14px; }
   .auth-card { margin-top: 20px; padding: 8px 8px 18px; border-radius: 24px; }
-  .auth-security { min-height: 60px; border-radius: 19px 19px 0 0; }
+  .auth-security { min-height: 60px; }
   .auth-tab { padding: 10px 12px; border-radius: 19px 24px 0 19px; }
   .auth-tab .ico { width: 21px; height: 21px; }
   .auth-tab strong { font-size: 13px; }
-  .auth-security-note .ico { width: 19px; height: 19px; }
-  .auth-security-note { gap: 6px; }
   .auth-tab-row { margin-top: 10px; padding: 10px 14px; gap: 10px; }
   .auth-flag { width: 25px; height: 20px; }
   .auth-tab-lbl, .auth-tab-br { font-size: 13px; }
@@ -232,7 +228,7 @@
   .auth-inner { padding-left: 16px; padding-right: 16px; }
   .auth-tab { gap: 7px; padding: 13px 10px; }
   .auth-tab small { font-size: 11px; }
-  .auth-security-note { gap: 4px; font-size: 11px; }
+
   .auth-tab-row { gap: 8px; padding-left: 12px; padding-right: 12px; }
   .auth-tab-lbl { font-size: 13px; }
   .auth-remember, .auth-forgot { font-size: 12px; }

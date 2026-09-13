@@ -528,9 +528,9 @@
 
   /** Metas clássicas de poupança sobre a renda. */
   const METAS = [
-    { pct: 10, label: 'tranquilo',  bg: 'var(--dark3)',   fg: '#fff',       note: '#8FAE9C' },
-    { pct: 20, label: 'equilíbrio', bg: 'var(--lime)',    fg: 'var(--dark)', note: '#4C6B3D' },
-    { pct: 30, label: 'agressivo',  bg: 'var(--dark3)',   fg: '#fff',       note: '#8FAE9C' },
+    { pct: 10, label: 'tranquilo',  bg: 'var(--dark3)',   fg: '#fff',       note: '#9EB9A9' },
+    { pct: 20, label: 'equilíbrio', bg: 'var(--lime)',    fg: 'var(--dark)', note: '#49673B' },
+    { pct: 30, label: 'agressivo',  bg: 'var(--dark3)',   fg: '#fff',       note: '#9EB9A9' },
   ];
 
   const doTipo = (k) => contas.filter(function (c) { return c.kind === k; });
@@ -1218,20 +1218,20 @@
 
     const kpis = [
       { label:'Poupança', note: nota + ' de aportes', val: short(tot.out), ico:'piggy-bank',
-        bg:'#FFFFFF', fg:'#123A2C', labelFg:'#6F8C7C', noteFg:'#9CB2A4',
+        bg:'#FFFFFF', fg:'#123A2C', labelFg:'#5D7668', noteFg:'#526A60',
         tick:'#123A2C', tickBg:'#F1F6EE', dot:'#E4EDDF' },
       { label:'Renda certa', note: nota, val: short(tot.inC), ico:'coins',
-        bg:'#FFFFFF', fg:'#123A2C', labelFg:'#6F8C7C', noteFg:'#9CB2A4',
+        bg:'#FFFFFF', fg:'#123A2C', labelFg:'#5D7668', noteFg:'#526A60',
         tick:'#4A8A5F', tickBg:'#E9F6D6', dot:'#E4EDDF' },
       { label:'Renda incerta',
         note: optimistic ? 'considerada' : 'fora da projeção',
         val: optimistic ? short(tot.inLO) : '0', ico:'dice-five',
-        bg:'#FFFFFF', fg:'#8A6A24', labelFg:'#6F8C7C', noteFg:'#9CB2A4',
+        bg:'#FFFFFF', fg:'#8A6A24', labelFg:'#5D7668', noteFg:'#526A60',
         tick:'#B58F3F', tickBg:'#FAF2DF', dot:'#EFE3C6' },
       { label:'Saldo do período',
         note:'cenário ' + (optimistic ? 'otimista' : 'pessimista'),
         val: short(finalVal), ico:'wallet',
-        bg:'var(--lime)', fg:'#123A2C', labelFg:'#4C6B3D', noteFg:'#557A44',
+        bg:'var(--lime)', fg:'#123A2C', labelFg:'#49673B', noteFg:'#486739',
         tick:'#123A2C', tickBg:'rgba(255,255,255,.6)', dot:'rgba(18,58,44,.22)' },
     ];
 

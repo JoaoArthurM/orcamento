@@ -7,10 +7,10 @@
 .eco-opening-icon { display: grid; place-items: center; width: 32px; height: 34px; flex: none; border-radius: 11px; background: #d5edb3; color: #063c30; }
 .eco-opening-icon .ico { width: 20px; height: 20px; }
 .eco-opening-copy { flex: 1; min-width: 0; display: flex; flex-direction: column; }
-.eco-opening-copy > span { font-size: 11.5px; color: #617e72; }
+.eco-opening-copy > span { font-size: 11.5px; color: #526a60; }
 .eco-opening-copy label { font-size: 13px; font-weight: 500; }
 #slot-sim .m-si-wrap { display: flex; align-items: baseline; gap: 4px; flex: 0 1 120px; min-width: 70px; }
-#slot-sim .m-si-pfx { font-size: 12px; color: #617e72; }
+#slot-sim .m-si-pfx { font-size: 12px; color: #526a60; }
 #slot-sim #m-si { width: 100%; min-width: 0; min-height: 44px; font-size: 16px; font-weight: 600; text-align: right; background: transparent; border: 0; border-bottom: 1px solid #a9c58f; border-radius: 0; color: #063c30; }
 #slot-sim .m-ctrl { margin-top: 9px; margin-bottom: 6px; gap: 8px; }
 #slot-sim .m-seg { background: #e8f0e3; padding: 2px; }
@@ -56,12 +56,12 @@
 #slot-sim .m-kpi-pfx { font-size: 12px; align-self: baseline; padding: 0; }
 #slot-sim .m-sel-hd { margin-top: 16px; padding: 0 4px; gap: 8px; flex-wrap: wrap; }
 #slot-sim .m-sel-lbl { font-size: 14px; }
-#slot-sim .m-sel-note { font-size: 12px; color: #617e72; }
+#slot-sim .m-sel-note { font-size: 12px; color: #526a60; }
 #slot-sim .m-card { margin-top: 9px; border-radius: 18px; border: 1px solid #e1e9dd; box-shadow: 0 4px 16px #18452e05; overflow: hidden; }
 #slot-sim .m-erow { padding: 11px 11px; gap: 9px; }
 #slot-sim .m-erow-icon { width: 32px; height: 34px; border-radius: 11px; }
 #slot-sim .m-erow-name, #slot-sim .m-erow-val { font-size: 14px; }
-#slot-sim .m-erow-grp, #slot-sim .m-erow-pfx { font-size: 12px; color: #617e72; }
+#slot-sim .m-erow-grp, #slot-sim .m-erow-pfx { font-size: 12px; color: #526a60; }
 #slot-sim .m-thead { background: #edf5e5; }
 #slot-sim .m-thead span { font-size: 11.5px; color: #567161; }
 #slot-sim .m-trow { min-height: 44px; border-bottom-color: #eaf0e5; }

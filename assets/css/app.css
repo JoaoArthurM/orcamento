@@ -11,8 +11,8 @@
   --lime:  #C9E88E;
   --surf:  #FFFFFF;
   --tx:    #123A2C;
-  --tx-m:  #6F8C7C;
-  --tx-d:  #9CB2A4;
+  --tx-m:  #5D7668;
+  --tx-d:  #637169;
   --bd:    #EAF1E5;
   --bd2:   #E4EDDF;
   --bg-col:#F7FAF4;
@@ -21,7 +21,7 @@
   --fs-bg:#F1F6EE; --fs-fg:#123A2C;
   --os-bg:#F1F6EE; --os-fg:#51705E;
   --ci-bg:#E9F6D6; --ci-fg:#2F6142;
-  --ui-bg:#FAF2DF; --ui-fg:#8A6A24;
+  --ui-bg:#FAF2DF; --ui-fg:#856623;
   --em-bg:#FEF0EE; --em-fg:#8C3A2F;
   --co-bg:#EEF3FD; --co-fg:#2E5A8C;
 
@@ -34,7 +34,7 @@
   --dot-co:#4A72B5;
 
   --danger:#C84B4B;
-  --ok:#4A8A5F;
+  --ok:#417A54;
 
   --shadow-s: 0 2px 12px rgba(18,58,44,.06);
   --shadow-m: 0 4px 20px rgba(18,58,44,.08);
@@ -295,7 +295,7 @@ svg { display: block; flex: none; }
 .card-sub   { font-size: 11.5px; color: var(--tx-d); }
 
 .pill-count {
-  font-size: 11px; color: #8AA294; background: #F2F7EE;
+  font-size: 11px; color: #63746A; background: #F2F7EE;
   border-radius: 99px; padding: 3px 9px; flex: none;
 }
 
@@ -333,7 +333,7 @@ svg { display: block; flex: none; }
 }
 .opening-lbl { font-size: 12.5px; font-weight: 500; color: #405C33; }
 .opening-inp-wrap { display: flex; align-items: baseline; gap: 3px; }
-.opening-pfx { font-size: 11px; font-weight: 500; color: #4C6B3D; align-self: flex-start; padding-top: 3px; }
+.opening-pfx { font-size: 11px; font-weight: 500; color: #49673B; align-self: flex-start; padding-top: 3px; }
 #si {
   width: 120px; border: none; background: transparent;
   text-align: right;
@@ -417,7 +417,7 @@ svg { display: block; flex: none; }
 .sec-icon { width: 20px; height: 20px; border-radius: 50%; flex: none;
             display: flex; align-items: center; justify-content: center; }
 .sec-ico  { width: 13px; height: 13px; }
-.sec-lbl  { font-size: 11.5px; font-weight: 500; color: #8AA294; white-space: nowrap; }
+.sec-lbl  { font-size: 11.5px; font-weight: 500; color: #63746A; white-space: nowrap; }
 .sec-line { flex: 1; height: 1px; border-top: 1px dashed #DCE8D4; }
 
 .empty-list {
@@ -435,7 +435,7 @@ svg { display: block; flex: none; }
   mask-image: radial-gradient(circle at 50% 50%, #000 32%, transparent 72%);
 }
 .empty-title { font-size: 13px; font-weight: 600; letter-spacing: -.015em; }
-.empty-sub   { font-size: 11.5px; color: #8AA294; text-align: center; }
+.empty-sub   { font-size: 11.5px; color: #63746A; text-align: center; }
 
 /* ── LISTA DE ENTRADAS ──────────────────────────────── */
 /* a lista aparece na sidebar (desktop) e na aba menu (mobile) */
@@ -482,10 +482,10 @@ svg { display: block; flex: none; }
 .ei-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
 .ei-name { font-size: 13.5px; font-weight: 500; letter-spacing: -.015em;
            white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.ei-meta { font-size: 11px; color: #8AA294;
+.ei-meta { font-size: 11px; color: #63746A;
            white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .ei-amt  { display: flex; align-items: baseline; gap: 2px; white-space: nowrap; flex: none; }
-.ei-pfx  { font-size: 10px; color: #8AA294; align-self: flex-start; padding-top: 2px; }
+.ei-pfx  { font-size: 10px; color: #63746A; align-self: flex-start; padding-top: 2px; }
 .ei-val  { font-size: 13.5px; font-weight: 600; letter-spacing: -.025em;
            font-variant-numeric: tabular-nums; }
 
@@ -855,7 +855,7 @@ svg { display: block; flex: none; }
   .th-row { display: grid; position: sticky; top: 0; z-index: 4; background: #fff; }
   .th-lbl {
     position: sticky; left: 0; z-index: 2; background: #fff;
-    padding: 20px 24px 14px; font-size: 12px; color: #8AA294;
+    padding: 20px 24px 14px; font-size: 12px; color: #63746A;
   }
   .th-cell { padding: 16px 8px 12px; display: flex; justify-content: center; }
   .th-pill { display: flex; flex-direction: column; align-items: center;
@@ -1295,7 +1295,7 @@ svg { display: block; flex: none; }
 .m-tab-lbl { font-size: 12px; font-weight: 500; color: #3F5F32; }
 .m-si-wrap { display: flex; align-items: baseline; gap: 3px; }
 .m-si-pfx {
-  font-size: 10.5px; font-weight: 500; color: #4C6B3D;
+  font-size: 10.5px; font-weight: 500; color: #49673B;
   align-self: flex-start; padding-top: 3px;
 }
 #m-si {
@@ -1501,7 +1501,7 @@ svg { display: block; flex: none; }
 .m-sel-lbl .ico { width: 17px; height: 17px; color: var(--tx-m); }
 .m-sel-saldo { font-size: 12px; font-weight: 600; }
 .m-sel-saldo.neg { color: #8C3A2F; }
-.m-sel-note { font-size: 11.5px; color: #8AA294; }
+.m-sel-note { font-size: 11.5px; color: #63746A; }
 
 .m-card { margin-top: 10px; border-radius: 20px; box-shadow: 0 2px 14px rgba(18,58,44,.05); }
 
@@ -1522,9 +1522,9 @@ svg { display: block; flex: none; }
   font-size: 13.5px; font-weight: 500; letter-spacing: -.015em;
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
-.m-erow-grp { font-size: 11px; color: #8AA294; }
+.m-erow-grp { font-size: 11px; color: #63746A; }
 .m-erow-amt { display: flex; align-items: baseline; gap: 2px; white-space: nowrap; flex: none; }
-.m-erow-pfx { font-size: 10px; color: #8AA294; align-self: flex-start; padding-top: 2px; }
+.m-erow-pfx { font-size: 10px; color: #63746A; align-self: flex-start; padding-top: 2px; }
 .m-erow-val {
   font-size: 13.5px; font-weight: 600; letter-spacing: -.025em;
   font-variant-numeric: tabular-nums;
@@ -1541,7 +1541,7 @@ svg { display: block; flex: none; }
   -webkit-mask-image: radial-gradient(circle at 50% 50%, #000 32%, transparent 72%);
   mask-image: radial-gradient(circle at 50% 50%, #000 32%, transparent 72%);
 }
-.m-empty span:last-child { font-size: 12.5px; color: #8AA294; }
+.m-empty span:last-child { font-size: 12.5px; color: #63746A; }
 
 /* ── tabela mês a mês ───────────────────────────────── */
 .m-table { overflow: hidden; }
@@ -1555,7 +1555,7 @@ svg { display: block; flex: none; }
   background: var(--bg-col);
   border-bottom: 1px solid #F1F5EE;
 }
-.m-thead span { font-size: 10.5px; color: #8AA294; }
+.m-thead span { font-size: 10.5px; color: #63746A; }
 .m-thead span + span { text-align: right; }
 
 .m-trow {
@@ -1632,7 +1632,7 @@ svg { display: block; flex: none; }
   min-height: var(--tap);
   justify-content: center;
   font-size: 10px; font-weight: 400;
-  color: #7E9E8C;
+  color: #8AA797;
   transition: color 140ms;
 }
 .navitem.on { color: var(--lime); font-weight: 600; }
@@ -1720,7 +1720,7 @@ svg { display: block; flex: none; }
 .hub-arrow { flex: none; }
 .hub-arrow .ico { width: 20px; height: 20px; }
 .hub-loans .hub-arrow { color: #8FAE9C; }
-.hub-eco   .hub-arrow { color: #4C6B3D; }
+.hub-eco   .hub-arrow { color: #49673B; }
 
 .hub-name { font-size: 12.5px; font-weight: 500; }
 .hub-loans .hub-name { color: #8FAE9C; }
@@ -1753,7 +1753,7 @@ svg { display: block; flex: none; }
    EMPRÉSTIMOS
    ══════════════════════════════════════════════════════ */
 .lo-late { font-size: 12px; font-weight: 700; color: var(--dark); white-space: nowrap; }
-.lo-late.zero { font-weight: 500; color: #4C6B3D; }
+.lo-late.zero { font-weight: 500; color: #49673B; }
 
 .lo-hero .m-hero-val-wrap { padding-top: 4px; }
 /* "inclui R$ X de juros · R$ Y já recebidos de mensalidade" não cabe em
@@ -1862,7 +1862,7 @@ svg { display: block; flex: none; }
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 .lo-meta {
-  font-size: 11px; color: #8AA294;
+  font-size: 11px; color: #63746A;
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 .lo-status {
@@ -1872,9 +1872,9 @@ svg { display: block; flex: none; }
 
 .lo-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-top: 13px; }
 .lo-cell { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
-.lo-cell-k { font-size: 10px; color: #8AA294; }
+.lo-cell-k { font-size: 10px; color: #63746A; }
 .lo-cell-v-wrap { display: flex; align-items: baseline; gap: 2px; }
-.lo-cell-pfx { font-size: 9.5px; color: #9CB2A4; align-self: flex-start; padding-top: 2px; }
+.lo-cell-pfx { font-size: 9.5px; color: #637169; align-self: flex-start; padding-top: 2px; }
 .lo-cell-v {
   font-size: 13.5px; font-weight: 600; letter-spacing: -.02em;
   font-variant-numeric: tabular-nums;
@@ -1939,7 +1939,7 @@ svg { display: block; flex: none; }
 }
 .ct-sub-row { display: flex; align-items: center; gap: 7px; min-width: 0; }
 .ct-sub {
-  font-size: 11px; color: #8AA294;
+  font-size: 11px; color: #63746A;
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 
@@ -1954,7 +1954,7 @@ svg { display: block; flex: none; }
 .ct-pill:active { transform: scale(.94); }
 .ct-pill:hover { filter: brightness(.96); }
 .ct-amt { display: flex; align-items: baseline; gap: 2px; white-space: nowrap; flex: none; }
-.ct-amt-pfx { font-size: 10px; color: #8AA294; align-self: flex-start; padding-top: 2px; }
+.ct-amt-pfx { font-size: 10px; color: #63746A; align-self: flex-start; padding-top: 2px; }
 .ct-amt-v {
   font-size: 13.5px; font-weight: 600; letter-spacing: -.025em;
   font-variant-numeric: tabular-nums;
@@ -2200,7 +2200,7 @@ svg { display: block; flex: none; }
 
 .fv-box-note { font-size: 10px; padding-top: 4px; }
 .fv-box-dark .fv-box-note { color: #8FAE9C; }
-.fv-box-lime .fv-box-note { color: #4C6B3D; }
+.fv-box-lime .fv-box-note { color: #49673B; }
 
 /* ── pessoa: cartão que abre ────────────────────────── */
 .fv-lista { display: flex; flex-direction: column; gap: 10px; margin-top: 16px; }
@@ -2225,9 +2225,9 @@ svg { display: block; flex: none; }
   font-size: 14.5px; font-weight: 600; letter-spacing: -.015em;
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
-.fv-meta { font-size: 11.5px; color: #8AA294; }
+.fv-meta { font-size: 11.5px; color: #63746A; }
 .fv-valor { display: flex; align-items: baseline; gap: 2px; white-space: nowrap; flex: none; }
-.fv-valor-pfx { font-size: 10px; color: #8AA294; align-self: flex-start; padding-top: 2px; }
+.fv-valor-pfx { font-size: 10px; color: #63746A; align-self: flex-start; padding-top: 2px; }
 .fv-valor-v {
   font-size: 15px; font-weight: 700; letter-spacing: -.02em;
   font-variant-numeric: tabular-nums;
@@ -2371,7 +2371,7 @@ svg { display: block; flex: none; }
   font-variant-numeric: tabular-nums;
 }
 .fv-pag-meta {
-  font-size: 10px; color: #9CB2A4;
+  font-size: 10px; color: #637169;
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 
@@ -2404,7 +2404,7 @@ svg { display: block; flex: none; }
   font-size: 12.5px; color: #3A4A40;
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
-.fv-quando { font-size: 10.5px; color: #9CB2A4; }
+.fv-quando { font-size: 10.5px; color: #637169; }
 .fv-item-val { display: flex; flex-direction: column; align-items: flex-end; gap: 1px; flex: none; }
 .fv-item-total {
   font-size: 13px; font-weight: 600; letter-spacing: -.015em; white-space: nowrap;
@@ -2481,7 +2481,7 @@ svg { display: block; flex: none; }
   font-size: 13.5px; font-weight: 700; letter-spacing: -.02em; color: var(--tx);
 }
 .m-empty.primeira .m-empty-sub {
-  font-size: 11.5px; line-height: 1.5; color: var(--tx-d); max-width: 30ch;
+  font-size: 11.5px; line-height: 1.5; color: var(--tx-m); max-width: 30ch;
 }
 .m-empty.primeira .m-empty-sub b { color: var(--tx); font-weight: 600; }
 
@@ -2528,7 +2528,7 @@ svg { display: block; flex: none; }
 
 /* Linha que veio do módulo de contas: aparece no mês, mas se edita lá.
    O tom mais claro é o aviso de que aqui ela é só reflexo. */
-.m-erow.de-contas .m-erow-grp { color: #7E9C88; font-style: italic; }
+.m-erow.de-contas .m-erow-grp { color: #5D7364; font-style: italic; }
 
 /* ── empréstimo que entra na projeção ────────────────── */
 .lo-eco {
@@ -2556,7 +2556,7 @@ svg { display: block; flex: none; }
 .lo-eco-tit {
   font-size: 12.5px; font-weight: 600; letter-spacing: -.01em; color: var(--tx);
 }
-.lo-eco-sub { font-size: 10.5px; color: var(--tx-d); line-height: 1.4; }
+.lo-eco-sub { font-size: 11.5px; color: var(--tx-m); line-height: 1.4; }
 
 .lo-eco-ico {
   width: 30px; height: 30px; border-radius: 10px; flex: none;
@@ -2636,7 +2636,7 @@ svg { display: block; flex: none; }
 }
 .sh-rot {
   font-size: 10px; font-weight: 700; text-transform: uppercase;
-  letter-spacing: .08em; color: #7E9C88;
+  letter-spacing: .08em; color: #5D7364;
 }
 .sh-desc { margin: 0; font-size: 11.5px; line-height: 1.45; color: var(--tx-d); }
 .sh-nota { font-size: 10px; color: var(--tx-d); }
