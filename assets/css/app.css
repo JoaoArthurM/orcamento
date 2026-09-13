@@ -51,7 +51,7 @@
   --sal: env(safe-area-inset-left, 0px);
   --sar: env(safe-area-inset-right, 0px);
 
-  --navbar-h: 70px;
+  --navbar-h: 62px;
   --appbar-h: 58px;            /* altura do cabeçalho flutuante */
   --tap: 44px;                 /* alvo mínimo de toque */
   --page-x: 16px;              /* respiro horizontal do conteúdo */
@@ -174,6 +174,12 @@ svg { display: block; flex: none; }
   box-shadow: 0 8px 26px rgba(18,58,44,.28);
   transition: background 140ms, transform 140ms;
 }
+.appbar-back::after, .appbar .avatar::after {
+  content: ''; position: absolute;
+  top: 50%; left: 50%; transform: translate(-50%, -50%);
+  width: var(--tap); height: var(--tap);
+}
+.appbar-back, .appbar .avatar { position: relative; }
 .appbar-back:active { transform: scale(.94); }
 .appbar-back[hidden] { display: none; }
 .appbar-back .ico { width: 21px; height: 21px; }
@@ -1589,7 +1595,7 @@ svg { display: block; flex: none; }
 .navbar {
   position: absolute; left: 0; right: 0; bottom: 0;
   z-index: 20;
-  padding: 0 calc(16px + var(--sar)) calc(12px + var(--sab)) calc(16px + var(--sal));
+  padding: 0 calc(16px + var(--sar)) calc(10px + var(--sab)) calc(16px + var(--sal));
   pointer-events: none;
 }
 /* o conteúdo que passa atrás e embaixo da barra sai de foco, em vez de
@@ -1615,8 +1621,8 @@ svg { display: block; flex: none; }
   position: relative;
   height: var(--navbar-h);
   background: var(--dark);
-  border-radius: 26px;
-  display: grid; grid-template-columns: 1fr 82px 1fr;
+  border-radius: 23px;
+  display: grid; grid-template-columns: 1fr 74px 1fr;
   align-items: center;
   box-shadow: 0 8px 26px rgba(18,58,44,.28);
   pointer-events: auto;
@@ -1625,24 +1631,24 @@ svg { display: block; flex: none; }
   display: flex; flex-direction: column; align-items: center; gap: 5px;
   min-height: var(--tap);
   justify-content: center;
-  font-size: 10.5px; font-weight: 400;
+  font-size: 10px; font-weight: 400;
   color: #7E9E8C;
   transition: color 140ms;
 }
 .navitem.on { color: var(--lime); font-weight: 600; }
-.navico { width: 21px; height: 21px; }
+.navico { width: 19px; height: 19px; }
 
 .navfab-slot { display: flex; align-items: center; justify-content: center; }
 .navfab {
-  width: 64px; height: 64px; margin-top: -28px;
-  border: 5px solid #F1F8EC; border-radius: 50%;
+  width: 56px; height: 56px; margin-top: -24px;
+  border: 4px solid #F1F8EC; border-radius: 50%;
   background: var(--lime);
   display: flex; align-items: center; justify-content: center;
   box-shadow: 0 6px 20px rgba(18,58,44,.24);
   transition: transform 140ms, background 140ms;
 }
 .navfab:active { transform: scale(.94); }
-.navfab-ico { width: 26px; height: 26px; color: var(--dark); stroke-width: 2; }
+.navfab-ico { width: 23px; height: 23px; color: var(--dark); stroke-width: 2; }
 
 /* ══════════════════════════════════════════════════════
    HUB — escolha do módulo

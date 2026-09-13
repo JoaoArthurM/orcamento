@@ -1,19 +1,19 @@
 /* Tabelas e cadastro dos quatro módulos. O shell desktop segue independente. */
 @media (max-width: 1023px) {
   #view-tabelas { position: relative; overflow: hidden; color: #063c30; background: radial-gradient(ellipse at 100% 0, #e4efda, transparent 55%), radial-gradient(ellipse at 0 80%, #e2efeb, transparent 60%), #f8faf6; }
-  #slot-tabelas { padding-top: calc(var(--sat) + 76px); padding-bottom: calc(var(--navbar-h) + var(--sab) + 40px); }
+  #slot-tabelas { padding-top: calc(var(--sat) + 68px); padding-bottom: calc(var(--navbar-h) + var(--sab) + 32px); }
   #slot-tabelas > * { margin-left: max(18px, var(--sal)); margin-right: max(18px, var(--sar)); }
   #slot-tabelas #c-list { background: none; box-shadow: none; border-radius: 0; overflow: visible; }
-  #slot-tabelas .sb-list-hd { padding: 18px; border: 1px solid #326c5040; border-radius: 24px; background: radial-gradient(ellipse at 100% 0, #46764355, transparent 65%), linear-gradient(135deg, #084936, #03372c); gap: 14px; box-shadow: 0 8px 24px #123a2c10; }
+  #slot-tabelas .sb-list-hd { padding: 15px; border: 1px solid #326c5040; border-radius: 22px; background: radial-gradient(ellipse at 100% 0, #46764355, transparent 65%), linear-gradient(135deg, #084936, #03372c); gap: 14px; box-shadow: 0 8px 24px #123a2c10; }
   #slot-tabelas .card-title { color: #fff; font-size: 16px; font-weight: 600; }
   #slot-tabelas .pill-count { background: #cef29b; color: #063c30; font-size: 13px; min-width: 28px; text-align: center; padding: 3px 9px; }
   #slot-tabelas #esearch { min-height: 48px; border: 1px solid #ffffff24; border-radius: 16px; background: #ffffff0c; color: #fff; padding-left: 38px; }
   #slot-tabelas #esearch::placeholder { color: #bed6ca; }
   #slot-tabelas .search-ico { color: #bed6ca; }
   #slot-tabelas .sb-list-body { overflow: visible; }
-  #slot-tabelas .elist { gap: 10px; margin-top: 14px; }
-  #slot-tabelas .eitem { display: grid; grid-template-columns: 36px minmax(0, 1fr) auto; column-gap: 10px; row-gap: 9px; padding: 14px 13px 9px; border: 1px solid #e1e9dd; border-radius: 20px; background: #fff; box-shadow: 0 4px 16px #18452e05; }
-  #slot-tabelas .ei-icon { height: 38px; border-radius: 12px; }
+  #slot-tabelas .elist { gap: 9px; margin-top: 12px; }
+  #slot-tabelas .eitem { display: grid; grid-template-columns: 36px minmax(0, 1fr) auto; column-gap: 9px; row-gap: 8px; padding: 11px 11px 8px; border: 1px solid #e1e9dd; border-radius: 18px; background: #fff; box-shadow: 0 4px 16px #18452e05; }
+  #slot-tabelas .ei-icon { height: 34px; border-radius: 11px; }
   #slot-tabelas .ei-name { font-size: 14px; font-weight: 500; }
   #slot-tabelas .ei-meta { font-size: 12px; color: #617e72; white-space: normal; line-height: 1.5; }
   #slot-tabelas .ei-amt { gap: 3px; }
@@ -24,9 +24,9 @@
   #slot-tabelas .eacts .ib.del { color: #a13e3e; background: #fcf0ed; }
   #slot-tabelas .empty-list { margin: 0; border: 1px solid #e1e9dd; border-radius: 22px; background: #ffffffc9; }
   #slot-tabelas .empty-sub { font-size: 12px; color: #617e72; }
-  #slot-tabelas .legend { padding: 16px 5px; gap: 10px 14px; }
+  #slot-tabelas .legend { padding: 13px 5px; gap: 9px 13px; }
   #slot-tabelas .leg-item { font-size: 12px; color: #617e72; }
-  #app:has(#view-tabelas.on) .appbar { padding: calc(var(--sat) + 14px) 20px 10px; }
+  #app:has(#view-tabelas.on) .appbar { padding: calc(var(--sat) + 11px) 20px 9px; }
   #app:has(#view-tabelas.on) .navbar-pill { background: #043d30; box-shadow: 0 8px 24px #123a2c26; }
 
   .record-sheet { --record-accent: #cef29b; background: #063f31; border-radius: 26px 26px 0 0; box-shadow: 0 -12px 48px #123a2c26; padding-bottom: 0; max-height: calc(100dvh - var(--sat) - 12px); }
@@ -34,10 +34,10 @@
   #sheet-conta { --record-accent: #f0e3c4; }
   .record-sheet .sheet-grab { background: #ffffff40; width: 36px; height: 4px; margin-top: 10px; }
   .record-sheet .fhd { padding: 5px 12px 12px; border-bottom: 0; gap: 8px; }
-  .record-sheet .ftitle { color: #fff; font-size: 17px; font-weight: 600; line-height: 1.3; }
+  .record-sheet .ftitle { color: #fff; font-size: 16px; font-weight: 600; line-height: 1.3; }
   .record-sheet .fhd .bbk { color: #d3e5db; border-radius: 50%; background: #ffffff0c; }
   .record-sheet .fhd .bbk.del { color: #ffbcb0; }
-  .record-sheet .fbody { background: linear-gradient(150deg, #f9fbf7, #f0f5ed); border-radius: 22px 22px 0 0; padding: 18px calc(18px + var(--sar)) 22px calc(18px + var(--sal)); gap: 16px; }
+  .record-sheet .fbody { background: linear-gradient(150deg, #f9fbf7, #f0f5ed); border-radius: 22px 22px 0 0; padding: 16px calc(16px + var(--sar)) 20px calc(16px + var(--sal)); gap: 14px; }
   .record-sheet .ff { gap: 7px; }
   .record-sheet .fl { font-size: 13px; font-weight: 500; text-transform: none; letter-spacing: 0; color: #456954; }
   .record-sheet .fi, .record-sheet .fsel { min-height: 48px; border-color: #dbe5d6; border-radius: 14px; background-color: #fff; padding-top: 11px; padding-bottom: 11px; color: #063c30; }

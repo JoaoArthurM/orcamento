@@ -1,0 +1,469 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-09-13T20:51:59.194Z",
+  "title": "Design System: orçamento.",
+  "extensions": {
+    "colorMeta": {
+      "verde-custodia": {
+        "role": "primary",
+        "displayName": "Verde Custódia",
+        "canonical": "#123A2C",
+        "tonalRamp": [
+          "oklch(15% 0.045 160)",
+          "oklch(24% 0.050 160)",
+          "oklch(33% 0.052 160)",
+          "oklch(45% 0.050 160)",
+          "oklch(57% 0.045 160)",
+          "oklch(70% 0.035 160)",
+          "oklch(84% 0.022 160)",
+          "oklch(95% 0.010 160)"
+        ]
+      },
+      "lima-de-aval": {
+        "role": "secondary",
+        "displayName": "Lima de Aval",
+        "canonical": "#C9E88E",
+        "tonalRamp": [
+          "oklch(28% 0.075 125)",
+          "oklch(40% 0.095 125)",
+          "oklch(52% 0.110 125)",
+          "oklch(63% 0.120 125)",
+          "oklch(74% 0.125 125)",
+          "oklch(83% 0.115 125)",
+          "oklch(90% 0.090 125)",
+          "oklch(96% 0.035 125)"
+        ]
+      },
+      "papel": {
+        "role": "neutral",
+        "displayName": "Papel",
+        "canonical": "#F8FAF6",
+        "tonalRamp": [
+          "oklch(18% 0.006 140)",
+          "oklch(30% 0.006 140)",
+          "oklch(42% 0.006 140)",
+          "oklch(55% 0.006 140)",
+          "oklch(68% 0.006 140)",
+          "oklch(80% 0.006 140)",
+          "oklch(90% 0.005 140)",
+          "oklch(98% 0.004 140)"
+        ]
+      },
+      "tinta-media": {
+        "role": "neutral",
+        "displayName": "Tinta Média",
+        "canonical": "#6F8C7C",
+        "tonalRamp": [
+          "oklch(18% 0.020 160)",
+          "oklch(28% 0.026 160)",
+          "oklch(38% 0.030 160)",
+          "oklch(48% 0.032 160)",
+          "oklch(58% 0.032 160)",
+          "oklch(70% 0.028 160)",
+          "oklch(84% 0.018 160)",
+          "oklch(95% 0.008 160)"
+        ]
+      },
+      "ambar-contas": {
+        "role": "tertiary",
+        "displayName": "Âmbar Contas",
+        "canonical": "#EFE0BC",
+        "tonalRamp": [
+          "oklch(26% 0.035 90)",
+          "oklch(38% 0.048 90)",
+          "oklch(50% 0.058 90)",
+          "oklch(62% 0.062 90)",
+          "oklch(73% 0.058 90)",
+          "oklch(83% 0.050 90)",
+          "oklch(91% 0.038 90)",
+          "oklch(97% 0.016 90)"
+        ]
+      },
+      "azul-favores": {
+        "role": "tertiary",
+        "displayName": "Azul Favores",
+        "canonical": "#DCEBF6",
+        "tonalRamp": [
+          "oklch(25% 0.035 240)",
+          "oklch(36% 0.048 240)",
+          "oklch(48% 0.055 240)",
+          "oklch(60% 0.052 240)",
+          "oklch(71% 0.045 240)",
+          "oklch(82% 0.034 240)",
+          "oklch(91% 0.022 240)",
+          "oklch(97% 0.010 240)"
+        ]
+      },
+      "alerta": {
+        "role": "semantic",
+        "displayName": "Alerta",
+        "canonical": "#C84B4B",
+        "tonalRamp": [
+          "oklch(22% 0.070 25)",
+          "oklch(33% 0.105 25)",
+          "oklch(44% 0.140 25)",
+          "oklch(53% 0.160 25)",
+          "oklch(63% 0.150 25)",
+          "oklch(75% 0.110 25)",
+          "oklch(87% 0.060 25)",
+          "oklch(96% 0.020 25)"
+        ]
+      },
+      "confirmado": {
+        "role": "semantic",
+        "displayName": "Confirmado",
+        "canonical": "#4A8A5F",
+        "tonalRamp": [
+          "oklch(22% 0.045 150)",
+          "oklch(32% 0.065 150)",
+          "oklch(43% 0.085 150)",
+          "oklch(54% 0.098 150)",
+          "oklch(65% 0.092 150)",
+          "oklch(77% 0.070 150)",
+          "oklch(88% 0.042 150)",
+          "oklch(96% 0.016 150)"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "display": {
+        "displayName": "Display",
+        "purpose": "Título da tela de login. Uma ocorrência no app inteiro."
+      },
+      "headline": {
+        "displayName": "Headline",
+        "purpose": "Saudação do hub. Uma por tela."
+      },
+      "numero": {
+        "displayName": "Número",
+        "purpose": "O acumulado dentro do cartão-herói. É o produto. 34px no desktop."
+      },
+      "title": {
+        "displayName": "Título",
+        "purpose": "Nome de pessoa, cabeçalho de lista, rótulo de seção."
+      },
+      "body": {
+        "displayName": "Corpo",
+        "purpose": "Rótulos de linha e nomes de lançamento."
+      },
+      "meta": {
+        "displayName": "Meta",
+        "purpose": "Datas, notas sob o valor, legenda de eixo, procedência da linha."
+      },
+      "label": {
+        "displayName": "Rótulo",
+        "purpose": "Rótulo de campo e título de bloco de ajustes. CAIXA ALTA, +.08em."
+      },
+      "campo": {
+        "displayName": "Campo",
+        "purpose": "Todo input e select. 16px é obrigatório — abaixo disso o iOS dá zoom ao focar."
+      }
+    },
+    "shadows": [
+      {
+        "name": "shadow-s",
+        "value": "0 2px 12px rgba(18,58,44,.06)",
+        "purpose": "Assentamento de pílula e alternador de cenário."
+      },
+      {
+        "name": "shadow-m",
+        "value": "0 4px 20px rgba(18,58,44,.08)",
+        "purpose": "Cartão sobre superfície clara."
+      },
+      {
+        "name": "shadow-l",
+        "value": "0 -6px 28px rgba(18,58,44,.10)",
+        "purpose": "Sombra para cima, de elemento ancorado no rodapé."
+      },
+      {
+        "name": "assentamento",
+        "value": "0 4px 16px #18452e05",
+        "purpose": "Cartão de lista em repouso. 2% de alfa: diz que descansa, não que levanta."
+      },
+      {
+        "name": "flutuante",
+        "value": "0 8px 26px rgba(18,58,44,.28)",
+        "purpose": "Navbar, appbar, avatar, toast — o que realmente paira sobre o conteúdo."
+      },
+      {
+        "name": "fab",
+        "value": "0 6px 20px rgba(18,58,44,.24)",
+        "purpose": "FAB, acompanhado do anel de 4px #F1F8EC que o recorta do fundo."
+      },
+      {
+        "name": "heroi",
+        "value": "0 14px 30px #123a2c1c, inset 0 1px #eaf8be2b",
+        "purpose": "Cartão-herói. O inset superior é a luz raspando a borda gravada; sem ele o herói fica chapado."
+      },
+      {
+        "name": "guilloche",
+        "value": "0 0 0 15px #f3d28b0c, 0 0 0 30px #f3d28b07",
+        "purpose": "Anéis concêntricos gravados no herói. box-shadow como ornamento de segurança, não como profundidade."
+      }
+    ],
+    "motion": [
+      {
+        "name": "folha",
+        "value": "260ms cubic-bezier(.22, 1, .36, 1)",
+        "purpose": "Entrada da folha inferior. A única curva de saída do sistema — dá o assentamento físico."
+      },
+      {
+        "name": "toque",
+        "value": "140ms",
+        "purpose": "Resposta ao toque: transform scale(.94) no FAB e nos botões que pairam."
+      },
+      {
+        "name": "estado",
+        "value": "120ms–140ms",
+        "purpose": "Troca de cor de fundo, borda de foco, item de navegação."
+      },
+      {
+        "name": "veu",
+        "value": "200ms ease",
+        "purpose": "Backdrop da folha e entrada do toast."
+      },
+      {
+        "name": "wordmark",
+        "value": "180ms",
+        "purpose": "Saída do wordmark da appbar ao rolar (opacity + translateY(-6px))."
+      },
+      {
+        "name": "reduced-motion",
+        "value": "transition: none !important",
+        "purpose": "Cada módulo desliga suas transições sob prefers-reduced-motion. Um módulo novo precisa da sua própria regra."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "compacto",
+        "value": "359px"
+      },
+      {
+        "name": "sm",
+        "value": "480px"
+      },
+      {
+        "name": "modulo-centrado",
+        "value": "600px"
+      },
+      {
+        "name": "md",
+        "value": "640px"
+      },
+      {
+        "name": "tablet",
+        "value": "768px"
+      },
+      {
+        "name": "desktop",
+        "value": "1024px"
+      },
+      {
+        "name": "wide",
+        "value": "1600px"
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "Botão Sólido",
+      "kind": "button",
+      "refersTo": "botao-solido",
+      "description": "Ação principal. Caixa alta, largura total, altura mínima de toque.",
+      "html": "<button class=\"ds-btn-solid\">salvar entrada</button>",
+      "css": ".ds-btn-solid { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; min-height: 44px; padding: 0 16px; border: none; border-radius: 12px; background: #123A2C; color: #fff; font-family: Poppins, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 12.5px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; cursor: pointer; transition: background .12s; } .ds-btn-solid:hover, .ds-btn-solid:active { background: #0D2B20; } .ds-btn-solid:focus-visible { outline: 2px solid #123A2C; outline-offset: 2px; }"
+    },
+    {
+      "name": "Botão Fantasma",
+      "kind": "button",
+      "refersTo": "botao-fantasma",
+      "description": "Cancelar. Nunca compete em peso com o sólido ao lado.",
+      "html": "<button class=\"ds-btn-ghost\">cancelar</button>",
+      "css": ".ds-btn-ghost { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; min-height: 44px; padding: 0 16px; border: 1px solid #EAF1E5; border-radius: 12px; background: #F9FCF7; color: #123A2C; font-family: Poppins, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 12.5px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; cursor: pointer; transition: background .12s; } .ds-btn-ghost:hover, .ds-btn-ghost:active { background: #EAF1E5; } .ds-btn-ghost:focus-visible { outline: 2px solid #123A2C; outline-offset: 2px; }"
+    },
+    {
+      "name": "Campo de Texto",
+      "kind": "input",
+      "refersTo": "campo",
+      "description": "Rótulo em versalete acima, campo de 16px. O 16px é obrigatório: abaixo dele o iOS dá zoom ao focar.",
+      "html": "<div class=\"ds-field\"><label class=\"ds-field-lbl\" for=\"ds-f1\">quem está devendo</label><input class=\"ds-field-input\" id=\"ds-f1\" value=\"\" placeholder=\"nome da pessoa\"></div>",
+      "css": ".ds-field { display: flex; flex-direction: column; gap: 6px; font-family: Poppins, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; } .ds-field-lbl { font-size: 10px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: #6F8C7C; } .ds-field-input { width: 100%; min-height: 44px; padding: 10px 13px; background: #F9FCF7; border: 1px solid #EAF1E5; border-radius: 12px; color: #123A2C; font-family: inherit; font-size: 16px; outline: none; transition: border-color .14s; } .ds-field-input::placeholder { color: #9CB2A4; } .ds-field-input:focus { border-color: #123A2C; }"
+    },
+    {
+      "name": "Campo Derivado",
+      "kind": "input",
+      "refersTo": "campo-derivado",
+      "description": "Valor que o app calcula. A borda tracejada é semântica: não se digita aqui.",
+      "html": "<div class=\"ds-field\"><label class=\"ds-field-lbl\" for=\"ds-f2\">a receber</label><input class=\"ds-field-input ds-field-derived\" id=\"ds-f2\" value=\"2.800,00\" readonly></div>",
+      "css": ".ds-field-derived { background: #EEF4EA; color: #6F8C7C; border-style: dashed; cursor: default; } .ds-field-derived:focus { border-color: #EAF1E5; }"
+    },
+    {
+      "name": "Cartão-Herói",
+      "kind": "card",
+      "refersTo": "cartao-heroi",
+      "description": "O número que o usuário veio ver. Três camadas de fundo, gravação de segurança no ::after, filhos elevados a z-index 1.",
+      "html": "<section class=\"ds-hero\"><div class=\"ds-hero-head\"><span class=\"ds-hero-ico\"><svg viewBox=\"0 0 24 24\" width=\"22\" height=\"22\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M3 17l5-5 4 3 6-7\"/><path d=\"M15 8h4v4\"/></svg></span><div class=\"ds-hero-copy\"><strong>acumulado da janela</strong><small>12 meses · cenário pessimista</small></div></div><div class=\"ds-hero-k\">total projetado</div><div class=\"ds-hero-val-wrap\"><span class=\"ds-hero-pfx\">R$</span><span class=\"ds-hero-val\">34.691,21</span></div><div class=\"ds-hero-period\">de set/26 a ago/27</div></section>",
+      "css": ".ds-hero { position: relative; padding: 15px; border-radius: 24px; background: radial-gradient(ellipse at 100% 0, #d7ef9259, transparent 43%), radial-gradient(ellipse at 0 100%, #3b84635c, transparent 54%), linear-gradient(145deg, #084936, #0a4d3a 58%, #06372f); border: 1px solid #c3e27a55; box-shadow: 0 14px 30px #123a2c1c, inset 0 1px #eaf8be2b; overflow: hidden; isolation: isolate; font-family: Poppins, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; color: #fff; } .ds-hero::after { content: ''; position: absolute; z-index: 0; top: -18px; right: -32px; width: 190px; height: 138px; background: repeating-linear-gradient(155deg, transparent 0 15px, #dff49a14 15px 16px, transparent 16px 31px); transform: rotate(-8deg); pointer-events: none; } .ds-hero > * { position: relative; z-index: 1; } .ds-hero-head { display: flex; align-items: center; gap: 9px; padding-bottom: 12px; margin-bottom: 13px; border-bottom: 1px solid #ffffff20; } .ds-hero-ico { display: grid; place-items: center; width: 32px; height: 34px; flex: none; border-radius: 11px; background: #cef29b; color: #063c30; } .ds-hero-copy strong { display: block; font-size: 14px; font-weight: 500; } .ds-hero-copy small { display: block; margin-top: 2px; font-size: 12px; color: #bed6ca; } .ds-hero-k { font-size: 13px; color: #bed6ca; } .ds-hero-val-wrap { display: flex; align-items: baseline; gap: 5px; padding-top: 4px; } .ds-hero-pfx { font-size: 12px; color: #bed6ca; } .ds-hero-val { font-size: 26px; font-weight: 700; line-height: 1.2; letter-spacing: -.045em; } .ds-hero-period { padding-top: 2px; font-size: 12px; color: #bed6ca; }"
+    },
+    {
+      "name": "Cartão de Lista",
+      "kind": "card",
+      "refersTo": "cartao",
+      "description": "Linha de lançamento. Branco, borda de 1px, sombra de assentamento a 2%. O bloco de ícone 32×34 é a assinatura de forma do sistema.",
+      "html": "<article class=\"ds-row\"><span class=\"ds-row-ico\"><svg viewBox=\"0 0 24 24\" width=\"20\" height=\"20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><rect x=\"2\" y=\"6\" width=\"20\" height=\"13\" rx=\"3\"/><path d=\"M2 10h20\"/></svg></span><div class=\"ds-row-body\"><span class=\"ds-row-name\">poupança do mês</span><span class=\"ds-row-meta\">de contas · todo mês</span></div><div class=\"ds-row-amt\"><span class=\"ds-row-pfx\">R$</span><span class=\"ds-row-val\">1.200,00</span></div></article>",
+      "css": ".ds-row { display: flex; align-items: center; gap: 9px; padding: 11px 11px; background: #fff; border: 1px solid #E1E9DD; border-radius: 18px; box-shadow: 0 4px 16px #18452e05; font-family: Poppins, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; color: #123A2C; } .ds-row-ico { display: grid; place-items: center; width: 32px; height: 34px; flex: none; border-radius: 11px; background: #F1F6EE; color: #123A2C; } .ds-row-body { flex: 1; min-width: 0; display: flex; flex-direction: column; } .ds-row-name { font-size: 14px; font-weight: 500; letter-spacing: -.015em; } .ds-row-meta { font-size: 12px; line-height: 1.5; color: #617E72; } .ds-row-amt { display: flex; align-items: baseline; gap: 3px; } .ds-row-pfx { font-size: 12px; color: #617E72; } .ds-row-val { font-size: 14px; font-weight: 600; letter-spacing: -.025em; }"
+    },
+    {
+      "name": "Chip de Mês",
+      "kind": "chip",
+      "refersTo": "chip-mes",
+      "description": "Faixa de meses da janela: 6,3 chips cabem em 393px. Selecionado recebe o Lima Selo — o aval de que este é o recorte ativo.",
+      "html": "<div class=\"ds-chips\"><button class=\"ds-chip\"><span class=\"ds-chip-mn\">out</span><span class=\"ds-chip-yr\">26</span></button><button class=\"ds-chip ds-chip-on\"><span class=\"ds-chip-mn\">nov</span><span class=\"ds-chip-yr\">26</span></button><button class=\"ds-chip\"><span class=\"ds-chip-mn\">dez</span><span class=\"ds-chip-yr\">26</span></button></div>",
+      "css": ".ds-chips { display: flex; gap: 8px; font-family: Poppins, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; } .ds-chip { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 46px; padding: 6px 7px; background: #fff; border: 1px solid #E0E9D9; border-radius: 14px; color: #6F8C7C; cursor: pointer; transition: background .12s, border-color .12s, color .12s; } .ds-chip-mn { font-size: 12.5px; font-weight: 600; letter-spacing: -.01em; } .ds-chip-yr { font-size: 10.5px; line-height: 1.2; opacity: .85; } .ds-chip:hover { border-color: #C6DDA5; } .ds-chip-on { min-width: 48px; background: #D5EDB3; border-color: #C6DDA5; color: #063C30; } .ds-chip-on .ds-chip-yr { opacity: 1; } .ds-chip:focus-visible { outline: 2px solid #68A978; outline-offset: 3px; }"
+    },
+    {
+      "name": "Barra de Navegação",
+      "kind": "nav",
+      "refersTo": "nav-pilula",
+      "description": "Pastilha flutuante de 62px com o FAB transbordando o vão central. Ativo muda cor e peso juntos.",
+      "html": "<nav class=\"ds-nav\"><button class=\"ds-navitem ds-navitem-on\"><svg class=\"ds-navico\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M3 17l5-5 4 3 6-7\"/><path d=\"M15 8h4v4\"/></svg>simulador</button><span class=\"ds-navfab-slot\"><button class=\"ds-navfab\"><svg class=\"ds-navfab-ico\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\"><path d=\"M12 5v14M5 12h14\"/></svg></button></span><button class=\"ds-navitem\"><svg class=\"ds-navico\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M4 6h16M4 12h16M4 18h16\"/></svg>tabelas</button></nav>",
+      "css": ".ds-nav { position: relative; display: grid; grid-template-columns: 1fr 74px 1fr; align-items: center; height: 62px; border-radius: 23px; background: #123A2C; box-shadow: 0 8px 26px rgba(18,58,44,.28); font-family: Poppins, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; } .ds-navitem { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; min-height: 44px; border: none; background: none; font-family: inherit; font-size: 10px; font-weight: 400; color: #7E9E8C; cursor: pointer; transition: color 140ms; } .ds-navico { width: 19px; height: 19px; } .ds-navitem:hover { color: #A7C4B2; } .ds-navitem-on, .ds-navitem-on:hover { color: #C9E88E; font-weight: 600; } .ds-navfab-slot { display: flex; align-items: center; justify-content: center; } .ds-navfab { width: 56px; height: 56px; margin-top: -24px; display: flex; align-items: center; justify-content: center; border: 4px solid #F1F8EC; border-radius: 50%; background: #C9E88E; cursor: pointer; box-shadow: 0 6px 20px rgba(18,58,44,.24); transition: transform 140ms, background 140ms; } .ds-navfab-ico { width: 23px; height: 23px; color: #123A2C; } .ds-navfab:active { transform: scale(.94); } .ds-navitem:focus-visible, .ds-navfab:focus-visible { outline: 2px solid #C9E88E; outline-offset: 3px; }"
+    },
+    {
+      "name": "Cartão do Hub",
+      "kind": "card",
+      "refersTo": "cartao",
+      "description": "Entrada de módulo, arrastável para reordenar. As alturas têm de ser idênticas entre si — ligarArrasto deriva o passo delas mais o gap de 14px.",
+      "html": "<div class=\"ds-hubstack\"><button class=\"ds-hub ds-hub-eco\"><span class=\"ds-hub-ico\"><svg viewBox=\"0 0 24 24\" width=\"21\" height=\"21\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M3 17l5-5 4 3 6-7\"/></svg></span><span class=\"ds-hub-body\"><span class=\"ds-hub-name\">economia</span><span class=\"ds-hub-val-wrap\"><span class=\"ds-hub-pfx\">R$</span><span class=\"ds-hub-val\">34.691,21</span></span></span><span class=\"ds-hub-arrow\"><svg viewBox=\"0 0 24 24\" width=\"20\" height=\"20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M9 6l6 6-6 6\"/></svg></span></button><button class=\"ds-hub ds-hub-loans\"><span class=\"ds-hub-ico\"><svg viewBox=\"0 0 24 24\" width=\"21\" height=\"21\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><circle cx=\"12\" cy=\"12\" r=\"8\"/><path d=\"M12 8v8M9.5 10h5M9.5 14h5\"/></svg></span><span class=\"ds-hub-body\"><span class=\"ds-hub-name\">empréstimos</span><span class=\"ds-hub-val-wrap\"><span class=\"ds-hub-pfx\">R$</span><span class=\"ds-hub-val\">2.800,00</span></span></span><span class=\"ds-hub-arrow\"><svg viewBox=\"0 0 24 24\" width=\"20\" height=\"20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M9 6l6 6-6 6\"/></svg></span></button></div>",
+      "css": ".ds-hubstack { display: flex; flex-direction: column; gap: 14px; font-family: Poppins, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; } .ds-hub { position: relative; display: flex; flex-direction: row; align-items: center; gap: 12px; padding: 11px 12px; min-height: 82px; border: none; border-radius: 19px; overflow: hidden; text-align: left; cursor: pointer; transition: transform 140ms; } .ds-hub:active { transform: scale(.985); } .ds-hub-ico { display: flex; align-items: center; justify-content: center; width: 42px; height: 44px; flex: none; border-radius: 14px; } .ds-hub-body { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: flex-start; } .ds-hub-name { font-size: 13px; font-weight: 500; } .ds-hub-val-wrap { display: flex; align-items: baseline; gap: 6px; padding-top: 1px; } .ds-hub-pfx { font-size: 11px; font-weight: 500; } .ds-hub-val { font-size: 24px; font-weight: 600; letter-spacing: -.04em; } .ds-hub-arrow { flex: none; } .ds-hub-eco { background: #C9E88E; color: #123A2C; } .ds-hub-eco .ds-hub-ico { background: rgba(255,255,255,.55); color: #123A2C; } .ds-hub-eco .ds-hub-name, .ds-hub-eco .ds-hub-pfx { color: #455F35; } .ds-hub-eco .ds-hub-arrow { color: #4C6B3D; } .ds-hub-loans { background: #123A2C; color: #fff; } .ds-hub-loans::after { content: ''; position: absolute; right: -34px; bottom: -34px; width: 108px; height: 82px; background-size: 12px 12px; background-image: radial-gradient(rgba(201,232,142,.45) 2px, transparent 2px); -webkit-mask-image: linear-gradient(310deg, #000 2%, transparent 46%); mask-image: linear-gradient(310deg, #000 2%, transparent 46%); pointer-events: none; } .ds-hub-loans > * { position: relative; } .ds-hub-loans .ds-hub-ico { background: #1B4B39; color: #C9E88E; } .ds-hub-loans .ds-hub-name { color: #8FAE9C; } .ds-hub-loans .ds-hub-pfx { color: #C6DDCD; } .ds-hub-loans .ds-hub-arrow { color: #8FAE9C; } .ds-hub:focus-visible { outline: 2px solid #123A2C; outline-offset: 2px; }"
+    },
+    {
+      "name": "Aviso",
+      "kind": "custom",
+      "refersTo": "aviso",
+      "description": "Pílula verde acima da navbar. A variante de status é a mesma pílula sem receber toque, trocando só a cor do texto.",
+      "html": "<div class=\"ds-toasts\"><div class=\"ds-toast\">favor excluído <button class=\"ds-toast-undo\">desfazer</button></div><div class=\"ds-toast ds-toast-ok\">tudo salvo</div></div>",
+      "css": ".ds-toasts { display: flex; flex-direction: column; align-items: center; gap: 10px; font-family: Poppins, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; } .ds-toast { display: inline-flex; align-items: center; gap: 12px; padding: 10px 18px; background: #123A2C; color: #fff; border-radius: 99px; font-size: 12.5px; font-weight: 500; box-shadow: 0 8px 24px rgba(18,58,44,.3); text-align: center; } .ds-toast-undo { border: none; background: none; padding: 0; color: #C9E88E; font-family: inherit; font-size: 12.5px; font-weight: 600; cursor: pointer; pointer-events: auto; } .ds-toast-undo:hover { text-decoration: underline; } .ds-toast-ok { color: #C9E88E; pointer-events: none; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "A Cédula",
+    "overview": "Este é um sistema de impressão de valor. O verde-cofre (#123A2C) não é uma cor de marca escolhida numa paleta: é tinta, e ela se comporta como tinta — o texto principal, o fundo dos cartões-herói, as barras flutuantes e a sombra (sempre rgba(18,58,44,…), nunca cinza neutro) são todos o mesmo pigmento em concentrações diferentes. Sobre ele, o Lima de Aval (#C9E88E) é a marca de conferência: aparece no FAB, na aba ativa, no selo do mês escolhido e no número que o usuário veio ver. Em nenhum outro lugar.\n\nO que fecha a metáfora é a trama. Cada módulo imprime a sua sobre o papel claro, num só pseudo-elemento com máscara diagonal, sempre abaixo de 10% de opacidade: pauta horizontal de 47px na economia, grade de 36px nos empréstimos, pontilhado de 22px nas contas, hachura diagonal de 48px nos favores. Os cartões-herói escuros levam a gravação de segurança por cima — anéis guilloché concêntricos feitos em box-shadow: 0 0 0 15px …, 0 0 0 30px …, hachura rotacionada, halos radiais nos cantos. Nada disso é ornamento importado: é a mesma linguagem que faz um documento de valor parecer difícil de falsificar, e é o que dá a este app a autoridade que um simulador de saldo precisa ter.\n\nPor baixo dessa formalidade, o corpo do app é o oposto: papel branco, raios grandes, alvos de 44 a 48px e transform: scale(.94) em tudo que se toca. O sistema é generoso e à prova de polegar, porque o uso real é de pé, no celular, com uma mão. O contraste entre o registro gravado dos heróis e a maciez de tudo abaixo deles é o efeito — não é inconsistência.",
+    "keyCharacteristics": [
+      "Tinta única: verde-cofre para texto, fundo escuro e sombra; nenhum cinza neutro",
+      "Lima de Aval é escasso por regra, não por acaso",
+      "Uma trama de fundo por módulo, mascarada na diagonal, sempre sub-10% de alfa",
+      "Cartões-herói escuros com gravação de segurança; tudo abaixo deles é branco e macio",
+      "Plano por padrão: borda de 1px separa, sombra é só para o que realmente flutua",
+      "Números apertam, rótulos abrem — o letter-spacing carrega a hierarquia",
+      "Alvo mínimo de 44px (--tap), respeitado em cada componente tocável"
+    ],
+    "rules": [
+      {
+        "name": "A Regra da Tinta Única",
+        "body": "Não existe cinza neutro neste sistema. Todo cinza é verde dessaturado, e toda sombra é rgba(18,58,44,…). Um #888 ou um rgba(0,0,0,.1) denuncia código vindo de fora.",
+        "section": "colors"
+      },
+      {
+        "name": "A Regra do Aval",
+        "body": "O Lima de Aval marca uma coisa por tela: o que foi confirmado, ou o que o usuário veio ver. Dois limas competindo na mesma viewport significa que um deles não conquistou o lugar.",
+        "section": "colors"
+      },
+      {
+        "name": "A Regra do Território",
+        "body": "Âmbar é de contas, azul é de favores. Um acento de módulo aparecendo fora do seu módulo — ou dois deles na mesma tela, fora do hub — quebra a identificação que o usuário usa para saber onde está.",
+        "section": "colors"
+      },
+      {
+        "name": "A Regra do Aperto",
+        "body": "Número aperta, rótulo abre. Valores monetários e títulos grandes levam letter-spacing negativo (-.03em a -.05em, mais negativo quanto maior); rótulos em caixa alta levam positivo (+.04em a +.08em).",
+        "section": "typography"
+      },
+      {
+        "name": "A Regra dos 16px",
+        "body": "Todo campo editável tem font-size: 16px, sem exceção. Abaixo disso o iOS dá zoom ao focar e reposiciona a tela inteira — o usuário perde o formulário de vista no meio de digitar um valor.",
+        "section": "typography"
+      },
+      {
+        "name": "A Regra da Caixa Baixa",
+        "body": "A interface fala em caixa baixa. O wordmark é orçamento. com o ponto, e os únicos lugares onde caixa alta é permitida são rótulo de campo e texto de botão, onde ela é hierarquia e não ênfase.",
+        "section": "typography"
+      },
+      {
+        "name": "A Regra do Componente Fora do Media Query",
+        "body": "Se um seletor que estiliza #c-list, #c-legend ou #c-settings está dentro de @media (min-width: 1024px), ele é um bug no mobile. Estilo de componente mora fora; só o shell entra no media query.",
+        "section": "layout"
+      },
+      {
+        "name": "A Regra da Área Segura Somada",
+        "body": "Todo padding que encosta na borda da tela é calc(<valor> + var(--sa*)) ou max(<valor>, var(--sa*)). Um padding literal na borda quebra em qualquer aparelho com notch ou barra de gestos.",
+        "section": "layout"
+      },
+      {
+        "name": "A Regra do Repouso Plano",
+        "body": "Superfície em repouso não tem sombra que se enxergue: tem borda de 1px. Sombra visível é a afirmação de que o elemento está sobre o conteúdo e captura toque em qualquer lugar da tela.",
+        "section": "elevation"
+      },
+      {
+        "name": "A Regra da Luz Única",
+        "body": "Uma fonte de luz, de cima, verde. Sem sombra colorida de outra família, sem sombra para baixo e para cima no mesmo elemento, sem rgba(0,0,0,…).",
+        "section": "elevation"
+      },
+      {
+        "name": "A Regra do Raio Proporcional",
+        "body": "O raio acompanha a área: 12px em campo, 20–22px em cartão, 26px em herói e barra. Um cartão de 26px com um botão de 26px dentro achata a hierarquia — o botão precisa ser o menor dos dois.",
+        "section": "shapes"
+      },
+      {
+        "name": "A Regra da Trama Discreta",
+        "body": "Uma trama por módulo, abaixo de 10% de alfa, sempre mascarada na diagonal para não cobrir a tela inteira, e nunca sob um bloco de texto de corpo. Ela deve ser notada na segunda olhada, não na primeira.",
+        "section": "components"
+      },
+      {
+        "name": "A Regra do Bloco de Ícone",
+        "body": "32 × 34px, raio 11px, fundo em acento claro, ícone centrado — 42 × 44px com raio 14px apenas no cartão do hub. Não o faça quadrado e não o faça circular: o círculo já é do avatar de pessoa.",
+        "section": "components"
+      },
+      {
+        "name": "A Regra do Trilho",
+        "body": "Item de rolagem horizontal nunca tem largura em px fixo. Ele deriva do trilho — width: calc((100% - <gap>) / <n>) — para que o item parcial na borda seja sempre a mesma fração, em qualquer aparelho. Um px fixo dá um corte diferente em cada largura, e um corte arbitrário parece defeito em vez de aviso de que rola.",
+        "section": "components"
+      },
+      {
+        "name": "Orçamento Vertical",
+        "body": "Em 393 × 852 o cromo (appbar 64 + navbar 72) consome 16% da tela, deixando 716px úteis. Nenhum cartão-herói passa de 45% desse restante, para que a primeira linha de conteúdo real apareça sempre acima da dobra.",
+        "section": "layout"
+      },
+      {
+        "name": "A Regra da Marca Menor que o Alvo",
+        "body": "Quando um controle precisa ser discreto, encolha a marca, nunca o alvo: position: relative mais um ::after de var(--tap) centrado. Vale para o botao de voltar da appbar (36px) e para o disco de pagar dos favores (28px). Antes de usar, confirme que o alvo ampliado nao invade o vizinho — meca a distancia entre centros e teste com document.elementFromPoint(). Um segmentado de duas opcoes e o caso em que nao da para usar o truque: as metades sao adjacentes e nao ha folga para expandir, e por isso ele e a unica excecao ao piso de 44px.",
+        "section": "components"
+      }
+    ],
+    "dos": [
+      "Do usar var(--dark) / #123A2C para toda tinta e toda sombra. Sombra é rgba(18,58,44, α).",
+      "Do manter font-size: 16px em todo campo editável — abaixo disso o iOS dá zoom ao focar.",
+      "Do somar as áreas seguras (--sat --sab --sal --sar) em qualquer padding que encoste na borda da tela.",
+      "Do garantir min-height: var(--tap) (44px) em tudo que se toca. Quando a marca visível precisa ser menor, expanda a área com um ::after de var(--tap) e confirme com document.elementFromPoint() nas quatro bordas.",
+      "Do derivar a largura de item de trilho horizontal do próprio trilho, nunca em px fixo.",
+      "Do medir herói novo contra a tela útil (altura menos appbar e navbar) e mantê-lo abaixo de 45% dela.",
+      "Do dar a um módulo novo a sua própria trama e o seu próprio brilho radial, seguindo a tabela de tramas.",
+      "Do parear toda mask-image com -webkit-mask-image.",
+      "Do verificar clicabilidade com document.elementFromPoint(), nunca com el.click() — este último ignora pointer-events e z-index.",
+      "Do subir o VERSION do sw.js a cada edição de CSS ou JS. Sem isso, quem tem o app instalado recebe o HTML novo com o estilo velho.",
+      "Do testar a ~400px de largura: acima de 1024px o shell troca e as views mobile viram display: none, medindo 0 sem erro nenhum."
+    ],
+    "donts": [
+      "Don't usar cinza neutro (#888, rgba(0,0,0,…)) em lugar nenhum — nem em texto, nem em borda, nem em sombra.",
+      "Don't gastar o Lima de Aval em mais de um elemento por viewport. A raridade é o mecanismo.",
+      "Don't levar o âmbar de contas ou o azul de favores para fora do seu módulo.",
+      "Don't definir estilo de #c-list, #c-legend ou #c-settings dentro de @media (min-width: 1024px) — o JS move esses nós, e a regra some no mobile.",
+      "Don't dar sombra a superfície em repouso. Borda de 1px #E1E9DD é a separação; sombra significa \"isto paira\".",
+      "Don't encostar em fintech neon sobre preto: nada de roxo ou ciano saturado, fundo #000, glassmorphism ou gradiente de arco-íris. O backdrop-filter da navbar é desfoque de leitura, não vidro decorativo.",
+      "Don't gamificar. Sem mascote, sem confete, sem medalha por meta batida — o app trata de dinheiro entre pessoas próximas, e a celebração seria constrangedora.",
+      "Don't confiar na Poppins estar presente. Ela vem do Google Fonts e não é cacheada pelo service worker: offline o app cai na pilha do sistema, e o layout tem de aguentar.",
+      "Don't deixar canto vivo (border-radius: 0) num componente do shell mobile.",
+      "Don't mudar a altura do cartão do hub nem o gap de 14px entre eles sem ajustar o passo em ligarArrasto."
+    ]
+  }
+}

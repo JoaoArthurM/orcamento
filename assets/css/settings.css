@@ -1,24 +1,24 @@
 /* Ajustes, compartilhamento e decisões: conclusão do visual mobile. */
-.settings-profile { display: flex; align-items: center; gap: 16px; padding: 20px; border-radius: 24px; background: radial-gradient(ellipse at 100% 0, #46764355, transparent 65%), linear-gradient(135deg, #084936, #03372c); box-shadow: 0 8px 24px #123a2c10; color: #fff; }
-.settings-profile-avatar { position: relative; display: grid; place-items: center; width: 64px; height: 64px; flex: none; border-radius: 50%; overflow: hidden; background: #d5edb3; color: #063c30; border: 3px solid #ffffff30; font-size: 22px; font-weight: 600; }
+.settings-profile { display: flex; align-items: center; gap: 14px; padding: 17px; border-radius: 22px; background: radial-gradient(ellipse at 100% 0, #46764355, transparent 65%), linear-gradient(135deg, #084936, #03372c); box-shadow: 0 8px 24px #123a2c10; color: #fff; }
+.settings-profile-avatar { position: relative; display: grid; place-items: center; width: 56px; height: 56px; flex: none; border-radius: 50%; overflow: hidden; background: #d5edb3; color: #063c30; border: 3px solid #ffffff30; font-size: 22px; font-weight: 600; }
 .settings-profile-avatar img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; background: #d5edb3; }
 .settings-profile-copy { min-width: 0; display: flex; flex-direction: column; gap: 3px; }
 .settings-profile-label { font-size: 12px; color: #bed6ca; }
-#profile-name { font-size: 18px; line-height: 1.3; font-weight: 600; overflow-wrap: anywhere; }
+#profile-name { font-size: 17px; line-height: 1.3; font-weight: 600; overflow-wrap: anywhere; }
 #profile-username { font-size: 13px; line-height: 1.5; color: #cef29b; overflow-wrap: anywhere; }
 @media (max-width: 359px) { .settings-profile { padding: 17px; gap: 12px; } .settings-profile-avatar { width: 56px; height: 56px; } #profile-name { font-size: 16px; } }
 @media (max-width: 1023px) {
   #view-settings { position: relative; overflow: hidden; color: #063c30; background: radial-gradient(ellipse at 100% 5%, #e4edde, transparent 55%), radial-gradient(ellipse at 0 80%, #e2eeeb, transparent 60%), #f8faf6; }
-  #slot-settings { padding-top: calc(var(--sat) + 76px); padding-bottom: calc(var(--sab) + 28px); }
+  #slot-settings { padding-top: calc(var(--sat) + 68px); padding-bottom: calc(var(--sab) + 24px); }
   #slot-settings > * { margin-left: max(18px, var(--sal)); margin-right: max(18px, var(--sar)); }
-  #app:has(#view-settings.on) .appbar { padding: calc(var(--sat) + 14px) 20px 10px; }
-  .settings-intro { display: flex; align-items: center; gap: 12px; padding: 18px; border-radius: 24px; background: radial-gradient(ellipse at 100% 0, #46764355, transparent 65%), linear-gradient(135deg, #084936, #03372c); box-shadow: 0 8px 24px #123a2c10; }
-  .settings-intro-icon { display: grid; place-items: center; width: 40px; height: 42px; flex: none; border-radius: 14px; background: #cef29b; color: #063c30; }
-  .settings-intro-icon .ico { width: 24px; height: 24px; }
-  .settings-intro strong { display: block; font-size: 16px; font-weight: 600; color: #fff; }
+  #app:has(#view-settings.on) .appbar { padding: calc(var(--sat) + 11px) 20px 9px; }
+  .settings-intro { display: flex; align-items: center; gap: 11px; padding: 15px; border-radius: 22px; background: radial-gradient(ellipse at 100% 0, #46764355, transparent 65%), linear-gradient(135deg, #084936, #03372c); box-shadow: 0 8px 24px #123a2c10; }
+  .settings-intro-icon { display: grid; place-items: center; width: 36px; height: 38px; flex: none; border-radius: 12px; background: #cef29b; color: #063c30; }
+  .settings-intro-icon .ico { width: 21px; height: 21px; }
+  .settings-intro strong { display: block; font-size: 15px; font-weight: 600; color: #fff; }
   .settings-intro small { display: block; margin-top: 3px; font-size: 12px; line-height: 1.5; color: #bed6ca; }
-  #c-settings .card { border-radius: 22px; border: 1px solid #e1e9dd; box-shadow: 0 4px 16px #18452e05; overflow: hidden; }
-  #c-settings .set-block { padding: 17px; gap: 12px; }
+  #c-settings .card { border-radius: 20px; border: 1px solid #e1e9dd; box-shadow: 0 4px 16px #18452e05; overflow: hidden; }
+  #c-settings .set-block { padding: 15px; gap: 11px; }
   #c-settings .set-title { font-size: 14px; font-weight: 600; text-transform: none; letter-spacing: 0; color: #063c30; }
   #c-settings .set-desc { font-size: 13px; line-height: 1.6; color: #617e72; overflow-wrap: anywhere; }
   #c-settings .fl { font-size: 13px; font-weight: 500; letter-spacing: 0; text-transform: none; color: #456954; }
@@ -37,7 +37,7 @@
   #c-settings :is(button, input):focus-visible { outline: 2px solid #68a978; outline-offset: 3px; }
   #sheet-settings .settings-intro { display: none; }
 
-  #sheet-horizonte .hz-op { min-height: 64px; border-radius: 18px; padding: 14px 16px; background: #fff; border: 1px solid #dfe8d9; gap: 10px; }
+  #sheet-horizonte .hz-op { min-height: 58px; border-radius: 16px; padding: 12px 14px; background: #fff; border: 1px solid #dfe8d9; gap: 10px; }
   #sheet-horizonte .hz-op-tit { font-size: 15px; font-weight: 600; }
   #sheet-horizonte .hz-op-sub { font-size: 12px; color: #617e72; }
   #sheet-horizonte .hz-op.on { background: #d8edbd; border-color: #a8c88a; }
@@ -46,14 +46,14 @@
   #sheet-horizonte .hz-op.on::after { content: '✓'; color: #063c30; font-size: 18px; }
   #sheet-confirmar .cf-msg, #sheet-excluir .ex-sub { font-size: 14px; line-height: 1.65; color: #456954; }
   #sheet-confirmar .bsv { background: #a13e3e; border-top-color: #f1c6bb; }
-  #sheet-excluir .ex-op { padding: 15px; min-height: 66px; border: 1px solid #dfe8d9; border-radius: 18px; background: #fff; }
+  #sheet-excluir .ex-op { padding: 13px; min-height: 60px; border: 1px solid #dfe8d9; border-radius: 16px; background: #fff; }
   #sheet-excluir .ex-op-tit { font-size: 14px; color: #063c30; }
   #sheet-excluir .ex-op-sub { font-size: 12px; color: #617e72; line-height: 1.5; }
   #sheet-excluir .ex-op.perigo { background: #fff1eb; border-color: #ebc9bc; }
   #sheet-excluir .ex-op.perigo .ex-op-tit { color: #a13e3e; }
 
   #sheet-share { --record-accent: #d5e7fa; }
-  #sheet-share .sh-bloco { padding: 16px; border-radius: 20px; background: #fff; border-color: #e1e9dd; gap: 10px; }
+  #sheet-share .sh-bloco { padding: 14px; border-radius: 18px; background: #fff; border-color: #e1e9dd; gap: 10px; }
   #sheet-share .sh-rot { font-size: 14px; text-transform: none; letter-spacing: 0; color: #063c30; }
   #sheet-share .sh-desc { font-size: 13px; line-height: 1.6; color: #617e72; }
   #sheet-share .sh-nota { font-size: 12px; line-height: 1.5; color: #617e72; }
