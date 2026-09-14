@@ -18,7 +18,7 @@ const vm = require('vm');
 const path = require('path');
 
 const ROOT = path.join(__dirname, '..') + '/';
-const app = fs.readFileSync(ROOT + 'assets/js/app.js', 'utf8');
+const app = fs.readFileSync(ROOT + 'assets/js/app.js', 'utf8').replace(/\r\n/g, '\n');
 
 /* ── extrai o bloco de cálculo ───────────────────────── */
 const INI = '  /**\n   * Janela rolante a partir do mês corrente.';

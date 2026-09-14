@@ -7,40 +7,40 @@
 .eco-opening-icon { display: grid; place-items: center; width: 32px; height: 34px; flex: none; border-radius: 11px; background: #d5edb3; color: #063c30; }
 .eco-opening-icon .ico { width: 20px; height: 20px; }
 .eco-opening-copy { flex: 1; min-width: 0; display: flex; flex-direction: column; }
-.eco-opening-copy > span { font-size: 11.5px; color: #526a60; }
-.eco-opening-copy label { font-size: 13px; font-weight: 500; }
+.eco-opening-copy > span { font-size: var(--text-secondary); color: #526a60; }
+.eco-opening-copy label { font-size: var(--text-secondary); font-weight: 500; }
 #slot-sim .m-si-wrap { display: flex; align-items: baseline; gap: 4px; flex: 0 1 120px; min-width: 70px; }
-#slot-sim .m-si-pfx { font-size: 12px; color: #526a60; }
-#slot-sim #m-si { width: 100%; min-width: 0; min-height: 44px; font-size: 16px; font-weight: 600; text-align: right; background: transparent; border: 0; border-bottom: 1px solid #a9c58f; border-radius: 0; color: #063c30; }
+#slot-sim .m-si-pfx { font-size: var(--text-secondary); color: #526a60; }
+#slot-sim #m-si { width: 100%; min-width: 0; min-height: 44px; font-size: var(--text-body); font-weight: 600; text-align: right; background: transparent; border: 0; border-bottom: 1px solid #a9c58f; border-radius: 0; color: #063c30; }
 #slot-sim .m-ctrl { margin-top: 9px; margin-bottom: 6px; gap: 8px; }
 #slot-sim .m-seg { background: #e8f0e3; padding: 2px; }
-#slot-sim .m-seg button { min-height: 40px; padding: 6px; font-size: 12px; }
+#slot-sim .m-seg button { min-height: 40px; padding: 6px; font-size: var(--text-secondary); }
 #slot-sim .m-seg button.on { background: #084936; color: #fff; }
-#slot-sim .m-ctrl-hz { min-height: 40px; padding: 8px 11px; font-size: 12px; background: #fff; color: #063c30; border: 1px solid #dfe9d9; }
+#slot-sim .m-ctrl-hz { min-height: 40px; padding: 8px 11px; font-size: var(--text-secondary); background: #fff; color: #063c30; border: 1px solid #dfe9d9; }
 #slot-sim .m-ctrl-hz .ico { color: #567b60; }
 #slot-sim .m-months { padding: 2px 0 4px; margin-top: 0; margin-bottom: 10px; gap: 6px; }
 #slot-sim .m-chip { min-height: 46px; border-radius: 14px; padding: 6px 7px; border: 1px solid #e0e9d9; box-shadow: none; }
 #slot-sim .m-chip.on { min-height: 46px; min-width: 48px; background: #d5edb3; color: #063c30; border-color: #c6dda5; padding: 6px 7px; }
-#slot-sim .m-chip .mn { font-size: 12.5px; }
-#slot-sim .m-chip .yr { font-size: 10.5px; height: auto; line-height: 1.2; opacity: .85; }
+#slot-sim .m-chip .mn { font-size: var(--text-secondary); }
+#slot-sim .m-chip .yr { font-size: var(--text-secondary); height: auto; line-height: 1.2; opacity: .85; }
 #slot-sim .m-chip.on :is(.mn, .yr) { color: #063c30; opacity: 1; }
 .eco-summary { position: relative; border-radius: 24px; padding: 15px; background: radial-gradient(ellipse at 100% 0, #d7ef9259, transparent 43%), radial-gradient(ellipse at 0 100%, #3b84635c, transparent 54%), linear-gradient(145deg, #084936, #0a4d3a 58%, #06372f); border: 1px solid #c3e27a55; box-shadow: 0 14px 30px #123a2c1c, inset 0 1px #eaf8be2b; overflow: hidden; isolation: isolate; }
 .eco-summary::after { content: ''; position: absolute; z-index: 0; top: -18px; right: -32px; width: 190px; height: 138px; background: repeating-linear-gradient(155deg, transparent 0 15px, #dff49a14 15px 16px, transparent 16px 31px); transform: rotate(-8deg); pointer-events: none; }
 .eco-summary > * { position: relative; z-index: 1; }
 #slot-sim .m-hero { padding: 0; margin: 0; background: none; border-radius: 0; }
 #slot-sim .m-hero::after { display: none; }
-#slot-sim .m-hero-k { color: #bed6ca; font-size: 12.5px; }
+#slot-sim .m-hero-k { color: #bed6ca; font-size: var(--text-secondary); }
 #slot-sim .m-hero-val-wrap { gap: 5px; padding-top: 4px; }
-#slot-sim .m-hero-val { font-size: 26px; font-weight: 700; line-height: 1.2; overflow-wrap: anywhere; min-width: 0; }
-#slot-sim .m-hero-pfx { font-size: 12px; align-self: baseline; padding: 0; color: #bed6ca; }
-#slot-sim .m-hero-period { width: 100%; margin-left: 0; padding-top: 2px; font-size: 12px; white-space: normal; color: #bed6ca; }
-#slot-sim .m-hero-pct { font-size: 12px; color: #cef29b; }
+#slot-sim .m-hero-val { font-size: var(--text-title); font-weight: 700; line-height: 1.2; overflow-wrap: anywhere; min-width: 0; }
+#slot-sim .m-hero-pfx { font-size: var(--text-secondary); align-self: baseline; padding: 0; color: #bed6ca; }
+#slot-sim .m-hero-period { width: 100%; margin-left: 0; padding-top: 2px; font-size: var(--text-secondary); white-space: normal; color: #bed6ca; }
+#slot-sim .m-hero-pct { font-size: var(--text-secondary); color: #cef29b; }
 #slot-sim .m-curve { padding: 12px 0 0; margin-top: 13px; background: none; border-radius: 0; border-top: 1px solid #ffffff20; }
 #slot-sim .m-curve-hd { flex-wrap: wrap; gap: 5px; }
-#slot-sim .m-curve-k { font-size: 12px; color: #bed6ca; }
-#slot-sim .m-curve-final { font-size: 12px; color: #cef29b; }
+#slot-sim .m-curve-k { font-size: var(--text-secondary); color: #bed6ca; }
+#slot-sim .m-curve-final { font-size: var(--text-secondary); color: #cef29b; }
 #slot-sim .m-curve-body { height: 60px; margin-top: 8px; }
-#slot-sim .m-curve-axis span { color: #aac8ba; font-size: 10px; min-width: 0; overflow: visible; }
+#slot-sim .m-curve-axis span { color: #aac8ba; font-size: var(--text-secondary); min-width: 0; overflow: visible; }
 #slot-sim .m-curve-axis span:nth-child(even) { visibility: hidden; }
 #slot-sim .m-curve-axis:has(span:nth-child(13)) span { visibility: hidden; }
 #slot-sim .m-curve-axis:has(span:nth-child(13)):not(:has(span:nth-child(25))) span:nth-child(4n + 1) { visibility: visible; }
@@ -51,19 +51,19 @@
 #slot-sim .m-kpis { gap: 8px; padding: 0 0 4px; margin-top: 12px; }
 #slot-sim .m-kpi { flex: 0 0 auto; width: calc((100% - 16px) / 2.7); min-width: 112px; max-width: 152px; padding: 11px; border-radius: 18px; border: 1px solid #ffffff80; gap: 7px; }
 #slot-sim .m-kpi::before { display: none; }
-#slot-sim .m-kpi-lbl { font-size: 12px; white-space: normal; }
-#slot-sim .m-kpi-val { font-size: 18px; }
-#slot-sim .m-kpi-pfx { font-size: 12px; align-self: baseline; padding: 0; }
+#slot-sim .m-kpi-lbl { font-size: var(--text-secondary); white-space: normal; }
+#slot-sim .m-kpi-val { font-size: var(--text-section); }
+#slot-sim .m-kpi-pfx { font-size: var(--text-secondary); align-self: baseline; padding: 0; }
 #slot-sim .m-sel-hd { margin-top: 16px; padding: 0 4px; gap: 8px; flex-wrap: wrap; }
-#slot-sim .m-sel-lbl { font-size: 14px; }
-#slot-sim .m-sel-note { font-size: 12px; color: #526a60; }
+#slot-sim .m-sel-lbl { font-size: var(--text-body); }
+#slot-sim .m-sel-note { font-size: var(--text-secondary); color: #526a60; }
 #slot-sim .m-card { margin-top: 9px; border-radius: 18px; border: 1px solid #e1e9dd; box-shadow: 0 4px 16px #18452e05; overflow: hidden; }
 #slot-sim .m-erow { padding: 11px 11px; gap: 9px; }
 #slot-sim .m-erow-icon { width: 32px; height: 34px; border-radius: 11px; }
-#slot-sim .m-erow-name, #slot-sim .m-erow-val { font-size: 14px; }
-#slot-sim .m-erow-grp, #slot-sim .m-erow-pfx { font-size: 12px; color: #526a60; }
+#slot-sim .m-erow-name, #slot-sim .m-erow-val { font-size: var(--text-body); }
+#slot-sim .m-erow-grp, #slot-sim .m-erow-pfx { font-size: var(--text-secondary); color: #526a60; }
 #slot-sim .m-thead { background: #edf5e5; }
-#slot-sim .m-thead span { font-size: 11.5px; color: #567161; }
+#slot-sim .m-thead span { font-size: var(--text-secondary); color: #567161; }
 #slot-sim .m-trow { min-height: 44px; border-bottom-color: #eaf0e5; }
 #slot-sim .m-trow.on { background: #e7f3d8; }
 #slot-sim :is(button, input):focus-visible { outline: 2px solid #68a978; outline-offset: 3px; }
@@ -78,7 +78,7 @@
   #slot-sim .m-si-wrap { flex-basis: 92px; }
   #slot-sim .m-ctrl { flex-wrap: wrap; }
   #slot-sim .m-ctrl-hz { padding: 9px; }
-  #slot-sim .m-seg button { font-size: 12px; padding: 6px 5px; }
+  #slot-sim .m-seg button { font-size: var(--text-secondary); padding: 6px 5px; }
   .eco-summary { padding: 15px; }
   #slot-sim .m-thead, #slot-sim .m-trow { padding: 10px; grid-template-columns: 80px 1fr 1fr; }
 }

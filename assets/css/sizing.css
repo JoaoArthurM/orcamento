@@ -1,0 +1,233 @@
+/* Proporções compartilhadas. Mantém as superfícies e cores de cada módulo. */
+body { font-size: var(--text-body); }
+:root { --appbar-h: max(76px, 4.75rem); --navbar-h: max(62px, 4.5rem); }
+#app { overflow: clip; }
+button, input, select, textarea { line-height: 1.5; }
+button { touch-action: manipulation; }
+button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible {
+  outline: 3px solid #68a978; outline-offset: 3px;
+}
+::selection { color: #063c30; background: #cef29b; }
+input, textarea { caret-color: currentColor; }
+.appbar-back, .auth-back, .appbar-share, .bbk, .ib, .range-clr, .sh-remover {
+  width: var(--tap); height: var(--tap); min-width: var(--tap); min-height: var(--tap); flex-shrink: 0;
+}
+.appbar-back .ico, .auth-back .ico, .appbar-share .ico, .bbk .ico, .ib .ico, .sh-remover .ico { width: 24px; height: 24px; }
+.appbar-account { min-width: var(--tap); min-height: var(--tap); }
+.appbar .avatar { width: 44px; height: 44px; font-size: var(--text-body); }
+.appbar-back::after, .appbar .avatar::after { content: none; }
+.auth-reveal, #c-settings .pw-eye { min-width: var(--tap); min-height: var(--tap); }
+.pw-wrap .fi { padding-right: 56px; }
+.fi, .fsel, .range-sel, #esearch { min-height: var(--tap); font-size: var(--text-body); }
+.fl, #c-settings .fl, .record-sheet .fl { font-size: var(--text-secondary); line-height: 1.5; letter-spacing: 0; text-transform: none; }
+.ftitle, .record-sheet .ftitle { font-size: var(--text-section); line-height: 1.3; min-width: 0; overflow-wrap: anywhere; }
+.fhd { gap: 8px; }
+.fbody { gap: 20px; scroll-padding-block: 16px; }
+.fbody > *, .record-sheet .fbody > * { flex-shrink: 0; }
+.sheet { overflow: hidden; }
+.sheet:not(.open) { visibility: hidden; }
+.sheet.open { visibility: visible; }
+.auth-fields > *, .auth-field > * { flex-shrink: 0; }
+.fv-meses-linha { flex-wrap: wrap; }
+.fv-meses-dica { flex: 1 1 150px; min-width: 0; }
+.lo-eco { flex-shrink: 0; }
+.frow, .record-sheet .frow { flex-wrap: wrap; gap: 16px; }
+.frow .ff, .record-sheet .frow .ff { flex: 1 1 10rem; min-width: 0; }
+.ffoot { flex-wrap: wrap; }
+.bsv, .bcn, .record-sheet .bsv, .record-sheet .bcn,
+#c-settings :is(.btn-solid, .btn-ghost, .btn-danger, .btn-sair), .btn-solid, .btn-ghost, .btn-danger, .btn-sair {
+  min-height: var(--tap); height: auto; font-size: var(--text-body); line-height: 1.5; padding: 12px 16px;
+  white-space: normal; letter-spacing: 0; text-transform: none;
+}
+.record-sheet .range-clr { width: var(--tap); height: var(--tap); }
+.record-sheet .range-sel { min-height: var(--tap); max-width: 100%; }
+.record-sheet .cbrow { font-size: var(--text-body); }
+.record-sheet .fi::placeholder { color: #526a60; }
+.mp { font-size: var(--text-body); padding: 8px 4px; min-height: var(--tap); }
+.mp-yr, .record-sheet .mp-yr { font-size: var(--text-caption); line-height: 1.4; opacity: 1; }
+.mgrid { grid-template-columns: repeat(auto-fit, minmax(4rem, 1fr)); }
+.range-row { gap: 8px; }
+.range-lbl { white-space: normal; }
+.fhint, .fb, .about, .empty-sub, .m-empty-sub, .lo-eco-sub { font-size: var(--text-secondary); line-height: 1.5; }
+.empty-title, .m-empty-tit { font-size: var(--text-body); }
+.empty-list { padding: 24px 16px; }
+.lo-eco { min-height: var(--tap); }
+.lo-eco-tit { font-size: var(--text-body); }
+.eitem, .ei-body, .ct-body, .fv-corpo, .lo-info, .m-erow-body { min-width: 0; }
+.ei-name, .ct-name, .fv-nome, .lo-name, .m-erow-name, .fv-motivo, .fv-pag-meta {
+  white-space: normal; overflow-wrap: anywhere; text-overflow: clip;
+}
+.hub-val, .m-hero-val, .fv-box-v, .lo-box-v, .ct-amt-v, .ei-val, .m-kpi-val, .lo-cell-v, .fv-valor-v {
+  font-variant-numeric: tabular-nums; line-height: 1.25;
+}
+.m-sel-hd { flex-wrap: wrap; gap: 8px; }
+.set-title, #c-settings .set-title { font-size: var(--text-section); }
+.set-desc, #c-settings .set-desc { font-size: var(--text-body); line-height: 1.6; overflow-wrap: anywhere; }
+#c-settings .set-block { padding: 20px; gap: 16px; }
+.settings-profile { padding: 20px; }
+#profile-name { font-size: var(--text-section); }
+#profile-username { font-size: var(--text-secondary); }
+.settings-profile-avatar { width: 56px; height: 56px; }
+#sheet-share .sh-rot { font-size: var(--text-body); }
+#sheet-share :is(.sh-mini, .btn-ghost) { min-height: var(--tap); font-size: var(--text-body); white-space: normal; }
+#sheet-share .sh-cores { flex-wrap: wrap; gap: 8px; }
+#sheet-share .sh-cor { width: var(--tap); height: var(--tap); }
+#sheet-share .sh-remover { width: var(--tap); height: var(--tap); }
+.sh-codigo-linha { flex-wrap: wrap; }
+.sh-pessoa-corpo { min-width: 0; }
+#sheet-horizonte .hz-op, #sheet-excluir .ex-op { gap: 12px; min-height: 64px; }
+.hz-op-tit, #sheet-horizonte .hz-op-tit, #sheet-excluir .ex-op-tit { font-size: var(--text-body); }
+.toast { font-size: var(--text-secondary); max-width: calc(100% - 32px); }
+.toast button { min-height: var(--tap); min-width: var(--tap); font-size: var(--text-body); }
+
+/* Entrada: títulos claros, campos confortáveis e rolagem natural com teclado. */
+.auth-title { letter-spacing: -.03em; line-height: 1.2; overflow-wrap: anywhere; }
+.auth-sub { line-height: 1.5; }
+.auth-tab { width: auto; flex: 1; }
+.auth-tab strong { font-size: var(--text-body); }
+.auth-tab small { font-size: var(--text-secondary); }
+.auth-tab-lbl { white-space: normal; min-width: 0; font-size: var(--text-secondary); }
+.auth-lbl { font-size: var(--text-secondary); }
+.auth-fields { gap: 20px; }
+.auth-line { min-height: 56px; }
+.auth-line input { font-size: var(--text-body); }
+.auth-remember, .auth-forgot, .auth-foot-link { min-height: var(--tap); font-size: var(--text-secondary); }
+.auth-row { gap: 8px 16px; }
+.auth-primary { min-height: 52px; font-size: var(--text-body); }
+.auth-foot { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; font-size: var(--text-secondary); }
+
+@media (max-width: 1023px) {
+  #app .appbar { padding: calc(var(--sat) + 12px) max(16px, var(--sar)) 12px max(16px, var(--sal)); gap: 8px; }
+  #app .appbar .wordmark { font-size: var(--text-section); min-width: 0; overflow-wrap: anywhere; white-space: normal; line-height: 1.2; }
+  #app:has(#view-hub.on) .appbar .wordmark { font-size: 1.5rem; }
+  #app .appbar .avatar { width: max(44px, 2.75rem); height: max(44px, 2.75rem); font-size: var(--text-body); }
+  #slot-hub, #slot-contas, #slot-favores, #slot-loans, #slot-sim, #slot-tabelas, #slot-settings {
+    padding-top: calc(var(--sat) + var(--appbar-h) + 8px);
+    scroll-padding-top: calc(var(--sat) + var(--appbar-h));
+  }
+  .view-scroll { scroll-padding-bottom: calc(var(--navbar-h) + var(--sab) + 32px); }
+  .navitem { min-height: 56px; font-size: var(--text-caption); padding: 6px 8px; }
+  .navico { width: 24px; height: 24px; }
+  .navfab { width: 56px; height: 56px; }
+  #slot-hub { gap: 20px; }
+  #slot-hub .hub-greet { padding: 0 2px; gap: 8px; }
+  .hub-title { font-size: var(--text-title); letter-spacing: -.03em; }
+  .hub-sub { font-size: var(--text-body); line-height: 1.5; }
+  #slot-hub > .hub-cards { gap: 16px; }
+  .hub-cards > .hub-card { min-height: 112px; height: auto; padding: 16px; gap: 12px; }
+  .hub-ico { width: 44px; height: 48px; }
+  .hub-ico .ico { width: 28px; height: 28px; }
+  .hub-name { font-size: var(--text-body); }
+  .hub-val { font-size: var(--text-title); }
+  .hub-note, .hub-pfx, .hub-dica { font-size: var(--text-secondary); }
+  .hub-arrow { width: 28px; height: 28px; flex-shrink: 0; }
+  .hub-link { min-height: 52px; font-size: var(--text-body); }
+
+  /* Contas: leitura por nome e valor, detalhes na linha seguinte. */
+  #slot-contas .ct-hero, #slot-loans .lo-hero, #slot-favores .fv-topo, #slot-sim .eco-summary { padding: 20px; }
+  #slot-contas .m-hero-val, #slot-loans .m-hero-val, #slot-sim .m-hero-val { font-size: var(--text-balance); }
+  .ct-income { flex-wrap: wrap; gap: 12px; padding-bottom: 16px; margin-bottom: 16px; }
+  .ct-income-copy { flex-basis: 100px; }
+  .ct-income .ct-renda { font-size: var(--text-body); margin-left: auto; }
+  .ct-overview { flex-wrap: wrap; gap: 16px; }
+  .ct-balance { flex: 1 1 12rem; }
+  #slot-contas .ct-pizza-svg { width: 5.5rem; height: 5.5rem; }
+  #slot-contas .ct-pizza-cap { font-size: var(--text-caption); }
+  #slot-contas .ct-pizza-pct { font-size: var(--text-section); }
+  #slot-contas .ct-pz { grid-template-columns: 8px minmax(0, 1fr) auto; gap: 4px 8px; padding-block: 8px; }
+  #slot-contas .ct-pz-val { grid-column: 2; grid-row: 2; text-align: left; font-size: var(--text-body); }
+  #slot-contas .ct-pz-pct { grid-column: 3; grid-row: 1 / 3; }
+  #slot-contas .ct-cards, #slot-loans .lo-list, #slot-favores .fv-lista { gap: 12px; }
+  #slot-contas .ct-card, #slot-contas .ct-row { padding: 16px; gap: 12px; flex-wrap: wrap; }
+  #slot-contas .ct-name { font-size: var(--text-body); }
+  #slot-contas .ct-body { flex: 1 1 140px; }
+  #slot-contas .ct-amt { margin-left: auto; }
+  #slot-contas .ct-ico { width: 40px; height: 40px; }
+  #slot-contas .ct-pill { font-size: var(--text-secondary); }
+  #slot-contas .m-sel-hd, #slot-loans .m-sel-hd, #slot-sim .m-sel-hd { margin-top: 24px; }
+
+  /* Favores: dois totais amplos e ações de pagamento visíveis. */
+  #slot-favores .fv-topo { grid-template-columns: minmax(0, 1fr); }
+  #slot-favores .fv-box-dark { padding: 0 0 16px; }
+  #slot-favores .fv-box-lime { border-left: 0; border-top: 1px solid #ffffff20; padding: 16px 0 0; }
+  #slot-favores .fv-box-v { font-size: var(--text-balance); }
+  #slot-favores .fv-box-lime .fv-box-v { font-size: var(--text-section); }
+  .fv-list-heading { font-size: var(--text-section); margin-top: 24px; }
+  #slot-favores .fv-cab { padding: 16px; gap: 12px; flex-wrap: wrap; }
+  #slot-favores .fv-corpo { flex: 1 1 130px; }
+  #slot-favores .fv-quem { flex: 1 1 130px; }
+  #slot-favores .fv-valor { margin-left: auto; }
+  #slot-favores .fv-itens { padding: 12px 16px 16px; }
+  #slot-favores .fv-mini { width: var(--tap); height: var(--tap); }
+  #slot-favores .fv-mini::after { content: none; }
+  #slot-favores .fv-mini .ico { width: 22px; height: 22px; }
+  #slot-favores .fv-pagar-tudo, #slot-favores .fv-motivo { font-size: var(--text-body); }
+  #slot-favores .fv-item-abrir { min-height: var(--tap); }
+  .fv-dia-meta, .fv-item-falta { white-space: normal; }
+
+  /* Empréstimos: métricas com espaço para valores e nomes maiores. */
+  #slot-loans .lo-card { padding: 16px; }
+  #slot-loans .lo-head { flex-wrap: wrap; gap: 12px; }
+  #slot-loans .lo-head > .lo-info { flex: 1 1 140px; }
+  #slot-loans .lo-head > .lo-who { flex: 1 1 140px; }
+  #slot-loans .lo-late { max-width: none; }
+  #slot-loans .lo-grid { grid-template-columns: repeat(auto-fit, minmax(8rem, 1fr)); gap: 16px; padding-top: 16px; margin-top: 16px; }
+  #slot-loans .lo-pcard, #slot-loans .lo-chip { min-height: var(--tap); }
+  #slot-loans .lo-box-v { font-size: var(--text-section); }
+  .lo-summary-head { flex-wrap: wrap; }
+
+  /* Economia: controles por linha, indicadores legíveis e tabela rolável. */
+  #slot-sim .m-ctrl { flex-wrap: wrap; gap: 12px; }
+  #slot-sim .m-seg { flex-basis: 100%; flex-wrap: wrap; }
+  #slot-sim .m-seg button { flex: 1 1 8rem; min-height: var(--tap); font-size: var(--text-secondary); white-space: normal; overflow-wrap: anywhere; padding: 8px 12px; }
+  #slot-sim .m-ctrl-hz { min-height: var(--tap); font-size: var(--text-secondary); }
+  #slot-sim .m-chip { min-width: 64px; min-height: 64px; }
+  #slot-sim .m-chip .mn { font-size: var(--text-body); }
+  #slot-sim .m-chip .yr { font-size: var(--text-caption); height: auto; }
+  #slot-sim .eco-opening { flex-wrap: wrap; gap: 12px; }
+  #slot-sim .eco-opening-copy { flex: 1 1 140px; }
+  #slot-sim .m-si-wrap { margin-left: auto; flex: 1 1 10rem; }
+  #slot-sim .m-kpis { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; overflow: visible; }
+  #slot-sim .m-kpi { width: auto; min-width: 0; max-width: none; padding: 16px; }
+  #slot-sim .m-kpi-val { overflow-wrap: anywhere; }
+  #slot-sim .m-erow { padding: 16px; flex-wrap: wrap; }
+  #slot-sim .m-erow-body { flex: 1 1 140px; }
+  #slot-sim .m-table { overflow-x: auto; }
+  #slot-sim .m-thead, #slot-sim .m-trow { min-width: 340px; grid-template-columns: 92px minmax(0, 1fr) minmax(0, 1fr); gap: 12px; padding: 12px; }
+  #slot-sim .m-trow { min-height: var(--tap); }
+  .m-trow-saldo, .m-trow-acum { overflow-wrap: anywhere; }
+  #slot-sim .m-curve-axis span { font-size: var(--text-caption); }
+
+  /* Tabelas: título, metadados e ações nunca disputam uma linha apertada. */
+  #slot-tabelas .sb-list-hd { padding: 16px; gap: 16px; }
+  #slot-tabelas .card-title { font-size: var(--text-section); }
+  #slot-tabelas .elist { gap: 12px; }
+  #slot-tabelas .eitem { padding: 16px; gap: 8px 12px; }
+  #slot-tabelas .ei-body { grid-column: 2 / -1; }
+  #slot-tabelas .ei-amt { grid-column: 2 / -1; justify-self: start; flex-wrap: wrap; }
+  #slot-tabelas .eacts { gap: 8px; padding-top: 12px; }
+  #slot-tabelas .eacts .ib { width: var(--tap); height: var(--tap); }
+  .record-sheet .fbody { gap: 20px; }
+}
+@media (max-width: 359px) {
+  .hub-cards > .hub-card { padding: 16px 12px; gap: 8px; }
+  .hub-ico { width: 36px; height: 40px; }
+  .hub-val { font-size: var(--text-title); }
+  .auth-inner { padding-inline: 16px; }
+  .auth-title { font-size: var(--text-title); }
+  .auth-tab { padding: 12px; }
+  #slot-sim .m-kpis { grid-template-columns: minmax(0, 1fr); }
+  #slot-loans .lo-split { flex-wrap: wrap; gap: 16px; }
+  #slot-loans .lo-box { flex-basis: 100%; }
+  #slot-loans .lo-box + .lo-box { margin: 0; padding: 16px 0 0; border-left: 0; border-top: 1px solid #ffffff20; }
+  .ffoot > .bsv, .ffoot > .bcn { flex-basis: 100%; }
+}
+@media (min-width: 1024px) {
+  .ib { width: var(--tap); height: var(--tap); }
+  .vtog button, .seg button, .btn-hz { min-height: var(--tap); }
+  .eitem { flex-wrap: wrap; gap: 8px; }
+  .eacts { width: 100%; justify-content: flex-end; gap: 8px; }
+  .sheet { width: min(640px, calc(100% - 48px)); }
+  .set-block { padding: 20px; }
+  .tbl-wrap { overflow: auto; }
+}

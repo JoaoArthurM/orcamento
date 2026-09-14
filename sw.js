@@ -1,7 +1,7 @@
 /* orçamento. — service worker
    App shell em cache-first, rede em segundo plano para atualizar. */
 
-const VERSION = 'v3.42.1';
+const VERSION = 'v3.44.0';
 const CACHE   = 'orcamento-' + VERSION;
 
 const SHELL = [
@@ -15,16 +15,19 @@ const SHELL = [
   'assets/css/economy.css',
   'assets/css/records.css',
   'assets/css/settings.css',
+  'assets/css/sizing.css',
   'assets/js/config.js',
   'assets/js/store.js',
   'assets/js/app.js',
   'assets/vendor/supabase.js',
   'manifest.webmanifest',
-  'assets/icons/icon-192.png',
-  'assets/icons/icon-512.png',
-  'assets/icons/icon-maskable-512.png',
-  'assets/icons/apple-touch-icon.png',
-  'assets/icons/favicon-32.png',
+  'assets/icons/orcamento-v2/icon-192.png',
+  'assets/icons/orcamento-v2/icon-512.png',
+  'assets/icons/orcamento-v2/icon-maskable-512.png',
+  'assets/icons/orcamento-v2/apple-touch-icon.png',
+  'assets/icons/orcamento-v2/favicon.ico',
+  'assets/icons/orcamento-v2/favicon-16.png',
+  'assets/icons/orcamento-v2/favicon-32.png',
 ];
 
 self.addEventListener('install', (ev) => {

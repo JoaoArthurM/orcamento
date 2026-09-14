@@ -3634,7 +3634,7 @@
       arrastando = true;
       indice = cartoes().indexOf(alvo);
       destino = indice;
-      passo = alvo.getBoundingClientRect().height + 14;
+      passo = alvo.getBoundingClientRect().height + (parseFloat(getComputedStyle(caixa).rowGap) || 0);
       alvo.classList.add('arrastando');
       cartoes().forEach(function (n) { if (n !== alvo) n.classList.add('deslocando'); });
       caixa.classList.add('reordenando');
