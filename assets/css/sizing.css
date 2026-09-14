@@ -1,6 +1,6 @@
 /* Proporções compartilhadas. Mantém as superfícies e cores de cada módulo. */
 body { font-size: var(--text-body); }
-:root { --appbar-h: max(76px, 4.75rem); --navbar-h: max(62px, 4.5rem); }
+:root { --appbar-h: max(76px, 4.75rem); --navbar-h: max(62px, 3.875rem); }
 #app { overflow: clip; }
 button, input, select, textarea { line-height: 1.5; }
 button { touch-action: manipulation; }
@@ -22,7 +22,7 @@ input, textarea { caret-color: currentColor; }
 .fl, #c-settings .fl, .record-sheet .fl { font-size: var(--text-secondary); line-height: 1.5; letter-spacing: 0; text-transform: none; }
 .ftitle, .record-sheet .ftitle { font-size: var(--text-section); line-height: 1.3; min-width: 0; overflow-wrap: anywhere; }
 .fhd { gap: 8px; }
-.fbody { gap: 20px; scroll-padding-block: 16px; }
+.fbody { gap: 12px; scroll-padding-block: 16px; }
 .fbody > *, .record-sheet .fbody > * { flex-shrink: 0; }
 .sheet { overflow: hidden; }
 .sheet:not(.open) { visibility: hidden; }
@@ -63,8 +63,8 @@ input, textarea { caret-color: currentColor; }
 .m-sel-hd { flex-wrap: wrap; gap: 8px; }
 .set-title, #c-settings .set-title { font-size: var(--text-section); }
 .set-desc, #c-settings .set-desc { font-size: var(--text-body); line-height: 1.6; overflow-wrap: anywhere; }
-#c-settings .set-block { padding: 20px; gap: 16px; }
-.settings-profile { padding: 20px; }
+#c-settings .set-block { padding: 16px; gap: 16px; }
+.settings-profile { padding: 16px; }
 #profile-name { font-size: var(--text-section); }
 #profile-username { font-size: var(--text-secondary); }
 .settings-profile-avatar { width: 56px; height: 56px; }
@@ -88,8 +88,8 @@ input, textarea { caret-color: currentColor; }
 .auth-tab small { font-size: var(--text-secondary); }
 .auth-tab-lbl { white-space: normal; min-width: 0; font-size: var(--text-secondary); }
 .auth-lbl { font-size: var(--text-secondary); }
-.auth-fields { gap: 20px; }
-.auth-line { min-height: 56px; }
+.auth-fields { gap: 12px; }
+.auth-line { min-height: 50px; }
 .auth-line input { font-size: var(--text-body); }
 .auth-remember, .auth-forgot, .auth-foot-link { min-height: var(--tap); font-size: var(--text-secondary); }
 .auth-row { gap: 8px 16px; }
@@ -97,24 +97,40 @@ input, textarea { caret-color: currentColor; }
 .auth-foot { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; font-size: var(--text-secondary); }
 
 @media (max-width: 1023px) {
+  :root {
+    --appbar-h: max(68px, 4.25rem);
+    --navbar-h: max(54px, 3.375rem);
+    --text-body: .875rem;
+    --text-secondary: .8125rem;
+    --text-section: 1.125rem;
+    --text-title: 1.5rem;
+    --text-balance: 1.75rem;
+  }
+  /* Texto de leitura compacto; campos conservam 16px para edição no iPhone. */
+  input, select, textarea, .fi, .fsel, .range-sel, #esearch,
+  .auth-line input, #c-settings .fi { font-size: 1rem; }
   #app .appbar { padding: calc(var(--sat) + 12px) max(16px, var(--sar)) 12px max(16px, var(--sal)); gap: 8px; }
+  #app .appbar-back, #app .appbar-share { width: 40px; height: 40px; min-width: 40px; min-height: 40px; }
+  #app .appbar-back .ico, #app .appbar-share .ico { width: 20px; height: 20px; }
   #app .appbar .wordmark { font-size: var(--text-section); min-width: 0; overflow-wrap: anywhere; white-space: normal; line-height: 1.2; }
   #app:has(#view-hub.on) .appbar .wordmark { font-size: 1.5rem; }
-  #app .appbar .avatar { width: max(44px, 2.75rem); height: max(44px, 2.75rem); font-size: var(--text-body); }
+  #app .appbar .avatar { width: max(40px, 2.5rem); height: max(40px, 2.5rem); font-size: var(--text-body); }
+  #app .appbar-account { min-height: 40px; min-width: 40px; }
   #slot-hub, #slot-contas, #slot-favores, #slot-loans, #slot-sim, #slot-tabelas, #slot-settings {
     padding-top: calc(var(--sat) + var(--appbar-h) + 8px);
     scroll-padding-top: calc(var(--sat) + var(--appbar-h));
   }
   .view-scroll { scroll-padding-bottom: calc(var(--navbar-h) + var(--sab) + 32px); }
-  .navitem { min-height: 56px; font-size: var(--text-caption); padding: 6px 8px; }
-  .navico { width: 24px; height: 24px; }
-  .navfab { width: 56px; height: 56px; }
-  #slot-hub { gap: 20px; }
+  .navitem { min-height: 48px; font-size: var(--text-caption); padding: 4px 8px; gap: 3px; }
+  .navico { width: 20px; height: 20px; }
+  .navfab { width: 48px; height: 48px; margin-top: -16px; }
+  .navfab-ico { width: 20px; height: 20px; }
+  #slot-hub { gap: 12px; }
   #slot-hub .hub-greet { padding: 0 2px; gap: 8px; }
   .hub-title { font-size: var(--text-title); letter-spacing: -.03em; }
   .hub-sub { font-size: var(--text-body); line-height: 1.5; }
-  #slot-hub > .hub-cards { gap: 16px; }
-  .hub-cards > .hub-card { min-height: 112px; height: auto; padding: 16px; gap: 12px; }
+  #slot-hub > .hub-cards { gap: 12px; }
+  .hub-cards > .hub-card { min-height: 92px; height: auto; padding: 12px; gap: 10px; }
   .hub-ico { width: 44px; height: 48px; }
   .hub-ico .ico { width: 28px; height: 28px; }
   .hub-name { font-size: var(--text-body); }
@@ -124,9 +140,9 @@ input, textarea { caret-color: currentColor; }
   .hub-link { min-height: 52px; font-size: var(--text-body); }
 
   /* Contas: leitura por nome e valor, detalhes na linha seguinte. */
-  #slot-contas .ct-hero, #slot-loans .lo-hero, #slot-favores .fv-topo, #slot-sim .eco-summary { padding: 20px; }
+  #slot-contas .ct-hero, #slot-loans .lo-hero, #slot-favores .fv-topo, #slot-sim .eco-summary { padding: 16px; }
   #slot-contas .m-hero-val, #slot-loans .m-hero-val, #slot-sim .m-hero-val { font-size: var(--text-balance); }
-  .ct-income { flex-wrap: wrap; gap: 12px; padding-bottom: 16px; margin-bottom: 16px; }
+  .ct-income { flex-wrap: wrap; gap: 12px; padding-bottom: 10px; margin-bottom: 10px; }
   .ct-income-copy { flex-basis: 100px; }
   .ct-income .ct-renda { font-size: var(--text-body); margin-left: auto; }
   .ct-overview { flex-wrap: wrap; gap: 16px; }
@@ -134,26 +150,26 @@ input, textarea { caret-color: currentColor; }
   #slot-contas .ct-pizza-svg { width: 5.5rem; height: 5.5rem; }
   #slot-contas .ct-pizza-cap { font-size: var(--text-caption); }
   #slot-contas .ct-pizza-pct { font-size: var(--text-section); }
-  #slot-contas .ct-pz { grid-template-columns: 8px minmax(0, 1fr) auto; gap: 4px 8px; padding-block: 8px; }
-  #slot-contas .ct-pz-val { grid-column: 2; grid-row: 2; text-align: left; font-size: var(--text-body); }
-  #slot-contas .ct-pz-pct { grid-column: 3; grid-row: 1 / 3; }
+  #slot-contas .ct-pz { grid-template-columns: 8px minmax(0, 1fr) auto 2.1rem; gap: 6px; padding-block: 5px; }
+  #slot-contas .ct-pz-val { grid-column: 3; grid-row: 1; text-align: right; font-size: var(--text-secondary); }
+  #slot-contas .ct-pz-pct { grid-column: 4; grid-row: 1; }
   #slot-contas .ct-cards, #slot-loans .lo-list, #slot-favores .fv-lista { gap: 12px; }
-  #slot-contas .ct-card, #slot-contas .ct-row { padding: 16px; gap: 12px; flex-wrap: wrap; }
+  #slot-contas .ct-card, #slot-contas .ct-row { padding: 12px; gap: 10px; flex-wrap: wrap; }
   #slot-contas .ct-name { font-size: var(--text-body); }
   #slot-contas .ct-body { flex: 1 1 140px; }
   #slot-contas .ct-amt { margin-left: auto; }
   #slot-contas .ct-ico { width: 40px; height: 40px; }
   #slot-contas .ct-pill { font-size: var(--text-secondary); }
-  #slot-contas .m-sel-hd, #slot-loans .m-sel-hd, #slot-sim .m-sel-hd { margin-top: 24px; }
+  #slot-contas .m-sel-hd, #slot-loans .m-sel-hd, #slot-sim .m-sel-hd { margin-top: 16px; }
 
   /* Favores: dois totais amplos e ações de pagamento visíveis. */
-  #slot-favores .fv-topo { grid-template-columns: minmax(0, 1fr); }
-  #slot-favores .fv-box-dark { padding: 0 0 16px; }
-  #slot-favores .fv-box-lime { border-left: 0; border-top: 1px solid #ffffff20; padding: 16px 0 0; }
+  #slot-favores .fv-topo { grid-template-columns: minmax(0, 1fr) 5.5rem; }
+  #slot-favores .fv-box-dark { padding: 0 12px 0 0; }
+  #slot-favores .fv-box-lime { border-left: 1px solid #ffffff20; border-top: 0; padding: 0 0 0 12px; }
   #slot-favores .fv-box-v { font-size: var(--text-balance); }
   #slot-favores .fv-box-lime .fv-box-v { font-size: var(--text-section); }
-  .fv-list-heading { font-size: var(--text-section); margin-top: 24px; }
-  #slot-favores .fv-cab { padding: 16px; gap: 12px; flex-wrap: wrap; }
+  .fv-list-heading { font-size: var(--text-section); margin-top: 16px; }
+  #slot-favores .fv-cab { padding: 12px; gap: 10px; flex-wrap: wrap; }
   #slot-favores .fv-corpo { flex: 1 1 130px; }
   #slot-favores .fv-quem { flex: 1 1 130px; }
   #slot-favores .fv-valor { margin-left: auto; }
@@ -166,31 +182,31 @@ input, textarea { caret-color: currentColor; }
   .fv-dia-meta, .fv-item-falta { white-space: normal; }
 
   /* Empréstimos: métricas com espaço para valores e nomes maiores. */
-  #slot-loans .lo-card { padding: 16px; }
+  #slot-loans .lo-card { padding: 12px; }
   #slot-loans .lo-head { flex-wrap: wrap; gap: 12px; }
   #slot-loans .lo-head > .lo-info { flex: 1 1 140px; }
   #slot-loans .lo-head > .lo-who { flex: 1 1 140px; }
   #slot-loans .lo-late { max-width: none; }
-  #slot-loans .lo-grid { grid-template-columns: repeat(auto-fit, minmax(8rem, 1fr)); gap: 16px; padding-top: 16px; margin-top: 16px; }
+  #slot-loans .lo-grid { grid-template-columns: repeat(auto-fit, minmax(5.5rem, 1fr)); gap: 10px; padding-top: 12px; margin-top: 12px; }
   #slot-loans .lo-pcard, #slot-loans .lo-chip { min-height: var(--tap); }
   #slot-loans .lo-box-v { font-size: var(--text-section); }
   .lo-summary-head { flex-wrap: wrap; }
 
   /* Economia: controles por linha, indicadores legíveis e tabela rolável. */
   #slot-sim .m-ctrl { flex-wrap: wrap; gap: 12px; }
-  #slot-sim .m-seg { flex-basis: 100%; flex-wrap: wrap; }
-  #slot-sim .m-seg button { flex: 1 1 8rem; min-height: var(--tap); font-size: var(--text-secondary); white-space: normal; overflow-wrap: anywhere; padding: 8px 12px; }
-  #slot-sim .m-ctrl-hz { min-height: var(--tap); font-size: var(--text-secondary); }
-  #slot-sim .m-chip { min-width: 64px; min-height: 64px; }
+  #slot-sim .m-seg { flex: 1 1 12rem; flex-wrap: wrap; }
+  #slot-sim .m-seg button { flex: 1 1 5rem; min-height: 36px; font-size: var(--text-secondary); white-space: normal; overflow-wrap: anywhere; padding: 5px 8px; }
+  #slot-sim .m-ctrl-hz { min-height: 36px; padding: 5px 10px; font-size: var(--text-secondary); }
+  #slot-sim .m-chip, #slot-sim .m-chip.on { min-width: 48px; min-height: 44px; padding: 4px 6px; border-radius: 12px; }
   #slot-sim .m-chip .mn { font-size: var(--text-body); }
   #slot-sim .m-chip .yr { font-size: var(--text-caption); height: auto; }
   #slot-sim .eco-opening { flex-wrap: wrap; gap: 12px; }
   #slot-sim .eco-opening-copy { flex: 1 1 140px; }
-  #slot-sim .m-si-wrap { margin-left: auto; flex: 1 1 10rem; }
+  #slot-sim .m-si-wrap { margin-left: auto; flex: 1 1 8rem; }
   #slot-sim .m-kpis { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; overflow: visible; }
   #slot-sim .m-kpi { width: auto; min-width: 0; max-width: none; padding: 16px; }
   #slot-sim .m-kpi-val { overflow-wrap: anywhere; }
-  #slot-sim .m-erow { padding: 16px; flex-wrap: wrap; }
+  #slot-sim .m-erow { padding: 12px; flex-wrap: wrap; }
   #slot-sim .m-erow-body { flex: 1 1 140px; }
   #slot-sim .m-table { overflow-x: auto; }
   #slot-sim .m-thead, #slot-sim .m-trow { min-width: 340px; grid-template-columns: 92px minmax(0, 1fr) minmax(0, 1fr); gap: 12px; padding: 12px; }
@@ -199,15 +215,50 @@ input, textarea { caret-color: currentColor; }
   #slot-sim .m-curve-axis span { font-size: var(--text-caption); }
 
   /* Tabelas: título, metadados e ações nunca disputam uma linha apertada. */
-  #slot-tabelas .sb-list-hd { padding: 16px; gap: 16px; }
+  #slot-tabelas .sb-list-hd { padding: 12px; gap: 10px; }
   #slot-tabelas .card-title { font-size: var(--text-section); }
-  #slot-tabelas .elist { gap: 12px; }
-  #slot-tabelas .eitem { padding: 16px; gap: 8px 12px; }
+  #slot-tabelas .elist { gap: 8px; }
+  #slot-tabelas .eitem { padding: 12px; gap: 6px 10px; }
   #slot-tabelas .ei-body { grid-column: 2 / -1; }
-  #slot-tabelas .ei-amt { grid-column: 2 / -1; justify-self: start; flex-wrap: wrap; }
-  #slot-tabelas .eacts { gap: 8px; padding-top: 12px; }
+  #slot-tabelas .ei-amt { grid-column: 1 / 3; grid-row: 2; justify-self: start; flex-wrap: wrap; max-width: 100%; min-width: 0; }
+  #slot-tabelas .ei-val { min-width: 0; overflow-wrap: anywhere; }
+  #slot-tabelas .eacts { grid-column: 3; grid-row: 2; gap: 6px; padding-top: 0; border-top: 0; }
   #slot-tabelas .eacts .ib { width: var(--tap); height: var(--tap); }
-  .record-sheet .fbody { gap: 20px; }
+  /* A mesma densidade também nas telas secundárias e em todos os cadastros. */
+  .record-sheet .fhd { padding: 4px 12px 8px; }
+  .record-sheet .fbody { gap: 12px; padding: 12px calc(16px + var(--sar)) 14px calc(16px + var(--sal)); }
+  .record-sheet .ff { gap: 4px; }
+  .record-sheet .fi, .record-sheet .fsel { padding-top: 8px; padding-bottom: 8px; }
+  .record-sheet textarea.fi { min-height: 64px; }
+  .record-sheet .ffoot { padding: 8px calc(16px + var(--sar)) calc(8px + var(--sab)) calc(16px + var(--sal)); gap: 8px; }
+  .record-sheet .lo-juros, .record-sheet .fv-saldo, .record-sheet .ct-juros { padding: 8px 12px; }
+  .record-sheet .lo-eco { padding: 10px 12px; gap: 8px; }
+  .record-sheet .pg-alvo-card { padding: 12px; }
+  .record-sheet .auth-hint { margin: 0; }
+  .record-sheet .fb:empty, #c-settings .fb:empty { display: none; }
+  #c-settings .set-block { padding: 12px; gap: 10px; }
+  #c-settings .set-desc { line-height: 1.5; }
+  #c-settings .ff { gap: 4px; }
+  #c-settings .settings-profile { padding: 12px; gap: 12px; }
+  #c-settings .settings-profile-avatar { width: 48px; height: 48px; }
+  #c-settings :is(.btn-solid, .btn-ghost, .btn-danger, .btn-sair) { padding: 8px 12px; }
+  #sheet-share .sh-bloco { padding: 12px; gap: 8px; }
+  #sheet-share .sh-desc, #sheet-confirmar .cf-msg, #sheet-excluir .ex-sub { line-height: 1.5; }
+  #sheet-share .sh-mini { padding: 8px 12px; }
+  #sheet-share .sh-codigo { padding: 8px; }
+  #sheet-share .sh-pessoa { padding-block: 8px; gap: 8px; }
+  #sheet-horizonte .hz-op, #sheet-excluir .ex-op { min-height: 52px; padding: 10px 12px; gap: 6px; }
+  #slot-favores .fv-itens { padding: 8px 12px 12px; }
+  #slot-favores .fv-pagar-tudo { padding: 10px; }
+  #slot-favores .fv-dia-cab { padding: 8px; }
+  #slot-favores .fv-item { padding-block: 8px; }
+  #slot-favores .fv-pag { min-height: var(--tap); padding-block: 6px; }
+  .empty-list, .m-empty { padding: 20px 12px; gap: 8px; }
+  .auth-greet { padding-top: 16px; }
+  .auth-card { margin-top: 16px; }
+  .auth-fields { margin-top: 14px; gap: 12px; }
+  .auth-actions { padding-top: 8px; }
+  .auth-foot { margin-top: 8px; padding-top: 4px; }
 }
 @media (max-width: 359px) {
   .hub-cards > .hub-card { padding: 16px 12px; gap: 8px; }
@@ -220,7 +271,7 @@ input, textarea { caret-color: currentColor; }
   #slot-loans .lo-split { flex-wrap: wrap; gap: 16px; }
   #slot-loans .lo-box { flex-basis: 100%; }
   #slot-loans .lo-box + .lo-box { margin: 0; padding: 16px 0 0; border-left: 0; border-top: 1px solid #ffffff20; }
-  .ffoot > .bsv, .ffoot > .bcn { flex-basis: 100%; }
+  .ffoot > .bsv, .ffoot > .bcn { flex: 1 1 6rem; }
 }
 @media (min-width: 1024px) {
   .ib { width: var(--tap); height: var(--tap); }
@@ -228,6 +279,6 @@ input, textarea { caret-color: currentColor; }
   .eitem { flex-wrap: wrap; gap: 8px; }
   .eacts { width: 100%; justify-content: flex-end; gap: 8px; }
   .sheet { width: min(640px, calc(100% - 48px)); }
-  .set-block { padding: 20px; }
+  .set-block { padding: 16px; }
   .tbl-wrap { overflow: auto; }
 }

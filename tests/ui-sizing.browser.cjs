@@ -20,7 +20,7 @@ const { chromium } = require('playwright');
           const hit = document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2);
           return { width: r.width, height: r.height, clickable: el.contains(hit) };
         });
-        assert(target.width >= 48 && target.height >= 48 && target.clickable, `${width}/${module}: voltar`);
+        assert(target.width >= 40 && target.height >= 40 && target.clickable, `${width}/${module}: voltar compacto`);
         await page.locator('#fab-add').click();
         await page.locator('.sheet.open').waitFor({ state: 'visible' });
         await page.waitForTimeout(350); // termina a abertura e o foco programado
