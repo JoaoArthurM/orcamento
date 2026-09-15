@@ -820,6 +820,7 @@
     'lo-installment-amount',                             // empréstimos
     'ct-amount', 'ct-avg',                               // contas
     'fv-amount', 'pg-amount',                            // favores
+    'fx-valor', 'fx-banco', 'fx-saldo', 'fx-diario',     // flux
   ];
 
   /**
@@ -934,6 +935,11 @@
       loans: loans, accounts: contas,
       favors: favores, payments: pagamentos,
       hubOrder: hubOrder, horizonte: horizonte,
+      flux: fluxo, fluxSaldo: fluxSaldo, fluxAncora: fluxAncora,
+      fluxDiario: fluxDiario, fluxLimites: fluxLimites,
+      fluxCards: fluxCartoes,
+      diasUteis: diasUteis,
+      diasPagamento: diasPagamento,
     };
   }
 
@@ -954,6 +960,16 @@
     favores      = state.favors || [];
     pagamentos   = state.payments || [];
     horizonte    = Store.normalizeHorizonte(state.horizonte);
+    fluxo        = state.flux || [];
+    fluxSaldo    = Number(state.fluxSaldo) || 0;
+    fluxAncora   = state.fluxAncora || null;
+    fluxDiario   = Math.max(0, Number(state.fluxDiario) || 0);
+    fluxLimites  = Store.fluxLimites(state.fluxLimites);
+    fluxCartoes  = state.fluxCards || [];
+    /* O Store guarda a lista para não ter de recebê-la em cada chamada
+       da regra de ocorrência; aqui é o único ponto que a atualiza. */
+    diasUteis    = Store.setDiasUteis(state.diasUteis);
+    diasPagamento = Store.setDiasPagamento(state.diasPagamento);
     if (Array.isArray(state.hubOrder)) hubOrder = state.hubOrder;
   }
 
@@ -977,6 +993,7 @@
     if (desk) {
       $('slot-sb-hero').appendChild(el.cHero);
       $('slot-sb-list').appendChild(el.cList);
+      $('slot-sb-list').appendChild(el.fxResumo);
       $('slot-sb-legend').appendChild(el.cLegend);
       $('slot-main-kpis').appendChild(el.cKpis);
       $('slot-settings-sheet').appendChild(el.cSettings);
@@ -987,6 +1004,8 @@
       $('parked').appendChild(el.cHero);
       $('parked').appendChild(el.cKpis);
       const tabelas = $('slot-tabelas');
+      // o resumo vem ANTES da lista: é o número que se procura ao abrir
+      tabelas.appendChild(el.fxResumo);
       tabelas.appendChild(el.cList);
       tabelas.appendChild(el.cLegend);
       $('slot-settings').appendChild(el.cSettings);
@@ -1002,9 +1021,11 @@
     loans:  { titulo: 'empréstimos.', navLbl: 'empréstimos', navIco: 'hand-cash',       view: 'view-loans' },
     contas: { titulo: 'contas.',      navLbl: 'contas',      navIco: 'wallet',          view: 'view-contas' },
     favores:{ titulo: 'favores.',     navLbl: 'favores',     navIco: 'donate',          view: 'view-favores' },
+    flux:   { titulo: 'flux.',        navLbl: 'flux',        navIco: 'pen-tablet',         view: 'view-flux' },
   };
 
-  const VIEWS = ['view-hub', 'view-sim', 'view-loans', 'view-contas', 'view-favores', 'view-tabelas', 'view-settings'];
+  const VIEWS = ['view-hub', 'view-sim', 'view-loans', 'view-contas', 'view-favores',
+                 'view-flux', 'view-tabelas', 'view-settings'];
 
   /* Onde o usuário estava. sessionStorage: o reload mantém, uma aba nova
      começa do hub. */
@@ -1023,7 +1044,7 @@
   }
 
   /* Ordem dos módulos no hub — o usuário reordena arrastando. */
-  const ORDEM_PADRAO = ['loans', 'eco', 'contas', 'favores'];
+  const ORDEM_PADRAO = ['loans', 'eco', 'contas', 'favores', 'flux'];
   const ORDEM_KEY = 'orcamento:hub-ordem';
 
   function lerOrdem() {
@@ -1062,6 +1083,9 @@
    *   setScreen('settings')       → ajustes (só pelo hub)
    */
   function setScreen(destino) {
+    // chegar no FLUX pela primeira vez centraliza em hoje; voltar da aba
+    // de ajustes ou das tabelas não mexe em onde o usuário parou
+    if (destino === 'flux' && screen !== 'flux') fxRolarHoje = true;
     if (destino === 'tabelas' || destino === 'settings') {
       tab = destino;
     } else {
@@ -1162,6 +1186,10 @@
     renderContas();
     renderFavores();
     renderHub(rows);
+    renderFlux();
+    renderHubFlux();
+    renderFluxCartoes();
+    renderDiasUteis();
     if (isDesktop) renderTable(rows);
   }
 
@@ -1319,13 +1347,19 @@
      TABELAS — os lançamentos do módulo aberto, pesquisáveis
      ══════════════════════════════════════════════════════ */
 
-  /** Cada módulo diz o que listar, como procurar e como mostrar. */
+  /** Cada módulo diz o que listar, como procurar, como mostrar — e como
+      excluir. O excluir morava numa cadeia de `if (screen === ...)` lá no
+      ouvinte da lista, e o FLUX nunca foi acrescentado a ela: a lixeira
+      caía no `else`, que apaga de `entries`. Nada acontecia, e o
+      movimento voltava a aparecer. Aqui ele fica ao lado do `abrir`,
+      onde a falta se vê. */
   const TABELAS = {
     eco: {
       titulo: 'Entradas',
       itens: () => entries,
       procura: (e) => e.name,
       abrir: (id) => openForm(id),
+      excluir: (id) => del(id),
       linha: function (e) {
         const T = TYPES[e.type];
         return {
@@ -1340,6 +1374,7 @@
       itens: () => ordenarLoans(loans),
       procura: (l) => l.person,
       abrir: (id) => openLoan(id),
+      excluir: (id) => { editLoanId = id; delLoan(); },
       linha: function (l) {
         const i = loanInfo(l);
         return {
@@ -1354,6 +1389,7 @@
       itens: () => favores,
       procura: (f) => f.person + ' ' + f.reason,
       abrir: (id) => openFavor(id),
+      excluir: (id) => { editFavorId = id; delFavor(); },
       linha: function (f) {
         const i = favorInfo(f);
         return {
@@ -1369,16 +1405,38 @@
         };
       },
     },
+    flux: {
+      titulo: 'Flux',
+      itens: () => fluxo.slice().sort(function (a, b) {
+        return a.on_date < b.on_date ? -1 : (a.on_date > b.on_date ? 1 : 0);
+      }),
+      procura: (f) => f.description,
+      abrir: (id) => openFlux(id),
+      /* Da tabela some a SERIE inteira: aqui nao ha dia tocado, e sem
+         ele removerFlux nao tem o que perguntar. */
+      excluir: (id) => { editFluxId = id; fxDiaEditado = null; removerFlux(); },
+      linha: function (f) {
+        const t = FX_TIPOS[f.kind];
+        return {
+          icoNome: t.ico, icoBg: t.bg, icoFg: t.fg,
+          nome: f.description,
+          sub: dataCurta(f.on_date) + (f.repeat_freq ? ' · ' + FX_FREQ_ROT[f.repeat_freq] : ''),
+          valor: numRaw(f.amount),
+          tag: t.rot, tagBg: t.bg, tagFg: t.fg,
+        };
+      },
+    },
     contas: {
       titulo: 'Contas',
       itens: () => contas,
       procura: (c) => c.name,
       abrir: (id) => openConta(id),
+      excluir: (id) => { editContaId = id; delConta(); },
       linha: function (c) {
         const m = KIND_META[c.kind];
         let sub = m.rotulo;
         if (c.kind === 'renda') sub += ' · ' + FREQ_LABEL[c.frequency];
-        if (c.kind === 'fixa') sub += ' · dia ' + c.due_day;
+        if (c.due_day) sub += ' · dia ' + c.due_day;
         if (c.kind === 'assinatura') sub += ' · R$ ' + num(c.amount * 12) + '/ano';
         /* Só a conta fixa tem estado de pagamento; nas outras a etiqueta
            repete o tipo, que é a cor que o módulo já usa para elas. */
@@ -1642,6 +1700,1484 @@
     }).join('');
   }
 
+
+  /* ══════════════════════════════════════════════════════
+     FLUX — o razão diário
+     ══════════════════════════════════════════════════════
+     O simulador responde "quanto vou ter guardado em dezembro". O
+     FLUX responde outra coisa: "quanto eu tenho no dia 14".
+
+     A regra que gera as ocorrências e o saldo de um dia moram no
+     store.js, com teste. Aqui fica só o desenho e o CRUD — o que
+     precisa de DOM e por isso a VM dos testes não alcança. */
+
+  const FX_TIPOS = {
+    entrada:  { rot: 'Entrada',  ico: 'arrow-down-left-circle', bg: '#E9F6D6', fg: '#2F6142' },
+    saida:    { rot: 'Saída',    ico: 'arrow-up-right-circle',  bg: '#FEF0EE', fg: '#8C3A2F' },
+    diario:   { rot: 'Diário',   ico: 'repeat',                 bg: '#FAF2DF', fg: '#856623' },
+    economia: { rot: 'Economia', ico: 'piggy-bank',             bg: '#F1F6EE', fg: '#123A2C' },
+    cartao:   { rot: 'Cartão',   ico: 'credit-card',            bg: '#EEF3FD', fg: '#2E5A8C' },
+  };
+
+  const FX_FREQ_ROT = { mensal: 'todo mês', semanal: 'toda semana',
+                        diaria: 'todo dia', anual: 'todo ano' };
+
+  /* As 7 faixas de saldo, na paleta daqui.
+     O Aurvm usa sete pares hex de uma planilha do Google — cinzas e
+     vermelhos neutros que a Regra da Tinta Única proíbe. Os limiares
+     são os mesmos; as cores foram rederivadas do verde desta base. */
+  const FX_FAIXAS = [
+    { rot: 'muito negativo', bg: '#A83A2C', fg: '#FFFFFF' },
+    { rot: 'negativo',       bg: '#FBE3DE', fg: '#8C3A2F' },
+    { rot: 'cuidado',        bg: '#FBEEDC', fg: '#8A5A22' },
+    { rot: 'atenção',        bg: '#FAF2DF', fg: '#856623' },
+    { rot: 'quase lá',       bg: '#EEF4E4', fg: '#51705E' },
+    { rot: 'saudável',       bg: '#E0F1C6', fg: '#2F6142' },
+    { rot: 'muito saudável', bg: '#1B4B39', fg: '#CEF29B' },
+  ];
+
+  const FX_SEMANA = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sáb'];
+
+  let fluxo       = [];     // os lançamentos do razão
+  let fluxSaldo   = 0;      // abertura
+  let fluxAncora  = null;   // o dia em que a abertura valia
+  let fluxDiario  = 0;      // gasto previsto por dia
+  let fluxLimites = Store.FLUX_LIMITES_PADRAO.slice();
+  let fxMes       = 0;      // deslocamento em meses a partir do atual
+  let fxAba       = 'saldos';
+  let fxDiaAberto = null;   // qual dia está expandido
+  let editFluxId  = null;
+  /* Em que dia a lista foi tocada. É ele que dá sentido a "só este" e
+     "daqui em diante" — sem isso, editar uma repetição não teria a que
+     se referir e só poderia valer para a série toda. */
+  let fxDiaEditado = null;
+  let fxTipoSel   = 'saida';
+  let fxRolarHoje = true;   // rolar até hoje no próximo desenho
+  let fxRolarPara = false;  // rolar até o dia que acabou de abrir
+
+  /** Date -> "AAAA-MM-DD" no fuso local; toISOString() daria o dia de UTC. */
+  const fxISO = (d) => d.getFullYear() + '-' +
+    String(d.getMonth() + 1).padStart(2, '0') + '-' +
+    String(d.getDate()).padStart(2, '0');
+
+  /** O primeiro dia do mês que a tela está mostrando. */
+  function fxBase() {
+    const h = new Date();
+    return new Date(h.getFullYear(), h.getMonth() + fxMes, 1);
+  }
+
+  /** A âncora efetiva: a escolhida, ou o dia do lançamento mais antigo. */
+  function fxAncoraEfetiva() {
+    if (fluxAncora) return fluxAncora;
+    if (!fluxo.length) return Store.hoje();
+    return fluxo.map(function (f) { return f.on_date; }).sort()[0];
+  }
+
+  function fxSaldoEm(iso) {
+    return Store.fluxSaldoEm({
+      // as contas derivadas entram aqui: é o mesmo razão
+      lancamentos: fluxTodo(), ancora: fxAncoraEfetiva(), alvo: iso,
+      hoje: Store.hoje(), saldoInicial: fluxSaldo, diario: fluxDiario,
+    });
+  }
+
+  function fxFaixaDe(valor) { return FX_FAIXAS[Store.fluxFaixa(valor, fluxLimites)]; }
+
+
+  /* ── as contas entram no razão ────────────────────────────
+     O módulo de contas já sabe o que entra e o que sai todo mês. Sem
+     isto, você lançaria as mesmas contas duas vezes e teria de mantê-las
+     iguais nos dois lugares — elas divergiriam na primeira correção.
+
+     As linhas são DERIVADAS: existem só durante o desenho, com id
+     prefixado `ct:`, e nunca entram em `fluxo`. É a mesma regra que
+     `economiaComoFs()` segue no simulador, e pela mesma razão — se
+     virassem linha de verdade, o diff as mandaria ao banco e a mesma
+     conta passaria a existir duas vezes, editável em duas telas.
+
+     Cada uma vira um movimento MENSAL, não uma linha por dia: assim
+     elas entram na mesma máquina que já calcula ocorrência e saldo, em
+     vez de precisarem de um caminho paralelo que divergiria.
+
+     Em que dia cada uma cai:
+
+       renda        5º dia útil, pela lista da empresa (`quinto_util`)
+       conta fixa   no vencimento, recuado se não for útil (`dia_util`)
+       assinatura   no dia 1 — não há dia cadastrado nelas
+       variável     no dia 1, pela média
+       economia     no dia 1, como movimento de economia
+
+     O dia 1 é um chute honesto para o que não tem data: o mês fecha
+     igual de qualquer forma, e antecipar é o lado seguro. */
+
+  let fluxDeContas = true;
+
+  function contasComoFlux() {
+    if (!fluxDeContas || !contas.length) return [];
+    const fora = [];
+
+    /* A âncora do razão: é dela que toda série derivada parte. */
+    const ancora = fxAncoraEfetiva();
+    const a = ancora.split('-').map(Number);
+
+    /**
+     * A primeira ocorrência, nunca antes da âncora do razão.
+     *
+     * As contas do módulo são um combinado de agora em diante, não um
+     * histórico: o aluguel que você cadastra hoje não foi pago em 2020.
+     * Uma semente antiga fazia o cálculo retroagir e o saldo de antes da
+     * âncora vinha carregado de contas que nunca existiram — e a âncora
+     * deixava de ser o zero da régua, que é todo o papel dela.
+     *
+     * O mês da âncora inteiro fica de fora — e não só o que já venceu.
+     * O saldo que a pessoa informa é o saldo de quem já viveu aquele
+     * mês: o salário que caiu e o aluguel que saiu estão dentro do
+     * número. Repetir as contas do mês por cima dele paga e recebe duas
+     * vezes o mesmo dinheiro.
+     *
+     * A regra nasceu no CARTÃO, cuja fatura logo depois da âncora cobre
+     * compras de antes dela, e vale igual para o resto. O que muda é só
+     * o motivo: lá é o período da fatura, aqui é o saldo informado.
+     */
+    function primeira(dia, regra) {
+      const efetiva = (ano, mes) => {
+        if (regra === 'quinto_util') {
+          const q = ano + '-' + String(mes).padStart(2, '0') + '-' +
+            String(Store.quintoDiaUtil(ano, mes, diasUteis)).padStart(2, '0');
+          // o 5º útil também anda até um dia de pagamento
+          return Store.ajustarParaDiaUtil(q, diasPagamento);
+        }
+        const ultimo = new Date(ano, mes, 0).getDate();
+        const iso = ano + '-' + String(mes).padStart(2, '0') + '-' +
+          String(Math.min(dia, ultimo)).padStart(2, '0');
+        return regra === 'dia_util' ? Store.ajustarParaDiaUtil(iso, diasPagamento) : iso;
+      };
+
+      /* O corte é a âncora mais um mês, para TODA conta derivada.
+
+         Era só do cartão, pela fatura que fecha depois da âncora e cobre
+         compras de antes dela. Mas a razão vale para o resto igual: o
+         saldo que você informa já é o saldo de quem viveu aquele mês —
+         o salário que caiu, o aluguel que saiu, tudo já está dentro do
+         número. Lançar as contas do mês da âncora por cima cobra e paga
+         a mesma coisa duas vezes.
+
+         Vale só para o que VEM de contas. Um movimento lançado à mão no
+         mês da âncora continua contando: ele foi digitado ali de
+         propósito, e ninguém digita o que já aconteceu. */
+      const corte = fxISO(new Date(a[0], a[1], a[2]));
+
+      let ano = a[0], mes = a[1];
+      // dois saltos bastam: o mês da âncora e, no cartão, o ciclo dele
+      for (let i = 0; i < 3; i++) {
+        if (efetiva(ano, mes) >= corte) {
+          return ano + '-' + String(mes).padStart(2, '0') + '-' + String(dia).padStart(2, '0');
+        }
+        const prox = new Date(ano, mes, 1);
+        ano = prox.getFullYear(); mes = prox.getMonth() + 1;
+      }
+      return ano + '-' + String(mes).padStart(2, '0') + '-' + String(dia).padStart(2, '0');
+    }
+
+    contas.forEach(function (c) {
+      let kind = 'saida', valor = c.amount;
+
+      if (c.kind === 'renda') {
+        kind = 'entrada';
+        valor = rendaMensal(c);
+      } else if (c.kind === 'assinatura') {
+        /* Assinatura é cobrança recorrente no cartão, não uma saída
+           avulsa: no razão ela entra como gasto de cartão para somar com
+           as outras da fatura, em vez de se perder no meio das saídas do
+           dia a dia. */
+        kind = 'cartao';
+      } else if (c.kind === 'variavel') {
+        valor = c.avg_amount !== null ? c.avg_amount : c.amount;
+      } else if (c.kind === 'economia') {
+        kind = 'economia';
+      }
+
+      /* Com dia informado é aquele dia; em branco, o 5º dia útil — que é
+         a resposta mais comum no Brasil, onde salário e boa parte das
+         contas o seguem. "Dia 1" não é combinado de ninguém.
+
+         O CARTÃO é a exceção: a fatura fecha na data marcada e pronto.
+         Dia 8 é dia 8, caia no domingo ou não — o cartão não espera dia
+         útil para fechar, e empurrar a data faria a compra entrar na
+         fatura do mês seguinte. */
+      let dia, regra;
+      if (c.due_day) {
+        dia = c.due_day;
+        regra = kind === 'cartao' ? 'data' : 'dia_util';
+      } else {
+        dia = 5;
+        regra = kind === 'cartao' ? 'data' : 'quinto_util';
+      }
+
+      if (!(valor > 0)) return;
+      fora.push({
+        id: 'ct:' + c.id,
+        kind: kind,
+        description: c.name,
+        amount: valor,
+        on_date: primeira(dia, regra),
+        repeat_freq: 'mensal',
+        repeat_times: null,
+        repeat_rule: regra,
+        skipped: [], notes: null, card_id: null,
+        deContas: true,     // a tela mostra, mas a edição é em contas
+      });
+    });
+    return fora;
+  }
+
+  /** O razão inteiro: o que foi lançado mais o que vem das contas. */
+  function fluxTodo() { return fluxo.concat(contasComoFlux()); }
+
+  /** Tudo que acontece num dia. */
+  function fluxDoDia(iso) {
+    return fluxTodo().filter(function (f) { return Store.fluxOcorreEm(f, iso); });
+  }
+
+  /* ── desenho ─────────────────────────────────────────── */
+  function renderFlux() {
+    if (!$('slot-flux')) return;
+    const base = fxBase();
+    const ano = base.getFullYear(), mes = base.getMonth() + 1;
+    const prox = new Date(ano, mes, 1);   // o mês seguinte ao da tela
+    const pAno = prox.getFullYear(), pMes = prox.getMonth() + 1;
+
+    $('fx-mes-lbl').textContent = MS_FULL[mes - 1] + ' ' + ano;
+    /* Nunca desabilitado: no mês atual ele ainda tem trabalho — rolar
+       de volta até hoje depois de o usuário ter subido a lista. */
+    $('fx-cal-dia').textContent = Store.hoje().slice(8);
+
+    const hojeISO = Store.hoje();
+    const hojeVal = fxSaldoEm(hojeISO);
+    $('fx-hoje-val').textContent = num(hojeVal);
+    $('fx-hero-sub').textContent = fluxo.length
+      ? 'hoje · ' + fxFaixaDe(hojeVal).rot
+      : 'lance o primeiro movimento para ver o saldo andar';
+
+    $('fx-aba-saldos').classList.toggle('on', fxAba === 'saldos');
+    $('fx-aba-menu').classList.toggle('on', fxAba === 'menu');
+    $('fx-aba-saldos').setAttribute('aria-selected', fxAba === 'saldos');
+    $('fx-aba-menu').setAttribute('aria-selected', fxAba === 'menu');
+    $('fx-dias').hidden = fxAba !== 'saldos';
+    $('fx-menu').hidden = fxAba !== 'menu';
+
+    if (fxAba === 'menu') { renderFluxMenu(); return; }
+
+    const dias  = new Date(ano, mes, 0).getDate();
+    const pDias = new Date(pAno, pMes, 0).getDate();
+    const curto = (a, m) => MS[m - 1].toLowerCase() + '/' + String(a).slice(2);
+
+    /* Duas colunas de saldo: o mesmo dia neste mês e no seguinte. O que
+       se quer saber não é só "quanto tenho dia 20" — é se dia 20 do mês
+       que vem continua de pé depois do que já está marcado. */
+    const linhas = ['<div class="fx-cab">' +
+      '<span class="fx-cab-dia">dia</span>' +
+      '<span class="fx-cab-gasto">gastos</span>' +
+      '<span>' + curto(ano, mes) + '</span>' +
+      '<span>' + curto(pAno, pMes) + '</span>' +
+    '</div>'];
+
+    for (let d = 1; d <= dias; d++) {
+      const iso  = ano + '-' + String(mes).padStart(2, '0') + '-' + String(d).padStart(2, '0');
+      const pIso = d <= pDias
+        ? pAno + '-' + String(pMes).padStart(2, '0') + '-' + String(d).padStart(2, '0')
+        : null;
+      const ehHoje = iso === hojeISO;
+      const diaSem = new Date(ano, mes - 1, d).getDay();
+      const semana = FX_SEMANA[diaSem];
+      const abertoNeste = fxDiaAberto === iso;
+      const abertoProx  = pIso && fxDiaAberto === pIso;
+
+      linhas.push(
+        '<div class="fx-dia' + (ehHoje ? ' hoje' : '') +
+            ((abertoNeste || abertoProx) ? ' aberto' : '') + '">' +
+          '<div class="fx-dia-linha">' +
+            // domingo marcado só na data: a semana começa de novo ali
+            // a data e os gastos lançam naquele dia; o saldo abre o dia
+            '<button class="fx-dia-data' + (diaSem === 0 ? ' dom' : '') + '"' +
+              ' data-novo="' + iso + '" aria-label="Lançar no dia ' + d + '">' +
+              '<b>' + d + '</b><small>' + semana + '</small></button>' +
+            fxGasto(iso) +
+            fxCelula(iso, abertoNeste) +
+            (pIso ? fxCelula(pIso, abertoProx) : '<span class="fx-cel-fora">—</span>') +
+          '</div>' +
+          (abertoNeste ? fxPainel(iso) : '') +
+          (abertoProx  ? fxPainel(pIso) : '') +
+        '</div>');
+    }
+    $('fx-dias').innerHTML = linhas.join('');
+
+    /* Rolar é sempre um PEDIDO, nunca efeito do desenho: antes acontecia
+       a cada render, e mexer num ajuste jogava a tela de volta para hoje
+       no meio do que o usuário estava fazendo.
+
+       Dois pedidos existem — o botão de hoje e abrir um dia. Os dois
+       centralizam a linha, porque o painel que abre embaixo dela fica
+       fora de vista se ela ficar no rodapé. */
+    const aRolar = fxRolarPara
+      ? $('fx-dias').querySelector('.fx-dia.aberto')
+      : (fxRolarHoje && fxMes === 0 ? $('fx-dias').querySelector('.fx-dia.hoje') : null);
+    if (aRolar) aRolar.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    fxRolarHoje = false;
+    fxRolarPara = false;
+
+    /* O resumo le o MESMO fxMes e vive noutra tela, entao sai daqui e nao
+       do render() geral: as setas do calendario chamam so renderFlux, e o
+       resumo ficava no mes antigo — a seta dele entao pulava um mes,
+       porque partia de um numero que a tela ja tinha mudado. */
+    renderFluxResumo();
+  }
+
+  /**
+   * O que saiu do bolso naquele dia, de qualquer tipo.
+   *
+   * Só a entrada soma, então gasto é tudo o mais: saída, diário,
+   * economia e cartão. Guardar em coluna própria — e não dentro da
+   * pastilha de saldo — é o que deixa varrer o mês procurando o dia
+   * caro sem abrir nenhum.
+   */
+  function fxGasto(iso) {
+    let sai = 0, entra = 0;
+    fluxDoDia(iso).forEach(function (f) {
+      if (f.kind === 'entrada') entra += f.amount; else sai += f.amount;
+    });
+    // a coluna também é o atalho de lançar naquele dia
+    const abre = ' data-novo="' + iso + '" aria-label="Lançar neste dia"';
+    if (!sai && !entra) return '<button class="fx-gasto vazio"' + abre + '>+</button>';
+    return '<button class="fx-gasto"' + abre + '>' +
+      (sai ? '<span class="fx-gasto-sai">− <small>R$</small>' + num(sai) + '</span>' : '') +
+      (entra ? '<span class="fx-gasto-entra">+ <small>R$</small>' + num(entra) + '</span>' : '') +
+    '</button>';
+  }
+
+  /**
+   * A planilha: dias nas linhas, meses nas colunas.
+   *
+   * A janela é a mesma do simulador (`horizonte`): não inventa um
+   * segundo conceito de "até quando olhar" para o usuário decorar.
+   * Começa no mês que está na tela, não em hoje — quem abriu daqui
+   * quer continuar de onde estava.
+   *
+   * Sempre 31 linhas. Quando o mês não tem aquele dia a célula fica
+   * vazia, e é justamente isso que mantém a linha 15 de todos os
+   * meses na mesma altura: com linhas de tamanho variável o olho
+   * perderia a horizontal ao rolar de lado.
+   */
+  function renderFluxMeses() {
+    const base = fxBase();
+    const hojeISO = Store.hoje();
+    const meses = [];
+    for (let i = 0; i < horizonte; i++) {
+      const m = new Date(base.getFullYear(), base.getMonth() + i, 1);
+      meses.push({
+        i: i, ano: m.getFullYear(), mes: m.getMonth() + 1,
+        dias: new Date(m.getFullYear(), m.getMonth() + 1, 0).getDate(),
+        rot: MS[m.getMonth()].toLowerCase() + '/' + String(m.getFullYear()).slice(2),
+      });
+    }
+
+    let h = '<div class="fx-grade" style="--fx-cols:' + meses.length + '">';
+    h += '<div class="fx-grade-cab"><span class="fx-grade-dia">dia</span>' +
+      meses.map(function (m) {
+        return '<button class="fx-grade-mes" data-fxmes="' + m.i + '">' + m.rot + '</button>';
+      }).join('') + '</div>';
+
+    for (let d = 1; d <= 31; d++) {
+      h += '<div class="fx-grade-linha"><span class="fx-grade-dia">' + d + '</span>';
+      h += meses.map(function (m) {
+        if (d > m.dias) return '<span class="fx-grade-cel fora"></span>';
+        const iso = m.ano + '-' + String(m.mes).padStart(2, '0') + '-' + String(d).padStart(2, '0');
+        const dom = new Date(m.ano, m.mes - 1, d).getDay() === 0;
+        // antes da âncora não há saldo a mostrar — ver fxAntesDaAncora
+        if (fxAntesDaAncora(iso)) {
+          return '<span class="fx-grade-cel fora' + (dom ? ' dom' : '') + '"></span>';
+        }
+        const saldo = fxSaldoEm(iso);
+        const faixa = fxFaixaDe(saldo);
+        return '<span class="fx-grade-cel' + (iso === hojeISO ? ' hoje' : '') +
+          (dom ? ' dom' : '') + '" title="' + faixa.rot + '"' +
+          ' style="background:' + faixa.bg + ';color:' + faixa.fg + '">' +
+          num(saldo) + '</span>';
+      }).join('');
+      h += '</div>';
+    }
+    h += '</div>';
+    $('fx-meses').innerHTML = h;
+  }
+
+  /**
+   * Antes da âncora o razão não sabe nada.
+   *
+   * O cálculo até devolve um número lá atrás — ele desfaz os movimentos
+   * para trás —, mas esse número é ficção: o saldo inicial é a primeira
+   * coisa que o razão sabe, e antes dela não há registro nenhum. Mostrar
+   * 80,55 em todo agosto afirmava um saldo que ninguém informou.
+   */
+  function fxAntesDaAncora(iso) { return iso < fxAncoraEfetiva(); }
+
+  function fxCelula(iso, aberto) {
+    if (fxAntesDaAncora(iso)) {
+      return '<button class="fx-cel antes" data-dia="' + iso + '"' +
+        ' aria-expanded="' + !!aberto + '" title="antes do saldo inicial">—</button>';
+    }
+    const saldo = fxSaldoEm(iso);
+    const faixa = fxFaixaDe(saldo);
+    const quantos = fluxDoDia(iso).length;
+    return '<button class="fx-cel' + (aberto ? ' on' : '') + '" data-dia="' + iso + '"' +
+      ' aria-expanded="' + !!aberto + '" title="' + faixa.rot + '"' +
+      ' style="background:' + faixa.bg + ';color:' + faixa.fg + '">' +
+      '<span class="fx-cel-v"><small>R$</small>' + num(saldo) + '</span>' +
+      (quantos ? '<span class="fx-cel-n">' + quantos + '</span>' : '') +
+    '</button>';
+  }
+
+  /** O painel que abre sob a linha, com os movimentos daquela data. */
+  function fxPainel(iso) {
+    const doDia = fluxDoDia(iso);
+    const p = iso.split('-');
+    return '<div class="fx-dia-itens">' +
+      '<p class="fx-painel-tit">' + p[2] + '/' + MS[Number(p[1]) - 1].toLowerCase() + '/' + p[0].slice(2) + '</p>' +
+      fxItens(doDia) +
+    '</div>';
+  }
+
+  /**
+   * Os movimentos do dia, agrupados por tipo.
+   *
+   * Numa lista corrida, oito linhas com o mesmo ícone repetindo "Saída"
+   * viram uma parede: o subtítulo de cada uma dizia o tipo, mas só se
+   * lido um por um. Com o tipo virando título de grupo, o subtítulo pode
+   * dizer outra coisa e o total do grupo aparece — que é o número que se
+   * procura ao abrir um dia.
+   *
+   * A ordem é a de FLUX_KINDS, não a de lançamento: entrada primeiro,
+   * porque é ela que explica de onde veio o saldo do dia.
+   */
+  function fxItens(lista) {
+    if (!lista.length) {
+      return '<p class="fx-vazio">Nada neste dia. Toque no <b>+</b> para lançar.</p>';
+    }
+    /* Um grupo só não vira grupo: cabeçalho com o mesmo nome do único
+       item abaixo seria ruído. */
+    const tipos = Store.FLUX_KINDS.filter(function (k) {
+      return lista.some(function (f) { return f.kind === k; });
+    });
+    if (tipos.length < 2) return fxLinhas(lista, false);
+
+    return tipos.map(function (k) {
+      const t = FX_TIPOS[k];
+      /* Do maior para o menor dentro do grupo: é o gasto grande que muda
+         a decisão, e ele tem de estar na primeira linha, não perdido no
+         meio de sete pequenos. */
+      const doTipo = lista.filter(function (f) { return f.kind === k; })
+        .sort(function (a, b) { return b.amount - a.amount; });
+      const total = doTipo.reduce(function (a, f) { return a + f.amount; }, 0);
+      return '<div class="fx-grupo">' +
+        '<div class="fx-grupo-cab">' +
+          '<span class="fx-grupo-ico" style="background:' + t.bg + ';color:' + t.fg + '">' +
+            ico(t.ico, 'ei-ico') + '</span>' +
+          '<span class="fx-grupo-nome">' + t.rot + '</span>' +
+          (doTipo.length > 1
+            ? '<span class="fx-grupo-n">' + doTipo.length + '</span>' : '') +
+          '<span class="fx-grupo-total" style="color:' + t.fg + '">' +
+            (k === 'entrada' ? '+ ' : '− ') + '<small>R$</small>' + num(total) + '</span>' +
+        '</div>' +
+        '<div class="fx-grupo-itens">' + fxLinhas(doTipo, true) + '</div>' +
+      '</div>';
+    }).join('');
+  }
+
+  function fxLinhas(lista, agrupado) {
+    if (!lista.length) {
+      return '<p class="fx-vazio">Nada neste dia. Toque no <b>+</b> para lançar.</p>';
+    }
+    return lista.map(function (f) {
+      const t = FX_TIPOS[f.kind];
+      /* Derivada de contas: abre o módulo de contas, não o formulário do
+         razão — editar aqui criaria uma segunda verdade para a mesma conta. */
+      const dest = f.deContas ? ' data-ctgo="1"' : ' data-fx="' + f.id + '"';
+      return '<div class="fx-item' + (f.deContas ? ' de-contas' : '') + '">' +
+        '<button class="fx-item-abrir"' + dest + '>' +
+          '<span class="fx-item-ico" style="background:' + t.bg + ';color:' + t.fg + '">' +
+            ico(t.ico, 'ei-ico') + '</span>' +
+          '<span class="fx-item-corpo">' +
+            '<span class="fx-item-nome">' + esc(f.description) + '</span>' +
+            /* Dentro do grupo o tipo já é o título: repeti-lo em cada linha
+               gastaria a única frase que ela tem para dizer de onde vem ou
+               com que frequência volta. */
+            '<span class="fx-item-meta">' +
+              [agrupado ? '' : t.rot,
+               f.deContas ? 'de contas' : '',
+               f.repeat_freq ? FX_FREQ_ROT[f.repeat_freq] : '',
+              ].filter(Boolean).join(' · ') + '</span>' +
+          '</span>' +
+          '<span class="fx-item-val" style="color:' + t.fg + '">' +
+            (f.kind === 'entrada' ? '+ ' : '− ') + 'R$ ' + num(f.amount) + '</span>' +
+        '</button>' +
+        /* Sem lixeira na linha. Ela apagava a ocorrencia daquele dia com
+           UM toque, sem perguntar nada, a um dedo de distancia do botao
+           que abre o lançamento — e era a unica coisa a mais na linha,
+           num painel que ja e uma lista de leitura. Excluir mora dentro
+           do lançamento aberto, onde a folha de alcance pergunta o que
+           fazer com a repetição; "Somente este" faz o mesmo que ela. */
+      '</div>';
+    }).join('');
+  }
+
+  function renderFluxMenu() {
+    fxNotaSugestao();
+    const ativo = document.activeElement;
+    if (ativo !== $('fx-saldo')) $('fx-saldo').value = num(fluxSaldo);
+    if (ativo !== $('fx-ancora')) $('fx-ancora').value = fxAncoraEfetiva();
+    if (ativo !== $('fx-diario')) $('fx-diario').value = num(fluxDiario);
+
+    const caixa = $('fx-limites');
+    // redesenhar enquanto o dedo digita apagaria o que está sendo escrito
+    if (ativo && caixa.contains(ativo)) return;
+
+    /* Cada faixa mostra a cor que o dia vai ganhar — um número sozinho
+       não diz nada sobre o que se está regulando. A última aparece sem
+       campo: ela não tem teto, começa onde a de cima termina. */
+    /* Os limiares aceitam negativo — a pior faixa começa abaixo de zero —,
+       e a máscara comum recusa o sinal. Então eles ficam fora de
+       CAMPOS_DINHEIRO e o campo guarda o texto como veio. */
+    caixa.innerHTML = FX_FAIXAS.map(function (f, i) {
+      const amostra = '<span class="fx-amostra" style="background:' + f.bg +
+        ';color:' + f.fg + '">R$</span>';
+      if (i >= fluxLimites.length) {
+        return '<div class="fx-limite fx-limite-fim">' + amostra +
+          '<span class="fx-limite-rot">' + f.rot + '</span>' +
+          '<span class="fx-limite-acima">acima disso</span></div>';
+      }
+      return '<label class="fx-limite">' + amostra +
+        '<span class="fx-limite-rot">' + f.rot + ' até</span>' +
+        '<input type="text" class="fi" inputmode="text" data-lim="' + i +
+          '" value="' + num(fluxLimites[i]) + '">' +
+      '</label>';
+    }).join('');
+  }
+
+
+  /**
+   * A renda mensal de quem está usando, para as faixas do FLUX.
+   *
+   * Duas fontes, nesta ordem:
+   *
+   *   1. as contas do tipo `renda` — é o número que a pessoa declarou,
+   *      e ele já sabe converter semanal e quinzenal em mês;
+   *   2. as entradas do próprio FLUX no mês, quando não há conta
+   *      cadastrada — pior, porque um mês atípico distorce, mas melhor
+   *      que não sugerir nada.
+   */
+  function fxRendaMensal() {
+    const declarada = contas
+      .filter(function (c) { return c.kind === 'renda'; })
+      .reduce(function (a, c) { return a + rendaMensal(c); }, 0);
+    if (declarada > 0) return declarada;
+
+    const base = fxBase();
+    const ano = base.getFullYear(), mes = base.getMonth() + 1;
+    const dias = new Date(ano, mes, 0).getDate();
+    let entradas = 0;
+    for (let d = 1; d <= dias; d++) {
+      const iso = ano + '-' + String(mes).padStart(2, '0') + '-' + String(d).padStart(2, '0');
+      fluxDoDia(iso).forEach(function (f) {
+        if (f.kind === 'entrada') entradas += f.amount;
+      });
+    }
+    return entradas;
+  }
+
+  /** Diz de onde veio a renda — a sugestão não pode ser um número mágico. */
+  function fxNotaSugestao() {
+    const nota = $('fx-sugerir-nota');
+    if (!nota) return;
+    const r = fxRendaMensal();
+    if (!r) {
+      nota.textContent = 'Sem renda cadastrada em contas nem entradas neste mês, ' +
+        'não dá para sugerir.';
+      return;
+    }
+    const declarada = contas.some(function (c) { return c.kind === 'renda'; });
+    nota.textContent = 'Usa R$ ' + num(r) + (declarada
+      ? ' das suas contas de renda.'
+      : ' das entradas deste mês — cadastre a renda em contas para ficar mais firme.');
+  }
+  /* ── o cartão do hub ─────────────────────────────────── */
+  function renderHubFlux() {
+    if (!$('hub-flux-val')) return;
+    const v = fxSaldoEm(Store.hoje());
+    $('hub-flux-val').textContent = num(v);
+    $('hub-flux-note').textContent = !fluxo.length
+      ? 'nenhum movimento lançado'
+      : 'hoje · ' + fxFaixaDe(v).rot;
+  }
+
+  /* ── incluir e remover ───────────────────────────────── */
+  function openFlux(id, diaSugerido, diaTocado) {
+    fxDiaEditado = diaTocado || null;
+    editFluxId = id || null;
+    const f = id ? fluxo.find(function (x) { return x.id === id; }) : null;
+
+    $('fx-ftitle').textContent = f ? 'Editar movimento' : 'Novo movimento';
+    $('fx-del').hidden = !f;
+    $('fx-desc').value = f ? f.description : '';
+    $('fx-valor').value = f ? num(f.amount) : '';
+    $('fx-data').value = f ? f.on_date : (diaSugerido || Store.hoje());
+    $('fx-freq').value = f && f.repeat_freq ? f.repeat_freq : '';
+    $('fx-vezes').value = f && f.repeat_times ? String(f.repeat_times) : '';
+    $('fx-regra').checked = !!(f && f.repeat_rule === 'quinto_util');
+    $('fx-card').value = f && f.card_id ? f.card_id : '';
+
+    /* Editar é sempre detalhado: o modo rápido não edita nada, ele
+       cria um ajuste. O modo rápido também não faz sentido num dia
+       que não é hoje, porque a conta é contra o saldo de hoje. */
+    $('fx-modos').hidden = !!f || ($('fx-data').value !== Store.hoje());
+    $('fx-banco').value = '';
+    setFxModo($('fx-modos').hidden ? 'detalhado' : 'rapido');
+    $('fx-fb').textContent = '';
+
+    fxTipoSel = f ? f.kind : 'saida';
+    renderFxTipos();
+    renderFxCard();
+    onFxFreq();
+    openSheet($('sheet-flux'));
+    setTimeout(function () { $('fx-desc').focus(); }, 90);
+  }
+
+  function renderFxTipos() {
+    $('fx-tipos').innerHTML = Store.FLUX_KINDS.map(function (k) {
+      const t = FX_TIPOS[k];
+      const on = k === fxTipoSel;
+      return '<button type="button" class="fx-tipo' + (on ? ' on' : '') + '" data-tipo="' + k + '"' +
+        ' role="radio" aria-checked="' + on + '"' +
+        (on ? ' style="background:' + t.bg + ';color:' + t.fg + '"' : '') + '>' +
+        ico(t.ico, 'ei-ico') + t.rot +
+      '</button>';
+    }).join('');
+  }
+
+  /* A contagem e o 5º útil só existem com repetição; o 5º útil, só na
+     mensal — em semanal ou diária ele não teria o que significar. */
+  function onFxFreq() {
+    const freq = $('fx-freq').value;
+    $('fx-ff-vezes').hidden = !freq;
+    $('fx-ff-regra').hidden = freq !== 'mensal';
+  }
+
+  function saveFlux() {
+    if (fxModo === 'rapido' && !$('fx-modos').hidden) { saveFluxRapido(); return; }
+    const desc = $('fx-desc').value.trim();
+    const valor = parseBRL($('fx-valor').value);
+    if (!desc) { $('fx-fb').textContent = 'Falta dizer o que é.'; return; }
+    if (!(valor > 0)) { $('fx-fb').textContent = 'O valor precisa ser maior que zero.'; return; }
+
+    const freq = $('fx-freq').value || null;
+    const vezes = freq ? parseInt($('fx-vezes').value, 10) : null;
+    const anterior = editFluxId
+      ? fluxo.find(function (x) { return x.id === editFluxId; }) : null;
+
+    const novo = Store.normalizeFlux({
+      id: editFluxId || undefined,
+      kind: fxTipoSel,
+      description: desc,
+      amount: valor,
+      on_date: $('fx-data').value || Store.hoje(),
+      repeat_freq: freq,
+      repeat_times: isFinite(vezes) ? vezes : null,
+      repeat_rule: (freq === 'mensal' && $('fx-regra').checked) ? 'quinto_util' : 'data',
+      card_id: fxTipoSel === 'cartao' ? ($('fx-card').value || null) : null,
+      /* As ocorrências puladas são do usuário, não do formulário: uma
+         edição de valor não pode ressuscitar o dia que ele apagou. */
+      skipped: anterior ? anterior.skipped : [],
+    });
+
+    /* Editar uma repetição a partir de um dia abre as três saídas: mudar
+       só aquele dia, dali em diante, ou a série toda. Sem isso, corrigir
+       o valor de um mês reescrevia todos os outros em silêncio. */
+    if (anterior && anterior.repeat_freq && fxDiaEditado) {
+      const iso = fxDiaEditado;
+      /* NÃO fecha a folha antes: closeSheets faz history.back(), e o
+         popstate que volta fecharia a folha de alcance que acabou de
+         abrir. A de alcance vai por cima, como nos favores. */
+      fxComAlcance(anterior, iso, 'Editar movimento',
+        '“' + anterior.description + '” se repete ' +
+          FX_FREQ_ROT[anterior.repeat_freq] + '.',
+        false, novo, 'Movimento alterado');
+      return;
+    }
+
+    if (editFluxId) {
+      fluxo = fluxo.map(function (x) { return x.id === editFluxId ? novo : x; });
+    } else {
+      fluxo = fluxo.concat([novo]);
+    }
+    closeSheets();
+    render();
+    triggerSave();
+    toast(editFluxId ? 'Movimento salvo' : 'Movimento lançado');
+  }
+
+  function removerFlux() {
+    if (!editFluxId) return;
+    const f = fluxo.find(function (x) { return x.id === editFluxId; });
+    if (!f) return;
+
+    // solto some direto; o que repete pergunta, porque são três saídas
+    if (f.repeat_freq && fxDiaEditado) {
+      const iso = fxDiaEditado;
+      /* NÃO fecha a folha antes: closeSheets faz history.back(), e o
+         popstate que volta fecharia a folha de alcance que acabou de
+         abrir. A de alcance vai por cima, como nos favores. */
+      fxComAlcance(f, iso, 'Excluir movimento',
+        '“' + f.description + '” se repete ' + FX_FREQ_ROT[f.repeat_freq] + '.',
+        true, null, 'Movimento excluído');
+      return;
+    }
+
+    const backup = fluxo.slice();
+    fluxo = fluxo.filter(function (x) { return x.id !== editFluxId; });
+    closeSheets();
+    render();
+    triggerSave();
+    toast('Movimento excluído', 'Desfazer', function () {
+      fluxo = backup; render(); triggerSave();
+    });
+  }
+
+
+
+
+  /* ── dias úteis (ajustes gerais, não do FLUX) ─────────────
+     Vive aqui e não no FLUX porque é um fato sobre o emprego da
+     pessoa: o 5º dia útil das contas e o do razão são o mesmo dia. */
+
+  let diasUteis = Store.DIAS_UTEIS_PADRAO.slice();
+  let diasPagamento = Store.DIAS_UTEIS_PADRAO.slice();
+
+  const DU_NOMES = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sáb'];
+
+  function renderDiasUteis() {
+    const caixa = $('du-dias');
+    if (!caixa) return;
+
+    /* Duas listas, duas perguntas: quais dias CONTAM para chegar ao 5º
+       útil, e em quais dias o dinheiro CAI. Quem trabalha de segunda a
+       sábado conta o sábado e ainda assim recebe na sexta. */
+    const botoes = (lista) => DU_NOMES.map(function (n, i) {
+      const on = lista.indexOf(i) >= 0;
+      return '<button type="button" class="du-dia' + (on ? ' on' : '') + '"' +
+        ' data-du="' + i + '" aria-pressed="' + on + '">' + n + '</button>';
+    }).join('');
+
+    caixa.innerHTML = botoes(diasUteis);
+    if ($('du-pag')) $('du-pag').innerHTML = botoes(diasPagamento);
+
+    /* A data concreta é o que prova a configuração: as duas listas são
+       abstratas, e é só vendo o dia que se percebe se ficou certo. */
+    const h = Store.hoje().split('-').map(Number);
+    const bruto = Store.quintoDiaUtil(h[0], h[1], diasUteis);
+    const iso = h[0] + '-' + String(h[1]).padStart(2, '0') + '-' +
+      String(bruto).padStart(2, '0');
+    // a data em que o dinheiro realmente cai, já andada se preciso
+    const pago = Store.ajustarParaDiaUtil(iso, diasPagamento);
+    const curto = (s) => s.slice(8) + '/' + MS[Number(s.slice(5, 7)) - 1].toLowerCase();
+    $('du-fb').textContent = pago === iso
+      ? 'O 5º dia útil deste mês cai em ' + curto(iso) + '.'
+      : 'O 5º dia útil cai em ' + curto(iso) + ', mas você recebe em ' + curto(pago) + '.';
+  }
+
+  function ligarDiasUteis() {
+    if (!$('du-dias')) return;
+    $('du-dias').addEventListener('click', function (ev) {
+      const b = ev.target.closest('[data-du]');
+      if (!b) return;
+      const i = parseInt(b.dataset.du, 10);
+      const pos = diasUteis.indexOf(i);
+      const novo = diasUteis.slice();
+      if (pos >= 0) novo.splice(pos, 1); else novo.push(i);
+      /* Nenhum dia útil trava a contagem do 5º: o app recusa em vez de
+         aceitar e depois se perder num laço. */
+      if (!novo.length) {
+        toast('Pelo menos um dia precisa ser útil');
+        return;
+      }
+      diasUteis = Store.setDiasUteis(novo);
+      render();
+      triggerSave();
+    });
+
+    /* A lista de pagamento segue a mesma regra de nunca ficar vazia: sem
+       nenhum dia, a data giraria sem achar onde parar. */
+    $('du-pag').addEventListener('click', function (ev) {
+      const b = ev.target.closest('[data-du]');
+      if (!b) return;
+      const d = parseInt(b.dataset.du, 10);
+      const pos = diasPagamento.indexOf(d);
+      const novo = diasPagamento.slice();
+      if (pos >= 0) novo.splice(pos, 1); else novo.push(d);
+      if (!novo.length) {
+        toast('Você precisa receber em algum dia');
+        return;
+      }
+      diasPagamento = Store.setDiasPagamento(novo);
+      render();
+      triggerSave();
+    });
+  }
+  /* ── FLUX: cartões ───────────────────────────────────── */
+
+  let fluxCartoes  = [];
+  let editCardId   = null;
+
+  const fxCartao = (id) => fluxCartoes.find(function (c) { return c.id === id; }) || null;
+
+  /** "05/out" — a data curta que cabe ao lado de um rótulo. */
+  function fxDataCurta(iso) {
+    const p = iso.split('-');
+    return p[2] + '/' + MS[Number(p[1]) - 1].toLowerCase();
+  }
+
+  function renderFluxCartoes() {
+    const caixa = $('fx-cartoes');
+    if (!caixa) return;
+    if (!fluxCartoes.length) {
+      caixa.innerHTML = '<p class="fx-vazio">Nenhum cartão ainda. Sem cadastrar um, ' +
+        'o gasto de cartão sai no dia que você escolher, sem seguir fatura.</p>';
+      return;
+    }
+    const hojeISO = Store.hoje();
+    caixa.innerHTML = fluxCartoes.map(function (c) {
+      const f = Store.fluxFatura(c, hojeISO);
+      return '<button class="fx-cartao" data-card="' + c.id + '">' +
+        '<span class="fx-cartao-ico">' + ico('credit-card', 'ei-ico') + '</span>' +
+        '<span class="fx-cartao-corpo">' +
+          '<span class="fx-cartao-nome">' + esc(c.name) + '</span>' +
+          '<span class="fx-cartao-meta">fecha dia ' + c.closing_day +
+            ' · vence dia ' + c.due_day + '</span>' +
+        '</span>' +
+        '<span class="fx-cartao-prox">' +
+          '<small>próx. vence</small><b>' + fxDataCurta(f.vencimento) + '</b>' +
+        '</span>' +
+      '</button>';
+    }).join('');
+  }
+
+  function openFluxCard(id) {
+    editCardId = id || null;
+    const c = id ? fxCartao(id) : null;
+    $('fx-card-tit').textContent = c ? 'Editar cartão' : 'Novo cartão';
+    $('fx-card-del').hidden = !c;
+    $('fx-card-nome').value = c ? c.name : '';
+    $('fx-card-fecha').value = c ? String(c.closing_day) : '';
+    $('fx-card-vence').value = c ? String(c.due_day) : '';
+    $('fx-card-fb').textContent = '';
+    previaFatura();
+    openSheet($('sheet-fx-card'));
+    setTimeout(function () { $('fx-card-nome').focus(); }, 90);
+  }
+
+  /* Mostrar a próxima fatura enquanto se digita é o que torna a regra
+     visível: dois números soltos não dizem quando o dinheiro sai. */
+  function previaFatura() {
+    const fecha = parseInt($('fx-card-fecha').value, 10);
+    const vence = parseInt($('fx-card-vence').value, 10);
+    if (!(fecha >= 1 && fecha <= 31) || !(vence >= 1 && vence <= 31)) {
+      $('fx-card-previa').textContent = 'Preencha os dois dias para ver quando a fatura vence.';
+      return;
+    }
+    const f = Store.fluxFatura({ name: 'x', closing_day: fecha, due_day: vence }, Store.hoje());
+    $('fx-card-previa').textContent =
+      'Comprando hoje, entra na fatura que fecha em ' + fxDataCurta(f.fechamento) +
+      ' e vence em ' + fxDataCurta(f.vencimento) + '.';
+  }
+
+  function saveFluxCard() {
+    const nome = $('fx-card-nome').value.trim();
+    const fecha = parseInt($('fx-card-fecha').value, 10);
+    const vence = parseInt($('fx-card-vence').value, 10);
+    if (!nome) { $('fx-card-fb').textContent = 'Falta o nome do cartão.'; return; }
+    if (!(fecha >= 1 && fecha <= 31)) { $('fx-card-fb').textContent = 'O dia de fechamento vai de 1 a 31.'; return; }
+    if (!(vence >= 1 && vence <= 31)) { $('fx-card-fb').textContent = 'O dia de vencimento vai de 1 a 31.'; return; }
+
+    const novo = Store.normalizeFluxCard({
+      id: editCardId || undefined, name: nome, closing_day: fecha, due_day: vence,
+    });
+    if (editCardId) {
+      fluxCartoes = fluxCartoes.map(function (c) { return c.id === editCardId ? novo : c; });
+    } else {
+      fluxCartoes = fluxCartoes.concat([novo]);
+    }
+    closeSheets();
+    render();
+    triggerSave();
+    toast(editCardId ? 'Cartão salvo' : 'Cartão criado');
+  }
+
+  /**
+   * Apagar o cartão NÃO apaga os gastos que passaram por ele: eles
+   * continuam no razão, só deixam de estar amarrados a uma fatura. É a
+   * mesma regra do ON DELETE SET NULL na tabela — e é o único desfecho
+   * honesto, porque o dinheiro saiu mesmo.
+   */
+  function removerFluxCard() {
+    if (!editCardId) return;
+    const id = editCardId;
+    const backupCards = fluxCartoes.slice();
+    const backupFluxo = fluxo.slice();
+    const presos = fluxo.filter(function (f) { return f.card_id === id; }).length;
+
+    fluxCartoes = fluxCartoes.filter(function (c) { return c.id !== id; });
+    fluxo = fluxo.map(function (f) {
+      return f.card_id === id
+        ? Store.normalizeFlux(Object.assign({}, f, { card_id: null })) : f;
+    });
+    closeSheets();
+    render();
+    triggerSave();
+    toast(presos
+      ? 'Cartão excluído — ' + presos + (presos === 1 ? ' gasto ficou' : ' gastos ficaram') + ' sem cartão'
+      : 'Cartão excluído', 'Desfazer', function () {
+      fluxCartoes = backupCards; fluxo = backupFluxo; render(); triggerSave();
+    });
+  }
+
+  /* ── o cartão dentro do movimento ────────────────────── */
+
+  /**
+   * O seletor de cartão só aparece no tipo `cartao`, e escolher um
+   * joga a data para o vencimento da fatura — que é o dia em que o
+   * dinheiro sai de verdade. A data continua editável: fatura
+   * parcelada ou acerto fora do combinado existem.
+   */
+  function renderFxCard() {
+    const mostra = fxTipoSel === 'cartao';
+    $('fx-ff-card').hidden = !mostra;
+    if (!mostra) return;
+
+    if (!fluxCartoes.length) {
+      $('fx-card').innerHTML = '<option value="">nenhum cartão cadastrado</option>';
+      $('fx-card').disabled = true;
+      $('fx-card-hint').textContent = 'Cadastre um cartão em ajustes para o gasto seguir a fatura.';
+      return;
+    }
+    $('fx-card').disabled = false;
+    const atual = $('fx-card').value;
+    $('fx-card').innerHTML = '<option value="">sem cartão — sai no dia escolhido</option>' +
+      fluxCartoes.map(function (c) {
+        return '<option value="' + c.id + '">' + esc(c.name) + '</option>';
+      }).join('');
+    if (atual) $('fx-card').value = atual;
+    fxCardHint();
+  }
+
+  function fxCardHint() {
+    const c = fxCartao($('fx-card').value);
+    if (!c) { $('fx-card-hint').textContent = ''; return; }
+    const f = Store.fluxFatura(c, Store.hoje());
+    /* A data ao lado é a do fechamento; o vencimento aparece aqui porque
+       é quando o dinheiro sai da conta — e a pessoa precisa dos dois. */
+    $('fx-card-hint').textContent = 'fatura que fecha em ' +
+      fxDataCurta(f.fechamento) + ' — é esta a data ao lado. Sai da conta em ' +
+      fxDataCurta(f.vencimento) + '.';
+  }
+
+  /**
+   * O resumo do mês na aba tabelas — o "Totais" do Aurvm.
+   *
+   * O mês é o MESMO que está aberto na tela do FLUX (`fxMes`): mudar o
+   * mês lá muda os números aqui. Dois seletores de mês para a mesma
+   * coisa seria uma forma garantida de olhar um e achar que é o outro.
+   *
+   * Cada conta traz a fórmula em pastilhas de cor e uma legenda que diz
+   * o que o número significa. Um valor sozinho não se interpreta: 38%
+   * guardado é bom ou ruim? R$ 2.700 de custo cabe na renda?
+   */
+  function renderFluxResumo() {
+    const caixa = $('fx-resumo');
+    if (!caixa) return;
+    caixa.hidden = screen !== 'flux';
+    if (screen !== 'flux') return;
+
+    const base = fxBase();
+    const ano = base.getFullYear(), mes = base.getMonth() + 1;
+    const dias = new Date(ano, mes, 0).getDate();
+
+    const soma = {};
+    Store.FLUX_KINDS.forEach(function (k) { soma[k] = 0; });
+    let quantos = 0;
+    for (let d = 1; d <= dias; d++) {
+      const iso = ano + '-' + String(mes).padStart(2, '0') + '-' + String(d).padStart(2, '0');
+      fluxDoDia(iso).forEach(function (f) {
+        soma[f.kind] += f.amount;
+        quantos++;
+      });
+    }
+
+    const resultado = soma.entrada - soma.saida - soma.diario - soma.economia - soma.cartao;
+    const custo = soma.saida + soma.diario + soma.cartao;
+    const taxa = soma.entrada > 0 ? (soma.economia / soma.entrada) * 100 : 0;
+
+    const hojeP = Store.hoje().split('-').map(Number);
+    const ehAtual = hojeP[0] === ano && hojeP[1] === mes;
+    const passou = (ano < hojeP[0]) || (ano === hojeP[0] && mes < hojeP[1]);
+    const corridos = Math.max(1, ehAtual ? hojeP[2] : dias);
+    const restantes = ehAtual ? Math.max(0, dias - hojeP[2]) : (passou ? 0 : dias);
+    const media = soma.diario / corridos;
+    const previsto = fluxDiario * restantes;
+
+    /* O ícone de cada tipo, do tamanho de uma letra: é a fórmula dita em
+       símbolo, e ele é o MESMO da lista abaixo — duas bolinhas de cor
+       parecida obrigavam a conferir a legenda para saber qual era qual. */
+    const bolinha = (k) => '<i class="fx-res-dot" style="color:' + FX_TIPOS[k].fg +
+      ';background:' + FX_TIPOS[k].bg + '">' + ico(FX_TIPOS[k].ico, 'ei-ico') + '</i>';
+    /* O sufixo entra DENTRO do span da fórmula: como irmão dela, ele
+       virava outra linha do flex vertical e o "÷ 31 dias" caía embaixo
+       do ícone em vez de ficar ao lado. */
+    const formula = (ks, ops, sufixo) => '<span class="fx-res-form">' +
+      ks.map(function (k, i) {
+        return (i ? '<b>' + ops[i - 1] + '</b>' : '') + bolinha(k);
+      }).join('') + (sufixo || '') + '</span>';
+
+    const conta = (nome, valor, form, nota, extra) =>
+      '<div class="fx-res-conta">' +
+        '<span class="fx-res-conta-corpo">' +
+          '<span class="fx-res-conta-nome">' + nome + '</span>' +
+          form +
+        '</span>' +
+        '<span class="fx-res-conta-lado">' +
+          '<b>' + valor + '</b>' +
+          (nota ? '<small>' + nota + '</small>' : '') +
+        '</span>' +
+      '</div>' + (extra || '');
+
+    /* 20% é a régua de bolso do "guarde um quinto". Não é lei, e por isso
+       a legenda aponta a régua em vez de dar nota.
+
+       Dizia "acima do ideal" para quem guarda bem — e duas linhas abaixo
+       "acima da renda" quer dizer o contrário. A mesma palavra elogiando
+       e advertindo no mesmo cartão faz o bom resultado parecer aviso. */
+    const notaTaxa = soma.entrada <= 0 ? 'sem entradas no mês'
+      : (taxa >= 20 ? 'guardando bem' : (taxa > 0 ? 'abaixo dos 20%' : 'nada guardado'));
+    const notaCusto = soma.entrada <= 0 ? 'sem entradas no mês'
+      : (custo <= soma.entrada ? 'dentro da renda' : 'acima da renda');
+
+    const faixa = fxFaixaDe(resultado);
+    caixa.innerHTML =
+      '<div class="fx-res-hero">' +
+        '<div class="fx-res-topo">' +
+          '<span class="fx-res-nav">' +
+            '<button class="fx-res-seta" data-fxres="-1" aria-label="Mês anterior">' +
+              ico('nav-arrow-left', 'ei-ico') + '</button>' +
+            '<span class="fx-res-mes">' + MS_FULL[mes - 1] + ' ' + ano + '</span>' +
+            '<button class="fx-res-seta" data-fxres="1" aria-label="Próximo mês">' +
+              ico('nav-arrow-right', 'ei-ico') + '</button>' +
+          '</span>' +
+          '<span class="fx-res-n">' + quantos +
+            (quantos === 1 ? ' movimento' : ' movimentos') + '</span>' +
+        '</div>' +
+        '<span class="fx-res-amt">' +
+          '<span class="fx-res-pfx">R$</span>' +
+          '<span class="fx-res-val">' + num(resultado) + '</span>' +
+        '</span>' +
+        '<span class="fx-res-sub">' +
+          (resultado >= 0
+            ? 'sobra do mês, depois de tudo que está marcado'
+            : 'o mês fecha no vermelho por este valor') +
+        '</span>' +
+      '</div>' +
+
+      '<div class="fx-res-bloco">' +
+        '<span class="fx-res-tit">Cálculos do mês</span>' +
+        conta('Resultado', 'R$ ' + num(resultado),
+          formula(['entrada', 'saida', 'diario', 'economia', 'cartao'], ['−', '−', '−', '−']),
+          resultado >= 0 ? 'sobrou dinheiro' : 'faltou dinheiro') +
+        conta('Guardado', taxa.toFixed(1).replace('.', ',') + '%',
+          formula(['economia', 'entrada'], ['÷']), notaTaxa,
+          // a barra mede contra os 20%, não contra 100: uma barra que
+          // nunca passa de um quinto pareceria sempre vazia
+          '<span class="fx-res-barra fx-res-meta"><i style="width:' +
+            Math.min(100, (taxa / 20) * 100).toFixed(1) +
+            '%;background:' + FX_TIPOS.economia.fg + '"></i></span>') +
+        conta('Custo de vida', 'R$ ' + num(custo),
+          formula(['saida', 'diario', 'cartao'], ['+', '+']), notaCusto) +
+        conta('Diário médio', 'R$ ' + num(media),
+          formula(['diario'], [], '<span class="fx-res-div">÷ ' + corridos +
+            (corridos === 1 ? ' dia' : ' dias') + '</span>'),
+          fluxDiario > 0 ? 'planejado R$ ' + num(fluxDiario) : 'sem planejamento') +
+      '</div>' +
+
+      '<div class="fx-res-bloco">' +
+        '<span class="fx-res-tit">Movimentações do mês</span>' +
+        Store.FLUX_KINDS.map(function (k) {
+          const t = FX_TIPOS[k];
+          const v = soma[k];
+          const pct = custo > 0 && k !== 'entrada' ? (v / custo) * 100 : 0;
+          return '<div class="fx-res-linha' + (v ? '' : ' zero') + '">' +
+            '<span class="fx-res-ico" style="background:' + t.bg + ';color:' + t.fg + '">' +
+              ico(t.ico, 'ei-ico') + '</span>' +
+            '<span class="fx-res-nome">' + t.rot + '</span>' +
+            // a barra mede a fatia do custo; entrada não tem barra porque
+            // não é custo, e uma barra ali sugeriria comparação errada
+            (k === 'entrada' ? '<span></span>' :
+              '<span class="fx-res-barra"><i style="width:' + pct.toFixed(1) +
+                '%;background:' + t.fg + '"></i></span>') +
+            '<span class="fx-res-v" style="color:' + t.fg + '">R$ ' + num(v) + '</span>' +
+          '</div>';
+        }).join('') +
+      '</div>' +
+
+      /* O que ainda vai ser descontado pelo planejamento diário. Já está
+         dentro do saldo projetado de cada dia; aqui ele aparece com nome
+         para não ser um sumiço inexplicado no fim do mês. */
+      '<div class="fx-res-bloco">' +
+        '<span class="fx-res-tit">Previsão de diários</span>' +
+        '<div class="fx-res-linha' + (previsto ? '' : ' zero') + '">' +
+          '<span class="fx-res-ico" style="background:' + FX_TIPOS.diario.bg +
+            ';color:' + FX_TIPOS.diario.fg + '">' + ico(FX_TIPOS.diario.ico, 'ei-ico') + '</span>' +
+          '<span class="fx-res-nome">' +
+            (restantes ? restantes + (restantes === 1 ? ' dia à frente' : ' dias à frente')
+                       : 'mês já fechado') + '</span>' +
+          '<span></span>' +
+          '<span class="fx-res-v" style="color:' + FX_TIPOS.diario.fg + '">R$ ' +
+            num(previsto) + '</span>' +
+        '</div>' +
+      '</div>';
+
+    caixa.querySelector('.fx-res-hero').style.background = faixa.bg;
+    caixa.querySelector('.fx-res-hero').style.color = faixa.fg;
+  }
+
+  /* ── modo rápido ─────────────────────────────────────────
+     Detalhado é lançar o que aconteceu. Rápido é o contrário: você
+     olha o saldo do banco e o app descobre o que faltou lançar.
+
+     A conta é a diferença entre o que o razão projeta para hoje e o
+     que o banco mostra de verdade. Essa diferença vira UM movimento,
+     "ajuste rápido", e o razão volta a bater com a realidade sem
+     você precisar lembrar de onde saiu cada real. */
+
+  let fxModo = 'rapido';
+
+  function setFxModo(m) {
+    fxModo = m === 'detalhado' ? 'detalhado' : 'rapido';
+    const rapido = fxModo === 'rapido';
+    $('fx-modo-rapido').classList.toggle('on', rapido);
+    $('fx-modo-detalhado').classList.toggle('on', !rapido);
+    $('fx-modo-rapido').setAttribute('aria-selected', rapido);
+    $('fx-modo-detalhado').setAttribute('aria-selected', !rapido);
+    $('fx-rapido').hidden = !rapido;
+    $('fx-detalhado').hidden = rapido;
+    $('fx-fb').textContent = '';
+    if (rapido) previaAjuste();
+  }
+
+  /** A diferença entre o razão e o banco, e o que ela vira. */
+  function fxDiferenca() {
+    const banco = parseBRL($('fx-banco').value);
+    const previsto = fxSaldoEm(Store.hoje());
+    // centavos inteiros: um resto de ponto flutuante viraria um ajuste
+    // de R$ 0,00 que existe no banco e não muda nada na tela
+    const dif = Math.round((previsto - banco) * 100) / 100;
+    return { banco: banco, previsto: previsto, dif: dif };
+  }
+
+  function previaAjuste() {
+    const caixa = $('fx-ajuste');
+    if (!$('fx-banco').value.trim()) {
+      caixa.className = 'fx-ajuste';
+      caixa.textContent = 'O razão marca R$ ' + num(fxSaldoEm(Store.hoje())) +
+        ' para hoje. Diga o que o banco mostra e eu lanço a diferença.';
+      return;
+    }
+    const d = fxDiferenca();
+    if (!d.dif) {
+      caixa.className = 'fx-ajuste igual';
+      caixa.textContent = 'O razão já bate com o banco. Nada a lançar.';
+      return;
+    }
+    /* Faltou dinheiro: saiu algo que não foi lançado, então o ajuste é
+       um gasto. Sobrou: entrou algo, e aí é uma entrada — 'diario' não
+       serve porque só subtrai, e um valor negativo nele mentiria. */
+    const falta = d.dif > 0;
+    caixa.className = 'fx-ajuste ' + (falta ? 'falta' : 'sobra');
+    caixa.textContent = falta
+      ? 'Faltam R$ ' + num(d.dif) + ' no banco. Vou lançar um gasto diário de ajuste hoje.'
+      : 'Sobram R$ ' + num(-d.dif) + ' no banco. Vou lançar uma entrada de ajuste hoje.';
+  }
+
+  function saveFluxRapido() {
+    if (!$('fx-banco').value.trim()) {
+      $('fx-fb').textContent = 'Diga quanto o banco mostra agora.';
+      return;
+    }
+    const d = fxDiferenca();
+    if (!d.dif) { $('fx-fb').textContent = 'O razão já bate com o banco.'; return; }
+
+    const falta = d.dif > 0;
+    fluxo = fluxo.concat([Store.normalizeFlux({
+      kind: falta ? 'diario' : 'entrada',
+      description: 'Ajuste rápido dos movimentos',
+      amount: Math.abs(d.dif),
+      on_date: Store.hoje(),
+    })]);
+    closeSheets();
+    render();
+    triggerSave();
+    toast('Ajuste de R$ ' + num(Math.abs(d.dif)) + ' lançado');
+  }
+
+  /* ── alcance no razão: este · próximos · todos ────────────
+     Um movimento que repete é UMA linha, não N. Editar ou apagar "este
+     dia" não pode quebrar os outros, e é isso que as três saídas
+     resolvem — a mesma folha que os favores já usam.
+
+     Como cada alcance é feito:
+
+       este      a ocorrência entra em `skipped`; na edição, nasce uma
+                 linha solta naquele dia com os valores novos
+       próximos  a série é cortada em `repeat_times` na ocorrência atual;
+                 na edição, nasce uma repetição nova a partir dali
+       todos     a própria linha é alterada ou removida
+
+     Cortar em vez de apagar preserva o passado: o que já aconteceu
+     continua no razão, e o saldo de antes não muda. */
+
+  /** Qual ocorrência de `f` cai em `iso` — 0 é a primeira. */
+  function fxIndice(f, iso) {
+    return Math.max(0, Store.fluxIndiceOcorrencia(f, iso));
+  }
+
+  function fxRotuloAlcance(f, iso) {
+    return function (a) {
+      if (a === 'este') return 'só o dia ' + fxDataCurta(iso);
+      if (a === 'proximos') return 'de ' + fxDataCurta(iso) + ' em diante';
+      return 'a repetição inteira, inclusive o que já passou';
+    };
+  }
+
+  /** Aplica o alcance, devolvendo a lista nova de movimentos. */
+  function fxAplicarAlcance(lista, f, iso, alcance, novo) {
+    const i = fxIndice(f, iso);
+    const fora = [];
+
+    lista.forEach(function (x) {
+      if (x.id !== f.id) { fora.push(x); return; }
+
+      if (alcance === 'todos') {
+        // a linha some, ou vira a versão nova mantendo a repetição
+        if (novo) fora.push(Store.normalizeFlux(Object.assign({}, novo, {
+          id: f.id, on_date: f.on_date,
+          repeat_freq: f.repeat_freq, repeat_times: f.repeat_times,
+          skipped: f.skipped,
+        })));
+        return;
+      }
+
+      if (alcance === 'este') {
+        fora.push(Store.normalizeFlux(Object.assign({}, x, {
+          skipped: (x.skipped || []).concat([iso]),
+        })));
+        return;
+      }
+
+      /* próximos: a série para na ocorrência anterior. Índice 0 quer
+         dizer que nem a primeira sobra — a linha inteira sai. */
+      if (i === 0) return;
+      fora.push(Store.normalizeFlux(Object.assign({}, x, { repeat_times: i })));
+    });
+
+    if (!novo || alcance === 'todos') return fora;
+
+    /* A parte editada renasce como linha própria: solta quando é só um
+       dia, repetindo quando é daqui em diante. */
+    return fora.concat([Store.normalizeFlux(Object.assign({}, novo, {
+      id: undefined,
+      on_date: iso,
+      repeat_freq: alcance === 'este' ? null : f.repeat_freq,
+      repeat_times: alcance === 'este' ? null
+        : (f.repeat_times === null ? null : Math.max(1, f.repeat_times - fxIndice(f, iso))),
+      skipped: [],
+    }))]);
+  }
+
+  function fxComAlcance(f, iso, titulo, sub, perigo, novo, aviso) {
+    perguntarAlcance(f, {
+      titulo: titulo,
+      sub: sub,
+      perigo: perigo,
+      rotulo: fxRotuloAlcance(f, iso),
+      fn: function (alcance) {
+        /* Escolhido o alcance, as DUAS folhas saem: a do alcance e o
+           formulario que a chamou. Nenhuma delas se fechava sozinha. */
+        closeSheets();
+        const backup = fluxo.slice();
+        fluxo = fxAplicarAlcance(fluxo, f, iso, alcance, novo);
+        render();
+        triggerSave();
+        toast(aviso, 'Desfazer', function () {
+          fluxo = backup; render(); triggerSave();
+        });
+      },
+    });
+  }
+  /* ── ligações da tela ────────────────────────────────── */
+  function ligarFlux() {
+    if (!$('slot-flux')) return;
+
+    $('fx-prev').addEventListener('click', function () { fxMes--; fxDiaAberto = null; renderFlux(); });
+    $('fx-next').addEventListener('click', function () { fxMes++; fxDiaAberto = null; renderFlux(); });
+    $('fx-hoje').addEventListener('click', function () {
+      fxMes = 0; fxDiaAberto = null; fxRolarHoje = true;
+      // se estava nos ajustes, volta para a lista — é lá que hoje existe
+      fxAba = 'saldos';
+      renderFlux();
+    });
+
+    $('fx-tabela').addEventListener('click', function () {
+      renderFluxMeses();
+      openSheet($('sheet-fx-meses'));
+    });
+    $('fx-meses-back').addEventListener('click', function () { closeSheets(); });
+    $('fx-meses').addEventListener('click', function (ev) {
+      const b = ev.target.closest('[data-fxmes]');
+      if (!b) return;
+      // saltar para o mês tocado é o motivo de a lista ser de botões
+      fxMes += parseInt(b.dataset.fxmes, 10);
+      fxDiaAberto = null;
+      closeSheets();
+      renderFlux();
+    });
+
+
+    $('fx-abas').addEventListener('click', function (ev) {
+      const b = ev.target.closest('[data-aba]');
+      if (!b) return;
+      fxAba = b.dataset.aba;
+      renderFlux();
+    });
+
+    $('fx-dias').addEventListener('click', function (ev) {
+      // derivada de contas: o destino é o módulo de contas
+      if (ev.target.closest('[data-ctgo]')) { setScreen('contas'); return; }
+      const item = ev.target.closest('[data-fx]');
+      if (item) {
+        // o dia do painel aberto é o dia que o usuário tocou
+        openFlux(item.dataset.fx, null, fxDiaAberto);
+        return;
+      }
+      const novo = ev.target.closest('[data-novo]');
+      if (novo) { openFlux(null, novo.dataset.novo); return; }
+      const cab = ev.target.closest('[data-dia]');
+      if (!cab) return;
+      fxDiaAberto = fxDiaAberto === cab.dataset.dia ? null : cab.dataset.dia;
+      // fechar não precisa rolar: a linha já está onde o dedo tocou
+      fxRolarPara = !!fxDiaAberto;
+      renderFlux();
+    });
+
+    /* Os escalares gravam ao sair do campo, não a cada tecla: o
+       redesenho no meio da digitação comeria o que está sendo escrito. */
+    $('fx-saldo').addEventListener('change', function () {
+      fluxSaldo = parseBRL(this.value);
+      render(); triggerSave();
+    });
+    $('fx-ancora').addEventListener('change', function () {
+      fluxAncora = this.value || null;
+      render(); triggerSave();
+    });
+    $('fx-diario').addEventListener('change', function () {
+      fluxDiario = Math.max(0, parseBRL(this.value));
+      render(); triggerSave();
+    });
+
+    $('fx-limites').addEventListener('change', function (ev) {
+      const inp = ev.target.closest('[data-lim]');
+      if (!inp) return;
+      const i = parseInt(inp.dataset.lim, 10);
+      const novos = fluxLimites.slice();
+      novos[i] = parseBRL(inp.value);
+      /* Fora de ordem, a faixa de um saldo passaria a depender da
+         ordem de comparação, não do valor. Ordenar é mais gentil que
+         recusar: o usuário vê para onde o número foi. */
+      novos.sort(function (a, b) { return a - b; });
+      const mudouOrdem = novos.some(function (v, k) { return v !== fluxLimites[k]; })
+        && JSON.stringify(novos) !== JSON.stringify(fluxLimites.slice(0, i).concat([novos[i]], fluxLimites.slice(i + 1)));
+      fluxLimites = novos;
+      $('fx-limites-fb').textContent = mudouOrdem ? 'Os valores foram reordenados.' : '';
+      render(); triggerSave();
+    });
+
+    $('fx-tipos').addEventListener('click', function (ev) {
+      const b = ev.target.closest('[data-tipo]');
+      if (!b) return;
+      fxTipoSel = b.dataset.tipo;
+      renderFxTipos();
+      renderFxCard();
+    });
+    $('fx-freq').addEventListener('change', onFxFreq);
+    $('fx-modos').addEventListener('click', function (ev) {
+      const b = ev.target.closest('[data-modo]');
+      if (b) setFxModo(b.dataset.modo);
+    });
+    $('fx-banco').addEventListener('input', previaAjuste);
+
+    $('fx-sugerir').addEventListener('click', function () {
+      const r = fxRendaMensal();
+      if (!r) {
+        toast('Cadastre uma renda em contas, ou lance uma entrada no Flux');
+        return;
+      }
+      fluxLimites = Store.fluxLimitesSugeridos(r);
+      render();
+      triggerSave();
+      toast('Faixas ajustadas para uma renda de R$ ' + num(r));
+    });
+
+    $('fx-novo-cartao').addEventListener('click', function () { openFluxCard(null); });
+    $('fx-cartoes').addEventListener('click', function (ev) {
+      const b = ev.target.closest('[data-card]');
+      if (b) openFluxCard(b.dataset.card);
+    });
+    $('fx-card-save').addEventListener('click', saveFluxCard);
+    $('fx-card-del').addEventListener('click', removerFluxCard);
+    $('fx-card-back').addEventListener('click', function () { closeSheets(); });
+    $('fx-card-cancel').addEventListener('click', function () { closeSheets(); });
+    $('fx-card-fecha').addEventListener('input', previaFatura);
+    $('fx-card-vence').addEventListener('input', previaFatura);
+
+    /* Delegado no container porque o resumo é redesenhado inteiro a
+       cada render — um listener no botão morreria no primeiro desenho. */
+    $('fx-resumo').addEventListener('click', function (ev) {
+      const b = ev.target.closest('[data-fxres]');
+      if (!b) return;
+      fxMes += parseInt(b.dataset.fxres, 10);
+      fxDiaAberto = null;
+      render();
+    });
+
+    /* Escolher o cartão joga a data para o vencimento da fatura: é o
+       dia em que o dinheiro sai. Fica editável para a parcela ou o
+       acerto fora do combinado. */
+    $('fx-card').addEventListener('change', function () {
+      fxCardHint();
+      const c = fxCartao(this.value);
+      /* O dia é o do FECHAMENTO, não o do vencimento: é ele que marca a
+         qual fatura a compra pertence, e é por ele que os gastos do mês
+         se juntam. O vencimento continua na dica, porque é quando o
+         dinheiro sai de verdade. */
+      if (c) $('fx-data').value = Store.fluxFatura(c, Store.hoje()).fechamento;
+    });
+    $('fx-save').addEventListener('click', saveFlux);
+    $('fx-del').addEventListener('click', removerFlux);
+    $('fx-back').addEventListener('click', function () { closeSheets(); });
+    $('fx-cancel').addEventListener('click', function () { closeSheets(); });
+  }
   /* ── tela de empréstimos ────────────────────────────── */
   function renderLoans() {
     const r = loansResumo();
@@ -1792,19 +3328,22 @@
    * segunda letra acabaria escondida atrás da vizinha.
    */
   /**
-   * O primeiro nome de quem compartilha, tirado do e-mail.
+   * O apelido de quem compartilha: @nome, em caixa baixa.
    *
-   * É o único dado de identidade que existe: minhas_conexoes devolve
-   * owner_email e nada mais — não há nome em settings nem no perfil.
-   * Com separador ("ana.souza@") sai certo; sem ele ("anasouza@") não há
-   * como saber onde um nome acaba e o outro começa, e sai o local inteiro.
+   * É o único dado de identidade que existe — minhas_conexoes devolve
+   * owner_email e nada mais. O arroba deixa claro que é um identificador
+   * e não o nome civil da pessoa, que o app não conhece.
+   *
+   * Com separador ("ana.souza@") sai só o primeiro nome; sem ele
+   * ("anasouza@") não há como saber onde um acaba e o outro começa, e
+   * sai o local inteiro. Minúscula em tudo: é a voz do app, e evita
+   * fingir que sabe onde ficam as maiúsculas de um nome próprio.
    */
   function primeiroNome(email) {
-    const local = String(email || '').split('@')[0];
+    const local = String(email || '').split('@')[0].toLowerCase();
     const parte = local.split(/[._+-]/)[0].replace(/[0-9]+/g, '');
     const limpo = parte || local.replace(/[0-9]+/g, '') || local;
-    if (!limpo) return 'Compartilhado';
-    return limpo.charAt(0).toUpperCase() + limpo.slice(1);
+    return '@' + (limpo || 'compartilhado');
   }
 
   function iniciaisEmail(email) {
@@ -3020,16 +4559,22 @@
   function perguntarAlcance(f, cfg) {
     acaoAlcance = cfg.fn;
 
-    const conta = function (a) {
-      return Store.favoresDaExclusao(favores, f.id, a).length;
+    /* A contagem vem de quem pergunta: favores contam linhas de uma
+       série, o razão conta ocorrências de uma repetição. A folha em si
+       não sabe — e não deve saber — de qual dos dois se trata. */
+    const rotulo = cfg.rotulo || function (a) {
+      const n = Store.favoresDaExclusao(favores, f.id, a).length;
+      const base = n + (n === 1 ? ' favor' : ' favores');
+      return a === 'este' ? base
+        : a === 'proximos' ? base + ', deste vencimento em diante'
+        : base + ', a série inteira';
     };
-    const plural = function (n) { return n + (n === 1 ? ' favor' : ' favores'); };
 
     $('ex-title').textContent = cfg.titulo;
     $('ex-sub').textContent = cfg.sub;
-    $('ex-n-este').textContent     = plural(conta('este'));
-    $('ex-n-proximos').textContent = plural(conta('proximos')) + ', deste vencimento em diante';
-    $('ex-n-todos').textContent    = plural(conta('todos')) + ', a série inteira';
+    $('ex-n-este').textContent     = rotulo('este');
+    $('ex-n-proximos').textContent = rotulo('proximos');
+    $('ex-n-todos').textContent    = rotulo('todos');
     // só a exclusão é destrutiva
     $('ex-op-todos').classList.toggle('perigo', !!cfg.perigo);
 
@@ -3144,7 +4689,22 @@
   function onContaKind() {
     const k = $('ct-kind').value;
     $('ct-freq-field').hidden = k !== 'renda';
-    $('ct-due-field').hidden  = k !== 'fixa';
+    $('ct-due-field').hidden = false;
+
+    /* Cada tipo faz uma coisa diferente com o dia, e o rótulo tem de
+       dizer qual: a renda CAI, a reserva SAI da conta para ser guardada,
+       e as contas VENCEM. "Vence" na reserva soaria como dívida. */
+    $('ct-due-lbl').textContent =
+      k === 'renda'    ? 'Cai no dia' :
+      k === 'economia' ? 'Sai no dia' : 'Vence no dia';
+
+    /* Em branco é resposta legítima, e diz coisas diferentes por tipo.
+       Sem isto escrito, o campo pareceria obrigatório em todos. */
+    /* Uma regra só para todos os tipos: em branco é o 5º dia útil. Era
+       o padrão da renda, e é o combinado mais comum também nas contas —
+       "dia 1" não é combinado de ninguém. */
+    $('ct-due-hint').textContent = 'em branco: 5º dia útil';
+
     $('ct-avg-field').hidden  = k !== 'variavel';
     $('ct-amount-lbl').textContent =
       k === 'renda'      ? 'Quanto entra (R$)' :
@@ -3194,9 +4754,17 @@
     if (!name) { $('ct-name').focus(); toast('Dê um nome para a conta'); return; }
 
     const kind = $('ct-kind').value;
-    if (kind === 'fixa') {
-      const d = parseInt($('ct-due-day').value, 10);
-      if (!(d >= 1 && d <= 31)) { $('ct-due-day').focus(); toast('Informe o dia do vencimento (1 a 31)'); return; }
+    /* O dia deixou de ser obrigatório na conta fixa: em branco quer dizer
+       5º dia útil, como em todo tipo. A tela ainda recusa número fora de
+       1 a 31, que é erro de digitação e não uma escolha. */
+    const diaTexto = $('ct-due-day').value.trim();
+    if (diaTexto) {
+      const d = parseInt(diaTexto, 10);
+      if (!(d >= 1 && d <= 31)) {
+        $('ct-due-day').focus();
+        toast('O dia vai de 1 a 31 — ou deixe em branco para o 5º útil');
+        return;
+      }
     }
 
     const atual = editContaId ? contas.find(function (x) { return x.id === editContaId; }) : null;
@@ -3433,6 +5001,19 @@
   let sheetHist = 0;
 
   function openSheet(node) {
+    /* Folha sobre folha: quem fica em cima é a pedida por último, nao a
+       que por acaso vem depois no HTML. Todas dividem o mesmo z-index, e
+       era a ordem do markup que decidia — por isso a folha de alcance do
+       razao abria ATRAS do formulario e parecia nao abrir: #sheet-flux
+       vem depois de #sheet-excluir no index.html. Nos favores funcionava
+       por sorte, porque #sheet-favor vem antes. */
+    if (openSheetEl && openSheetEl !== node) {
+      node.classList.add('acima');
+      /* O véu sobe junto, para ficar ENTRE as duas: a folha de baixo
+         precisa recuar, senão as duas disputam a atenção e a de cima
+         parece um pedaço da de baixo. */
+      el.backdrop.classList.add('acima');
+    }
     openSheetEl = node;
     node.classList.add('open');
     el.backdrop.classList.add('open');
@@ -3442,61 +5023,29 @@
   }
   function closeSheets(silent) {
     const was = openSheetEl;
-    el.sheetForm.classList.remove('open');
-    el.sheetSettings.classList.remove('open');
-    $('sheet-loan').classList.remove('open');
-    $('sheet-conta').classList.remove('open');
-    $('sheet-favor').classList.remove('open');
-    $('sheet-pagamento').classList.remove('open');
-    $('sheet-excluir').classList.remove('open');
-    $('sheet-horizonte').classList.remove('open');
-    $('sheet-share').classList.remove('open');
-    $('sheet-confirmar').classList.remove('open');
-    el.backdrop.classList.remove('open');
+    /* Quantas folhas estao abertas e nao quantas a funcao fecha: cada
+       abertura empilhou uma entrada no historico, e voltar so uma
+       deixava a outra de pe — o botao voltar do aparelho gastava um
+       toque sem nada acontecer na tela. */
+    const abertas = document.querySelectorAll('.sheet.open').length;
+    /* Sai do DOM, não de uma lista escrita à mão: a lista antiga
+       nomeava dez folhas, e a décima primeira simplesmente não
+       fechava — ficava por cima da tela até recarregar a página. */
+    document.querySelectorAll('.sheet.open').forEach(function (s) {
+      s.classList.remove('open', 'acima');
+    });
+    el.backdrop.classList.remove('open', 'acima');
     openSheetEl = null;
     editId = null;
     editLoanId = null;
     editContaId = null;
     editFavorId = null;
+    editFluxId = null;
     if (was && !silent && !isDesktop && sheetHist > 0) {
-      sheetHist--;
-      try { history.back(); } catch (err) {}
+      const passos = Math.min(abertas, sheetHist);
+      sheetHist -= passos;
+      try { history.go(-passos); } catch (err) {}
     }
-  }
-
-  async function doReset() {
-    const fb = $('reset-fb');
-    if (el.resetArmed) {
-      $('btn-reset').textContent = 'Apagando…';
-      try {
-        await Store.wipe();
-      } catch (e) {
-        fb.className = 'fb err';
-        fb.textContent = 'Não deu para apagar na nuvem. Verifique a conexão.';
-        $('btn-reset').textContent = 'Apagar dados salvos';
-        el.resetArmed = false;
-        return;
-      }
-      adoptState(estadoInicial());
-      applySI(); render();
-      fb.className = 'fb ok';
-      fb.textContent = 'Tudo apagado. Comece a lançar quando quiser.';
-      $('btn-reset').textContent = 'Apagar dados salvos';
-      el.resetArmed = false;
-      return;
-    }
-    el.resetArmed = true;
-    $('btn-reset').textContent = 'Confirmar — apagar tudo';
-    fb.className = 'fb err';
-    fb.textContent = Store.mode === 'cloud'
-      ? 'Isto apaga também na nuvem, em todos os aparelhos. Toque de novo para confirmar.'
-      : 'Toque de novo para confirmar.';
-    setTimeout(function () {
-      if (!el.resetArmed) return;
-      el.resetArmed = false;
-      $('btn-reset').textContent = 'Apagar dados salvos';
-      fb.textContent = '';
-    }, 5000);
   }
 
   function applySI() {
@@ -3827,6 +5376,7 @@
     el.cHero     = $('c-hero');
     el.cKpis     = $('c-kpis');
     el.cList     = $('c-list');
+    el.fxResumo  = $('fx-resumo');
     el.cLegend   = $('c-legend');
     el.cSettings = $('c-settings');
 
@@ -3872,6 +5422,8 @@
     });
     aplicarOrdem();
     ligarArrasto();
+    ligarFlux();
+    ligarDiasUteis();
 
     $('btn-back').addEventListener('click', voltar);
     $('btn-account').addEventListener('click', function () { setScreen('settings'); });
@@ -3974,12 +5526,7 @@
       const spec = TABELAS[screen] || TABELAS.eco;
       if (b.dataset.act === 'edit') { spec.abrir(id); return; }
       if (b.dataset.act === 'tog')  { tog(id); return; }
-      if (b.dataset.act === 'del') {
-        if (screen === 'loans')        { editLoanId = id; delLoan(); }
-        else if (screen === 'contas')  { editContaId = id; delConta(); }
-        else if (screen === 'favores') { editFavorId = id; delFavor(); }
-        else                          { del(id); }
-      }
+      if (b.dataset.act === 'del') spec.excluir(id);
     });
 
     /* seletor de mês */
@@ -4069,6 +5616,7 @@
       if (screen === 'loans') openLoan(null);
       else if (screen === 'contas') openConta(null);
       else if (screen === 'favores') openFavor(null);
+      else if (screen === 'flux') openFlux(null);
       else openForm(null);
     });
     $('btn-settings').addEventListener('click', function () {
@@ -4149,13 +5697,15 @@
     $('fv-back').addEventListener('click', function () { closeSheets(); });
 
     /* contas */
-    ['ct-rendas', 'ct-fixas', 'ct-variaveis', 'ct-subs'].forEach(function (id) {
-      $(id).addEventListener('click', function (ev) {
-        const p = ev.target.closest('[data-pago]');
-        if (p) { ev.preventDefault(); ev.stopPropagation(); alternarPago(p.dataset.pago); return; }
-        const b = ev.target.closest('[data-cid]');
-        if (b) openConta(b.dataset.cid);
-      });
+    /* Um ouvinte na view inteira, não uma lista de containers: a lista
+       anterior nomeava quatro grupos e esquecia o quinto — a reserva não
+       abria para editar, e o próximo grupo que nascesse teria o mesmo
+       destino, em silêncio. */
+    $('view-contas').addEventListener('click', function (ev) {
+      const p = ev.target.closest('[data-pago]');
+      if (p) { ev.preventDefault(); ev.stopPropagation(); alternarPago(p.dataset.pago); return; }
+      const b = ev.target.closest('[data-cid]');
+      if (b) openConta(b.dataset.cid);
     });
     $('ct-kind').addEventListener('change', onContaKind);
     $('ct-frequency').addEventListener('change', onContaAmounts);
@@ -4205,7 +5755,6 @@
     $('lo-back').addEventListener('click', function () { closeSheets(); });
 
     /* ajustes */
-    $('btn-reset').addEventListener('click', doReset);
 
     /* o cabeçalho encolhe assim que a rolagem sai do topo */
     const appbar = document.querySelector('.appbar');

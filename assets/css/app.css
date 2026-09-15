@@ -643,6 +643,17 @@ svg { display: block; flex: none; }
   padding-bottom: var(--sab);
 }
 .sheet.open { transform: translateY(0); }
+/* A folha aberta por cima de outra — o alcance de uma repeticao, por
+   exemplo. Sem isto ela some atras da que a chamou. */
+.sheet.acima { z-index: 43; }
+/* Entre as duas folhas: escurece e desfoca a de baixo sem tocar na de
+   cima. O borrao e mais forte que o do fundo da tela porque aqui ele
+   separa duas superficies da mesma cor, e nao uma folha do conteudo. */
+.sheet-backdrop.acima {
+  z-index: 42;
+  background: rgba(18,58,44,.52);
+  -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
+}
 
 .sheet-grab {
   width: 42px; height: 4px; border-radius: 99px;

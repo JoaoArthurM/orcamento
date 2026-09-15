@@ -129,7 +129,8 @@ input, textarea { caret-color: currentColor; }
   #app:has(#view-hub.on) .appbar .wordmark { font-size: 1.5rem; }
   #app .appbar .avatar { width: max(40px, 2.5rem); height: max(40px, 2.5rem); font-size: var(--text-body); }
   #app .appbar-account { min-height: 40px; min-width: 40px; }
-  #slot-hub, #slot-contas, #slot-favores, #slot-loans, #slot-sim, #slot-tabelas, #slot-settings {
+  #slot-hub, #slot-contas, #slot-favores, #slot-loans, #slot-sim, #slot-tabelas,
+  #slot-settings, #slot-flux {
     padding-top: calc(var(--sat) + var(--appbar-h) + 8px);
     scroll-padding-top: calc(var(--sat) + var(--appbar-h));
   }

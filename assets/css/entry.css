@@ -104,15 +104,18 @@
 .hub-eco { background: linear-gradient(115deg, #d7f1b6, #ccec9e); color: #073b2d; }
 .hub-contas { background: linear-gradient(115deg, #f0e3c4, #f1e4c8); color: #30220c; }
 .hub-favores { background: linear-gradient(115deg, #d6e7fb, #d5e6fa); color: #082d50; }
+.hub-flux { background: linear-gradient(115deg, #d3ebe4, #cfe8e2); color: #0d3d35; }
 .hub-ico { width: 60px; height: 62px; border-radius: 20px; }
 .hub-ico .ico { width: 34px; height: 34px; }
 .hub-loans .hub-ico { background: #00614366; color: #c9ed91; border: 1px solid #27805d55; }
-.hub-eco .hub-ico, .hub-contas .hub-ico, .hub-favores .hub-ico { background: #ffffff70; color: inherit; }
+.hub-eco .hub-ico, .hub-contas .hub-ico, .hub-favores .hub-ico,
+.hub-flux .hub-ico { background: #ffffff70; color: inherit; }
 .hub-arrow { display: flex; align-items: center; justify-content: center; width: 34px; height: 34px; border-radius: 50%; background: #ffffff12; }
 .hub-card .hub-arrow, .hub-card .hub-name, .hub-card .hub-pfx { color: inherit; }
 .hub-eco .hub-arrow { background: #add87a55; }
 .hub-contas .hub-arrow { background: #d9c69966; }
 .hub-favores .hub-arrow { background: #afcde966; }
+.hub-flux .hub-arrow { background: #a8cfc466; }
 .hub-arrow .ico { width: 22px; height: 22px; }
 .hub-name { font-size: var(--text-body); font-weight: 500; line-height: 1.4; }
 .hub-val-wrap { gap: 8px; padding-top: 2px; max-width: 100%; }
@@ -123,6 +126,7 @@
 .hub-eco .hub-note { color: #4d7050; }
 .hub-contas .hub-note { color: #786747; }
 .hub-favores .hub-note { color: #426989; }
+.hub-flux .hub-note { color: #3d6e64; }
 .hub-dica { font-size: var(--text-secondary); color: #6c8a82; border-top-color: #d6e2da; gap: 8px; padding: 18px 0 2px; }
 .hub-dica .ico { width: 19px; height: 19px; }
 .hub-link { position: relative; min-height: 56px; color: #063c30; font-size: var(--text-body); gap: 14px; box-shadow: 0 12px 30px #19483209; padding: 12px 42px; }

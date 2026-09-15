@@ -13,7 +13,7 @@ const ICONES = [
   // navegação
   'plus', 'nav-arrow-left', 'drag', 'nav-arrow-right', 'nav-arrow-down', 'check',
   // cabeçalhos e ações
-  'edit-pencil', 'graph-up', 'calendar', 'table-rows', 'search', 'trash',
+  'edit-pencil', 'graph-up', 'calendar', 'table-2-columns', 'search', 'trash',
   // tipos de entrada
   'piggy-bank', 'donate', 'safe', 'coins', 'dice-five', 'hand-cash', 'bank',
   'info-circle', 'share-android',
@@ -21,6 +21,11 @@ const ICONES = [
   'wallet', 'log-out', 'settings', 'refresh', 'repeat', 'user',
   // copiar a cobrança para mandar por mensagem
   'send-diagonal',
+  // FLUX: o razão diário e os tipos de movimento
+  'pen-tablet', 'credit-card',
+  'transition-left',
+  'sparks',
+  'arrow-up-right-circle', 'arrow-down-left-circle',
 ];
 
 function baixar(nome) {

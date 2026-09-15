@@ -67,8 +67,18 @@ const A2 = 'dddddddd-2222-4222-8222-222222222222';
     const dataRuim = S.normalizeAccount({ kind: 'fixa', name: 'X', amount: 1, due_day: 5, paid_on: 'ontem' });
     check('data de pagamento inválida vira nula', dataRuim.paid_on === null, dataRuim.paid_on);
 
+    /* Dia inválido vira NULO, não 1: nulo quer dizer "5º dia útil", que é
+       o combinado mais comum. Forçar 1 inventava uma data que ninguém
+       escolheu e que o razão passava a usar como verdade. */
     const diaRuim = S.normalizeAccount({ kind: 'fixa', name: 'X', amount: 1, due_day: 99 });
-    check('dia fora de 1–31 vira 1', diaRuim.due_day === 1, diaRuim.due_day);
+    check('dia fora de 1–31 vira nulo', diaRuim.due_day === null, diaRuim.due_day);
+
+    const semDia = S.normalizeAccount({ kind: 'economia', name: 'Reserva', amount: 500 });
+    check('conta sem dia fica nula, e o razão a põe no 5º útil',
+          semDia.due_day === null, semDia.due_day);
+
+    const comDia = S.normalizeAccount({ kind: 'assinatura', name: 'Streaming', amount: 30, due_day: 12 });
+    check('agora todo tipo guarda o dia', comDia.due_day === 12, comDia.due_day);
 
     const varSemMedia = S.normalizeAccount({ kind: 'variavel', name: 'Luz', amount: 180 });
     check('variável sem média usa o próprio valor', varSemMedia.avg_amount === 180, varSemMedia.avg_amount);

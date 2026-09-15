@@ -34,6 +34,38 @@
   #c-settings .danger-card .set-title { color: #a13e3e; }
   #c-settings .btn-danger { background: #a13e3e; color: #fff; }
   #c-settings .btn-sair { background: #fff; border: 1px solid #dfe8d9; color: #456954; }
+  /* Os sete dias da semana como interruptores: a semana inteira cabe
+     numa linha, e ver os sete juntos é o que deixa claro que a escolha
+     é sobre o padrão da empresa, não sobre um dia solto. */
+  #c-settings .du-dias { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+  #c-settings .du-dia {
+    min-height: 40px; border-radius: 10px; padding: 4px 2px;
+    background: #f7faf5; border: 1px solid #e1e9dd; color: #7e9488;
+    font-size: var(--text-caption); font-weight: 600;
+  }
+  #c-settings .du-dia.on { background: #d5edb3; border-color: #c8dfa5; color: #063c30; }
+  /* Domingo em vermelho, como na lista de dias do Flux: é a marca de
+     que a semana recomeça ali, e ajuda a não contar errado ao olhar os
+     sete de uma vez. Só o nome muda de cor — o fundo continua dizendo
+     se o dia está marcado ou não. */
+  #c-settings .du-dia[data-du="0"] { color: #a8442f; }
+  #c-settings .du-dia[data-du="0"].on { color: #8c3a2f; }
+  /* Para que lado a data anda. Duas opções com o exemplo escrito:
+     "antecipa" e "adia" descrevem o mecanismo, mas é "recebo na sexta"
+     que a pessoa reconhece como a sua situação. */
+  /* Quatro opções em duas colunas: a primeira é a mais comum e vem
+     primeiro, e cada uma diz o efeito em vez de só nomear a regra. */
+  #c-settings .du-lado { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  #c-settings .du-op {
+    display: flex; flex-direction: column; gap: 2px; align-items: flex-start;
+    min-height: 48px; padding: 8px 11px; border-radius: 12px;
+    background: #f7faf5; border: 1px solid #e1e9dd; text-align: left;
+  }
+  #c-settings .du-op strong { font-size: var(--text-caption); font-weight: 700; color: #456954; }
+  #c-settings .du-op small { font-size: 10px; color: #7e9488; }
+  #c-settings .du-op.on { background: #d5edb3; border-color: #c8dfa5; }
+  #c-settings .du-op.on strong { color: #063c30; }
+  #c-settings .du-op.on small { color: #456954; }
   #c-settings .fb { font-size: var(--text-secondary); line-height: 1.5; }
   #c-settings .about { font-size: var(--text-secondary); color: #526a60; padding: 8px 0; }
   #c-settings :is(button, input):focus-visible { outline: 2px solid #68a978; outline-offset: 3px; }

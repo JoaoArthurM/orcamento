@@ -1,0 +1,535 @@
+/* FLUX — o razão diário.
+
+   Acento próprio: verde-água. Os quatro módulos antigos já tomaram o
+   lima (economia), o dourado (empréstimos), o âmbar (contas) e o azul
+   (favores); o verde-água fecha a família sem sair da Tinta Única.
+
+   Trama do módulo: colunas verticais de 30px. É a trama de uma folha
+   de razão, e nenhuma das outras quatro é vertical — a pauta da
+   economia é horizontal, a grade dos empréstimos é cruzada, o
+   pontilhado é das contas e a hachura diagonal é dos favores. */
+
+:root {
+  --fx-tinta: #1C5148;
+  --fx-claro: #CFE8E2;
+  --fx-papel: #F6FAF8;
+}
+
+/* O cartão do hub NÃO está aqui: as cinco identidades do hub vivem
+   juntas no entry.css, senão a próxima fica com um tom que não
+   conversa com as outras. */
+
+@media (max-width: 1023px) {
+  /* ── a tela ──────────────────────────────────────────── */
+  #view-flux {
+    position: relative; overflow: hidden; color: #063c30;
+    background:
+      radial-gradient(ellipse at 100% 4%, #DCEFE9, transparent 55%),
+      radial-gradient(ellipse at 0 82%, #E4EFE6, transparent 60%),
+      var(--fx-papel);
+  }
+  /* a trama vive num pseudo-elemento só, mascarada na diagonal e
+     sempre abaixo de 10% de alfa — ela é para a segunda olhada */
+  #view-flux::before {
+    content: ''; position: absolute; inset: 0; pointer-events: none;
+    background-image: repeating-linear-gradient(90deg,
+      rgba(28, 81, 72, .055) 0 1px, transparent 1px 30px);
+    -webkit-mask-image: linear-gradient(145deg, #000 0%, transparent 62%);
+    mask-image: linear-gradient(145deg, #000 0%, transparent 62%);
+  }
+  #slot-flux > * { position: relative; }
+
+  /* ── o herói ─────────────────────────────────────────── */
+  .fx-hero {
+    border-radius: 20px; padding: 13px;
+    background:
+      radial-gradient(ellipse at 100% 0, #2F7A6B55, transparent 62%),
+      linear-gradient(135deg, #0B4438, #073229);
+    box-shadow: 0 8px 24px #123a2c14;
+    color: #fff;
+  }
+  .fx-hero-head { display: flex; align-items: center; gap: 10px; }
+  .fx-hero-icon {
+    display: grid; place-items: center; width: 32px; height: 34px; flex: none;
+    border-radius: 11px; background: #CFE8E2; color: #073229;
+  }
+  .fx-hero-icon .ico { width: 19px; height: 19px; }
+  .fx-hero-copy { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+  .fx-hero-copy strong { font-size: var(--text-body); font-weight: 600; }
+  .fx-hero-copy small {
+    margin-top: 2px; font-size: var(--text-caption); line-height: 1.4; color: #A9CBC2;
+    overflow-wrap: anywhere;
+  }
+  .fx-hero-amt { display: flex; align-items: center; gap: 3px; flex: none; }
+  .fx-hero-pfx { font-size: var(--text-caption); color: #A9CBC2; }
+  .fx-hero-val {
+    font-size: var(--text-balance); font-weight: 700; letter-spacing: -.04em;
+    line-height: 1.1; color: #CEF29B; font-variant-numeric: tabular-nums;
+  }
+
+  /* ── navegação de mês ────────────────────────────────── */
+  /* calendário · mês · tabela. O mês fica centrado porque é ele que
+     diz onde você está; os dois botões das pontas têm a mesma largura
+     para o centro ser centro de verdade, e não parecer torto. */
+  .fx-mes {
+    display: grid; grid-template-columns: 44px minmax(0, 1fr) 36px;
+    align-items: center; gap: 8px; margin-top: 12px;
+  }
+  .fx-mes-meio { display: flex; align-items: center; gap: 6px; justify-content: center; }
+  .fx-mes-lbl {
+    min-width: 0; text-align: center;
+    font-size: var(--text-body); font-weight: 600; color: #063c30;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .fx-nav {
+    position: relative; width: 32px; height: 32px; flex: none;
+    border-radius: 99px; display: grid; place-items: center;
+    background: #fff; border: 1px solid #DDE9E4; color: #3D6E64;
+  }
+  .fx-nav .ico { width: 17px; height: 17px; }
+  /* a marca é menor que o alvo: o ::after devolve os --tap */
+  .fx-nav::after {
+    content: ''; position: absolute; top: 50%; left: 50%;
+    width: var(--tap); height: var(--tap); transform: translate(-50%, -50%);
+  }
+  .fx-cal {
+    position: relative; display: flex; align-items: center; gap: 3px;
+    min-height: 36px; padding: 0 8px; border-radius: 11px;
+    background: #fff; border: 1px solid #DDE9E4; color: #3D6E64;
+  }
+  .fx-cal .ico { width: 16px; height: 16px; }
+  .fx-cal-dia { font-size: var(--text-caption); font-weight: 700; }
+  .fx-tab {
+    position: relative; display: grid; place-items: center;
+    width: 36px; height: 36px; border-radius: 11px;
+    background: #fff; border: 1px solid #DDE9E4; color: #3D6E64;
+  }
+  .fx-tab .ico { width: 17px; height: 17px; }
+  .fx-cal::after, .fx-tab::after {
+    content: ''; position: absolute; top: 50%; left: 50%;
+    width: var(--tap); height: var(--tap); transform: translate(-50%, -50%);
+  }
+
+  /* ── abas ────────────────────────────────────────────── */
+  .fx-abas {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 4px;
+    margin-top: 12px; padding: 4px;
+    background: #E8F1ED; border-radius: 14px;
+  }
+  .fx-aba {
+    min-height: 36px; border-radius: 11px;
+    font-size: var(--text-caption); font-weight: 600; color: #51705E;
+  }
+  .fx-aba.on { background: #fff; color: #063c30; box-shadow: 0 1px 5px #18452e12; }
+
+  /* ── a planilha de saldos ────────────────────────────── */
+  /* Dias nas linhas, meses nas colunas.
+
+     A coluna do dia é uma RÉGUA CONTÍNUA, não uma pilha de caixas: ela
+     gruda na esquerda ao rolar de lado, e com fundo e folga por linha
+     virava um cordão de quadrados soltos flutuando ao lado da grade.
+     Uma faixa só, com uma borda à direita, é o que faz ela ler como
+     margem de caderno — que é o papel dela. */
+  .fx-meses {
+    overflow-x: auto; -webkit-overflow-scrolling: touch;
+    border: 1px solid #E1EAE6; border-radius: 12px;
+  }
+  /* SEM overflow:hidden aqui. Ele cria um contexto de rolagem novo e o
+     position:sticky da coluna do dia para de funcionar — a coluna some
+     para a esquerda junto com o resto. O arredondamento fica na moldura
+     de fora, que não rola. */
+  .fx-grade { display: inline-block; min-width: 100%; background: #fff; }
+  .fx-grade-cab, .fx-grade-linha {
+    display: grid;
+    grid-template-columns: 38px repeat(var(--fx-cols), 5.2rem);
+    column-gap: 3px; align-items: stretch;
+  }
+  /* na planilha o cabeçalho também gruda, aqui no topo do próprio
+     container de rolagem, que não tem appbar por cima */
+  .fx-grade-cab { background: #E8F1ED; position: sticky; top: 0; z-index: 2; }
+  /* toda linha precisa de fundo próprio: a célula do dia herda dele
+     para tapar o que passa por baixo enquanto se rola de lado */
+  .fx-grade-linha { min-height: 30px; background: #fff; }
+  /* zebra discreta: em 31 linhas o olho precisa de alguma horizontal */
+  .fx-grade-linha:nth-child(even) { background: #FAFCFB; }
+  .fx-grade-linha:has(.hoje) { background: #EAF4EF; }
+
+  .fx-grade-dia {
+    position: sticky; left: 0; z-index: 1;
+    display: grid; place-items: center;
+    background: inherit; border-right: 1px solid #E4EDE8;
+    font-size: var(--text-caption); font-weight: 600; color: #7E9488;
+    font-variant-numeric: tabular-nums;
+  }
+  .fx-grade-cab .fx-grade-dia { background: #E8F1ED; color: #3D6E64; min-height: 30px; }
+  .fx-grade-linha:has(.dom) .fx-grade-dia { color: #A8442F; }
+  .fx-grade-linha:has(.hoje) .fx-grade-dia { color: #0B4438; font-weight: 700; }
+
+  .fx-grade-mes {
+    min-height: 30px; padding: 0 4px;
+    color: #3D6E64; font-size: var(--text-caption); font-weight: 700;
+  }
+  .fx-grade-cel {
+    display: grid; place-items: center; margin: 2px 0;
+    min-height: 26px; border-radius: 7px;
+    font-size: var(--text-caption); font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  /* o mês não tem esse dia: fica vazio, e a linha continua de pé para
+     o dia 15 de todo mês permanecer na mesma altura */
+  .fx-grade-cel.fora { background: none; }
+  .fx-grade-cel.hoje { box-shadow: inset 0 0 0 2px #0B4438; }
+  /* ── a fileira de dias ───────────────────────────────── */
+  /* Duas colunas de saldo por linha: o mesmo dia neste mês e no
+     seguinte. A grade do cabeçalho e a da linha são a mesma, senão
+     os rótulos dos meses deixam de ficar sobre as suas colunas. */
+  .fx-dias { margin-top: 12px; display: flex; flex-direction: column; gap: 6px; }
+  .fx-cab, .fx-dia-linha {
+    display: grid;
+    grid-template-columns: 30px minmax(0, 0.9fr) minmax(0, 1fr) minmax(0, 1fr);
+    align-items: center; column-gap: 7px;
+  }
+  /* O cabeçalho gruda no topo ao rolar: com 31 linhas iguais, sem ele à
+     vista não dá para saber se a coluna que se está lendo é este mês ou
+     o próximo. O deslocamento é a appbar, que fica por cima. */
+  .fx-cab {
+    padding: 2px 10px 4px;
+    font-size: var(--text-caption); font-weight: 600; color: #3D6E64;
+    text-align: center;
+  }
+  .fx-cab-dia { text-align: center; }
+  .fx-cab-gasto { text-align: center; }
+  /* os gastos do dia, em coluna própria: varrer o mês atrás do dia
+     caro não deve exigir abrir um dia de cada vez */
+  .fx-gasto {
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px;
+    min-height: 32px;
+    font-size: var(--text-caption); font-weight: 600; line-height: 1.25;
+    font-variant-numeric: tabular-nums;
+  }
+  .fx-gasto-sai { color: #8C3A2F; }
+  .fx-gasto-entra { color: #2F6142; }
+
+  .fx-dia {
+    border: 1px solid #E1EAE6; border-radius: 14px; background: #fff;
+    overflow: hidden;
+  }
+  /* hoje é o único dia com anel: é a régua de leitura da tela */
+  .fx-dia.hoje { border-color: #9BC7BB; box-shadow: 0 0 0 2px #CFE8E266; }
+  .fx-dia-linha { padding: 6px 10px; min-height: 48px; }
+  /* A data e a coluna de gastos são botões: tocar qualquer uma delas
+     lança um movimento NAQUELE dia. É o caminho curto — o outro seria
+     abrir o dia, tocar no +, e corrigir a data no formulário. */
+  .fx-dia-data {
+    display: flex; flex-direction: column; align-items: center; line-height: 1.1;
+    min-height: 40px; justify-content: center; border-radius: 9px;
+  }
+  .fx-dia-data:active, .fx-gasto:active { background: #EAF4EF; }
+  .fx-gasto.vazio {
+    color: #BBCCC4; font-weight: 400; font-size: var(--text-body);
+    min-height: 32px; border-radius: 9px;
+  }
+  .fx-dia-data b { font-size: var(--text-body); font-weight: 700; color: #063c30; }
+  .fx-dia-data small { font-size: var(--text-caption); color: #7E9488; }
+  /* domingo marcado só aqui: o vermelho é da data, não do saldo — o
+     saldo já tem a sua própria escala de cor e brigariam. */
+  .fx-dia-data.dom b, .fx-dia-data.dom small { color: #A8442F; }
+  /* Hoje: a data ganha o verde-água do módulo como fundo, não como
+     cor de texto — #CFE8E2 sobre branco dá contraste 1,3:1 e o número
+     sumiria. Preenchido, ele é a única data marcada da coluna. */
+  .fx-dia.hoje .fx-dia-data { background: var(--fx-claro); }
+  .fx-dia.hoje .fx-dia-data b { color: #0B4438; }
+  .fx-dia.hoje .fx-dia-data small { color: #3D6E64; }
+
+  .fx-cel {
+    position: relative; min-height: 36px; padding: 6px 8px; border-radius: 11px;
+    display: flex; align-items: center; justify-content: center; gap: 5px;
+    font-size: var(--text-caption); font-weight: 700; white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+  }
+  .fx-cel.on { box-shadow: inset 0 0 0 2px #0000001f; }
+  .fx-cel-v { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+  /* O R$ acompanha o número sem competir com ele: menor e mais claro,
+     como os outros prefixos de dinheiro do app. */
+  .fx-cel-v small, .fx-gasto small {
+    font-size: .8em; font-weight: 600; opacity: .7; margin-right: 2px;
+  }
+  /* quantos movimentos caem naquele dia — um número, não um ponto:
+     saber que são três muda a decisão de abrir */
+  .fx-cel-n {
+    flex: none; min-width: 15px; padding: 0 3px; border-radius: 99px;
+    background: #ffffff5c; font-size: 10px; line-height: 15px;
+  }
+  .fx-cel-fora { text-align: center; color: #C3D2CB; font-size: var(--text-caption); }
+  /* Antes do saldo inicial: sem cor de faixa, porque não há saldo — a
+     pastilha colorida afirmaria um número que ninguém informou. */
+  .fx-cel.antes { background: #F3F7F5; color: #BBCCC4; font-weight: 400; }
+
+  .fx-painel-tit {
+    font-size: var(--text-caption); font-weight: 600; color: #3D6E64;
+    padding: 2px 2px 4px;
+  }
+
+  /* ── os movimentos de um dia ─────────────────────────── */
+  .fx-dia-itens {
+    border-top: 1px solid #EDF3F0; background: #FAFCFB;
+    padding: 6px 10px 10px;
+  }
+  .fx-vazio { font-size: var(--text-caption); color: #7E9488; padding: 8px 2px; }
+  /* Grupos por tipo. O cabeçalho é uma faixa própria, não um título
+     solto: com ícone, nome, contagem e total numa linha só, ele se lê de
+     relance — e é o total que se procura ao abrir um dia cheio. */
+  .fx-grupo + .fx-grupo { margin-top: 12px; }
+  .fx-grupo-cab {
+    display: flex; align-items: center; gap: 7px;
+    padding: 6px 8px; border-radius: 10px;
+    background: #F1F6F4;
+  }
+  .fx-grupo-ico {
+    display: grid; place-items: center; flex: none;
+    width: 22px; height: 22px; border-radius: 7px;
+  }
+  .fx-grupo-ico .ico { width: 13px; height: 13px; }
+  .fx-grupo-nome {
+    font-size: var(--text-caption); font-weight: 700; color: #3D6E64;
+    letter-spacing: .02em;
+  }
+  /* quantos itens: dado de apoio, então pastilha neutra e discreta */
+  .fx-grupo-n {
+    flex: none; min-width: 17px; padding: 0 4px; border-radius: 99px;
+    background: #FFFFFF; color: #7E9488;
+    font-size: 10px; font-weight: 700; line-height: 17px; text-align: center;
+  }
+  .fx-grupo-total {
+    margin-left: auto; flex: none;
+    font-size: var(--text-caption); font-weight: 700; white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+  }
+  .fx-grupo-total small { font-size: .8em; font-weight: 600; opacity: .7; margin-right: 2px; }
+  .fx-grupo-itens { padding-left: 2px; }
+  .fx-item { display: flex; align-items: center; gap: 6px; }
+  .fx-item + .fx-item { border-top: 1px solid #EFF4F2; }
+  .fx-item-abrir {
+    flex: 1; min-width: 0; min-height: 48px; padding: 6px 0;
+    display: flex; align-items: center; gap: 9px; text-align: left;
+  }
+  .fx-item-ico {
+    display: grid; place-items: center; width: 30px; height: 32px; flex: none;
+    border-radius: 10px;
+  }
+  .fx-item-ico .ico { width: 16px; height: 16px; }
+  .fx-item-corpo { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+  .fx-item-nome {
+    font-size: var(--text-body); font-weight: 600; color: #26382e;
+    white-space: normal; overflow-wrap: anywhere;
+  }
+  .fx-item-meta { font-size: var(--text-caption); color: #7E9488; }
+  /* Veio das contas: o traço à esquerda diz que a linha se edita em
+     outro lugar, sem um rótulo a mais competindo pelo espaço. */
+  .fx-item.de-contas { border-left: 2px solid #CFE8E2; padding-left: 7px; }
+  .fx-item-val {
+    flex: none; font-size: var(--text-body); font-weight: 700; white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* ── a aba de ajustes ────────────────────────────────── */
+  .fx-menu { margin-top: 12px; display: flex; flex-direction: column; gap: 12px; }
+  .fx-menu .card {
+    border-radius: 18px; border: 1px solid #E1EAE6; background: #fff;
+    box-shadow: 0 4px 16px #18452e05; overflow: hidden;
+  }
+  .fx-menu .set-block { padding: 10px; gap: 8px; }
+  .fx-menu .set-title { font-size: var(--text-body); font-weight: 600; color: #063c30; }
+  .fx-menu .set-desc { font-size: var(--text-caption); line-height: 1.45; color: #526a60; }
+  /* Sugerir é um convite, não uma decisão: o botão preenche os campos
+     e o usuário ajusta o que não concordar. */
+  .fx-sugerir {
+    align-self: center; display: inline-flex; align-items: center; gap: 7px;
+    min-height: 38px; padding: 8px 16px;
+    border-radius: 99px; background: #E8F1ED; color: #1C5148;
+    font-size: var(--text-caption); font-weight: 700;
+  }
+  .fx-sugerir .ico { width: 15px; height: 15px; }
+  /* a nota explica de onde veio o número: fica sob o botão, centrada */
+  #fx-sugerir-nota { color: #7E9488; text-align: center; }
+  .fx-limites { display: flex; flex-direction: column; gap: 8px; }
+  /* amostra · rótulo · campo: a cor vem primeiro porque é ela que se
+     está regulando — o número sozinho não diz o que vai mudar. */
+  .fx-limite {
+    display: grid; grid-template-columns: 34px minmax(0, 1fr) 6.5rem;
+    align-items: center; gap: 9px;
+  }
+  .fx-amostra {
+    display: grid; place-items: center; width: 34px; height: 28px;
+    border-radius: 9px; font-size: 11px; font-weight: 700;
+  }
+  .fx-limite-fim { color: #526a60; }
+  .fx-limite-acima { font-size: var(--text-caption); color: #7E9488; text-align: right; }
+  .fx-limite-rot { font-size: var(--text-caption); color: #456954; }
+
+  /* ── cartões ─────────────────────────────────────────── */
+  .fx-cartoes-cab { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+  .fx-novo-cartao {
+    min-height: 32px; padding: 5px 12px; border-radius: 99px;
+    background: #E8F1ED; color: #1C5148;
+    font-size: var(--text-caption); font-weight: 700; white-space: nowrap;
+  }
+  .fx-cartoes { display: flex; flex-direction: column; gap: 8px; }
+  .fx-cartao {
+    display: flex; align-items: center; gap: 9px; text-align: left;
+    min-height: 52px; padding: 8px 10px; border-radius: 13px;
+    background: #FAFCFB; border: 1px solid #E1EAE6;
+  }
+  .fx-cartao-ico {
+    display: grid; place-items: center; width: 32px; height: 34px; flex: none;
+    border-radius: 10px; background: #EEF3FD; color: #2E5A8C;
+  }
+  .fx-cartao-ico .ico { width: 17px; height: 17px; }
+  .fx-cartao-corpo { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+  .fx-cartao-nome { font-size: var(--text-body); font-weight: 600; color: #063c30; overflow-wrap: anywhere; }
+  .fx-cartao-meta { font-size: var(--text-caption); color: #7E9488; }
+  /* a próxima fatura é o que se quer saber de relance, então ela tem
+     coluna própria — abrir o cartão para ver seria um toque a mais */
+  .fx-cartao-prox { flex: none; display: flex; flex-direction: column; align-items: flex-end; }
+  .fx-cartao-prox small { font-size: 10px; color: #8FA298; }
+  .fx-cartao-prox b { font-size: var(--text-caption); font-weight: 700; color: #1C5148; }
+
+  /* ── o resumo do mês (aba tabelas) ───────────────────── */
+  /* O mês é o mesmo da tela do FLUX. O herói toma a cor da faixa em
+     que o resultado cai — é a mesma escala dos dias, para o verde de
+     lá e o daqui quererem dizer a mesma coisa. */
+  #fx-resumo { display: flex; flex-direction: column; gap: 10px; margin-bottom: 12px; }
+  .fx-res-linha + .fx-res-linha { margin-top: 7px; }
+  .fx-res-tit + .fx-res-linha { margin-top: 9px; }
+  #fx-resumo[hidden] { display: none; }
+  .fx-res-hero { border-radius: 18px; padding: 14px; }
+  .fx-res-topo { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+  .fx-res-nav { display: flex; align-items: center; gap: 2px; margin-left: -6px; }
+  .fx-res-mes { font-size: var(--text-caption); font-weight: 700; opacity: .85; }
+  /* as setas herdam a cor do herói, que muda com a faixa do resultado —
+     cor fixa aqui sumiria no fundo escuro da faixa mais saudável */
+  .fx-res-seta {
+    position: relative; display: grid; place-items: center;
+    width: 26px; height: 26px; border-radius: 8px; color: inherit; opacity: .75;
+  }
+  .fx-res-seta .ico { width: 15px; height: 15px; }
+  .fx-res-seta::after {
+    content: ''; position: absolute; top: 50%; left: 50%;
+    width: var(--tap); height: var(--tap); transform: translate(-50%, -50%);
+  }
+  .fx-res-n { font-size: var(--text-caption); opacity: .7; }
+  .fx-res-amt { display: flex; align-items: baseline; gap: 4px; margin-top: 8px; }
+  .fx-res-pfx { font-size: var(--text-caption); font-weight: 600; opacity: .7; }
+  .fx-res-val {
+    font-size: var(--text-balance); font-weight: 800; letter-spacing: -.04em;
+    line-height: 1.05; font-variant-numeric: tabular-nums;
+  }
+  .fx-res-sub { display: block; margin-top: 4px; font-size: var(--text-caption); line-height: 1.4; opacity: .8; }
+
+  /* ── cálculos do mês ─────────────────────────────────── */
+  .fx-res-bloco {
+    display: flex; flex-direction: column;
+    padding: 12px; border-radius: 18px;
+    background: #fff; border: 1px solid #E1EAE6;
+  }
+  .fx-res-conta {
+    display: flex; align-items: center; justify-content: space-between; gap: 10px;
+    padding: 9px 0;
+  }
+  .fx-res-conta + .fx-res-conta, .fx-res-barra + .fx-res-conta { border-top: 1px solid #EFF4F2; }
+  .fx-res-conta-corpo { min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+  .fx-res-conta-nome { font-size: var(--text-body); font-weight: 600; color: #063c30; }
+  /* A fórmula em pastilhas de cor: elas casam com os ícones da lista
+     abaixo, então dá para ler "entrada menos saída menos…" sem legenda. */
+  .fx-res-form { display: flex; align-items: center; gap: 3px; }
+  .fx-res-dot {
+    display: grid; place-items: center; flex: none;
+    width: 18px; height: 18px; border-radius: 6px;
+  }
+  .fx-res-dot .ico { width: 11px; height: 11px; }
+  .fx-res-form b { font-size: 10px; font-weight: 700; color: #8FA298; padding: 0 1px; }
+  .fx-res-div { font-size: 10px; color: #8FA298; margin-left: 4px; }
+  .fx-res-conta-lado { flex: none; display: flex; flex-direction: column; align-items: flex-end; gap: 2px; }
+  .fx-res-conta-lado b {
+    font-size: var(--text-body); font-weight: 700; color: #063c30; white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+  }
+  .fx-res-conta-lado small { font-size: 10px; color: #7E9488; }
+  /* a barra do guardado mede contra a meta de 20%, não contra 100 */
+  .fx-res-meta { margin: 0 0 9px; }
+  .fx-res-tit { font-size: var(--text-body); font-weight: 600; color: #063c30; }
+  .fx-res-linha {
+    display: grid; grid-template-columns: 28px auto minmax(0, 1fr) auto;
+    align-items: center; gap: 8px;
+  }
+  /* categoria sem nada no mês continua visível, só apagada: sumir
+     faria a composição mudar de forma a cada mês */
+  .fx-res-linha.zero { opacity: .45; }
+  .fx-res-ico { display: grid; place-items: center; width: 28px; height: 28px; border-radius: 9px; }
+  .fx-res-ico .ico { width: 15px; height: 15px; }
+  .fx-res-nome { font-size: var(--text-caption); color: #51705E; white-space: nowrap; }
+  .fx-res-barra { height: 5px; border-radius: 99px; background: #EEF3F0; overflow: hidden; }
+  .fx-res-barra i { display: block; height: 100%; border-radius: 99px; opacity: .55; }
+  .fx-res-v {
+    font-size: var(--text-caption); font-weight: 700; white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* ── a folha de lançamento ───────────────────────────── */
+  #sheet-flux { --record-accent: var(--fx-claro); }
+  /* Cinco tipos numa grade de 6 colunas: os três primeiros ocupam 2
+     cada (3 na linha) e os dois últimos ocupam 3 (2 na linha). Com
+     flex-wrap sobravam larguras diferentes e um "Cartão" solto e
+     estreito na segunda linha. */
+  .fx-tipos { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; }
+  .fx-tipo:nth-child(-n+3) { grid-column: span 2; }
+  .fx-tipo:nth-child(n+4) { grid-column: span 3; }
+
+  /* ── modo rápido ─────────────────────────────────────── */
+  .fx-modos {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 4px;
+    padding: 4px; background: #E8F1ED; border-radius: 13px;
+  }
+  .fx-modos[hidden] { display: none; }
+  /* Os dois modos são caixas dentro do .fbody, e uma caixa comum não
+     repassa o gap do formulário: os campos ficavam colados. Repetem o
+     empilhamento do pai, e o gap vem dele — assim seguem o breakpoint
+     sem uma segunda medida para manter em sincronia. */
+  #fx-rapido, #fx-detalhado { display: flex; flex-direction: column; gap: inherit; }
+  #fx-rapido[hidden], #fx-detalhado[hidden] { display: none; }
+  .fx-modo {
+    min-height: 36px; border-radius: 10px;
+    font-size: var(--text-caption); font-weight: 600; color: #51705E;
+  }
+  .fx-modo.on { background: #fff; color: #063c30; box-shadow: 0 1px 5px #18452e12; }
+  /* o que vai ser lançado, em texto: o valor some numa conta que o
+     usuário não fez, e ele precisa concordar antes de salvar */
+  .fx-ajuste {
+    margin-top: 8px; padding: 10px 11px; border-radius: 12px;
+    font-size: var(--text-caption); line-height: 1.45;
+    background: #F3F7F5; color: #526a60; border: 1px solid #E4EDE8;
+  }
+  .fx-ajuste.falta { background: #FEF0EE; border-color: #F0D4CC; color: #8C3A2F; }
+  .fx-ajuste.sobra { background: #E9F6D6; border-color: #CFE3B4; color: #2F6142; }
+  .fx-ajuste.igual { background: #EAF4EF; border-color: #CFE8E2; color: #1C5148; }
+  .fx-tipo {
+    min-height: 40px; padding: 7px 12px; border-radius: 99px;
+    display: inline-flex; align-items: center; gap: 6px;
+    border: 1px solid #DBE5E1; background: #fff; color: #51705E;
+    font-size: var(--text-caption); font-weight: 600;
+  }
+  .fx-tipo .ico { width: 15px; height: 15px; }
+  .fx-tipo.on { border-color: transparent; }
+}
+
+@media (max-width: 359px) {
+  .fx-dia-cab { grid-template-columns: 30px minmax(0, 1fr) auto; column-gap: 7px; }
+  .fx-limite { grid-template-columns: minmax(0, 1fr); gap: 4px; }
+}
+
+@media (min-width: 600px) and (max-width: 1023px) {
+  #slot-flux > * { width: calc(100% - 64px); max-width: 650px; margin-left: auto; margin-right: auto; }
+}
+
+@media (prefers-reduced-motion: reduce) { #slot-flux * { transition: none !important; } }

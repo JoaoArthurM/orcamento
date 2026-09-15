@@ -216,11 +216,19 @@
       avg_amount: null,
       notes:  a.notes ? String(a.notes).slice(0, 500) : null,
     };
+
+    /* O dia vale para QUALQUER tipo: uma assinatura cobra num dia, a
+       renda cai num dia. Antes só a conta fixa tinha, e o razão era
+       obrigado a chutar o dia 1 para todas as outras.
+
+       Nulo continua sendo resposta legítima, e quer dizer coisas
+       diferentes: na renda, "no 5º dia útil"; nas demais, "no dia 1". */
+    const d = parseInt(a.due_day, 10);
+    out.due_day = (d >= 1 && d <= 31) ? d : null;
+
     if (kind === 'renda') {
       out.frequency = FREQ_OK.indexOf(a.frequency) >= 0 ? a.frequency : 'mensal';
     } else if (kind === 'fixa') {
-      const d = parseInt(a.due_day, 10);
-      out.due_day = (d >= 1 && d <= 31) ? d : 1;
       out.paid_on = dataOuNulo(a.paid_on);
     } else if (kind === 'variavel') {
       // sem média informada, a própria conta vira a referência
@@ -569,7 +577,10 @@
       id: a.id, user_id: user.id,
       kind: a.kind, name: a.name, amount: a.amount,
       frequency:  a.kind === 'renda'    ? a.frequency  : null,
-      due_day:    a.kind === 'fixa'     ? a.due_day    : null,
+      /* O dia vale para todo tipo. Antes só a conta fixa o enviava, e o
+         dia das outras nunca chegava ao banco — voltava nulo no outro
+         aparelho e a conta mudava de data sozinha. */
+      due_day:    a.due_day,
       paid_on:    a.kind === 'fixa'     ? a.paid_on    : null,
       avg_amount: a.kind === 'variavel' ? a.avg_amount : null,
       notes: a.notes,
@@ -608,6 +619,480 @@
     return JSON.stringify(toFavorRow(a, a.__pos)) === JSON.stringify(toFavorRow(b, b.__pos));
   }
 
+  /* ══════════════════════════════════════════════════════
+     FLUX — o razão diário
+     ══════════════════════════════════════════════════════
+     Os outros módulos respondem "quanto vou ter guardado". O FLUX
+     responde "quanto eu tenho no dia X". É um razão: cada linha é um
+     movimento com data, e a tela soma tudo desde uma âncora.
+
+     Nada daqui entra em entradasDoCalculo(): ver fluxSaldoEm sobre
+     por que o planejamento diário não pode vazar para o simulador. */
+
+  const FLUX_KINDS = ['entrada', 'saida', 'diario', 'economia', 'cartao'];
+  const FLUX_FREQS = ['mensal', 'semanal', 'diaria', 'anual'];
+  const FLUX_RULES = ['data', 'quinto_util', 'dia_util'];
+
+  /* As 7 faixas de cor do saldo, separadas por 6 limiares. */
+  const FLUX_LIMITES_PADRAO = [-100, 0, 100, 300, 1000, 2000];
+
+  function validFlux(f) {
+    return !!f && typeof f === 'object'
+      && typeof f.description === 'string' && f.description.trim() !== ''
+      && isFinite(Number(f.amount));
+  }
+
+  /**
+   * Um movimento do razão.
+   *
+   * O valor é sempre positivo: quem decide o sinal é o kind, e só
+   * 'entrada' soma. Guardar o sinal no valor faria a mesma linha
+   * significar coisas diferentes conforme quem a lesse.
+   */
+  function normalizeFlux(f) {
+    const freq = FLUX_FREQS.indexOf(f.repeat_freq) >= 0 ? f.repeat_freq : null;
+    const puladas = Array.isArray(f.skipped)
+      ? f.skipped.map(dataOuNulo).filter(Boolean) : [];
+    let vezes = Math.floor(Number(f.repeat_times));
+    if (!freq || !isFinite(vezes) || vezes < 2) vezes = null;
+    if (vezes !== null && vezes > 600) vezes = 600;
+    return {
+      id:          isUuid(f.id) ? f.id : newId(),
+      kind:        FLUX_KINDS.indexOf(f.kind) >= 0 ? f.kind : 'saida',
+      description: String(f.description).trim().slice(0, 120),
+      amount:      Math.max(0, Number(f.amount) || 0),
+      on_date:     dataOuNulo(f.on_date) || hoje(),
+      repeat_freq: freq,
+      repeat_times: vezes,
+      /* a regra só muda algo no mensal; guardá-la sempre evita um
+         null que depois vira 'data' em metade dos caminhos */
+      repeat_rule: FLUX_RULES.indexOf(f.repeat_rule) >= 0 ? f.repeat_rule : 'data',
+      // qual cartão pagou; só faz sentido no tipo cartao
+      card_id:     (f.kind === 'cartao' && isUuid(f.card_id)) ? f.card_id : null,
+      // sem repetição não há ocorrência para pular
+      skipped:     freq ? puladas : [],
+      notes:       f.notes ? String(f.notes).slice(0, 500) : null,
+    };
+  }
+
+  function toFluxRow(f, index) {
+    return {
+      id: f.id, user_id: user.id,
+      kind: f.kind, description: f.description, amount: f.amount,
+      on_date: f.on_date,
+      repeat_freq: f.repeat_freq, repeat_times: f.repeat_times,
+      repeat_rule: f.repeat_rule, skipped: f.skipped, card_id: f.card_id,
+      notes: f.notes, position: index,
+    };
+  }
+
+  function fromFluxRow(r) {
+    return normalizeFlux({
+      id: r.id, kind: r.kind, description: r.description, amount: r.amount,
+      on_date: r.on_date, repeat_freq: r.repeat_freq, repeat_times: r.repeat_times,
+      repeat_rule: r.repeat_rule, skipped: r.skipped, notes: r.notes,
+      card_id: r.card_id,
+    });
+  }
+
+  function sameFluxRow(a, b) {
+    return JSON.stringify(toFluxRow(a, a.__pos)) === JSON.stringify(toFluxRow(b, b.__pos));
+  }
+
+
+  /* ── FLUX: a regra que gera as ocorrências ──────────────
+     Uma linha que repete não vira N linhas no banco: ela continua
+     sendo uma, e a tela pergunta "você acontece neste dia?". Guardar
+     as ocorrências geradas envelheceria na primeira edição. */
+
+  /** Dias do mês (1-12 em `mes`). */
+  function diasNoMes(ano, mes) { return new Date(ano, mes, 0).getDate(); }
+
+  /* ── dias úteis ──────────────────────────────────────────
+     Quem decide o que é dia útil é a empresa, não o calendário: 0 é
+     domingo e 6 é sábado, e o padrão é de segunda a sexta. */
+
+  const DIAS_UTEIS_PADRAO = [1, 2, 3, 4, 5];
+
+  /* A lista do usuário logado. Quem desenha não deveria ter de
+     carregá-la em toda chamada — mas os testes precisam fixá-la, e por
+     isso toda função aqui aceita a lista como último argumento. */
+  let diasUteis = DIAS_UTEIS_PADRAO.slice();
+
+  /* Contar e receber são perguntas diferentes: quem trabalha de segunda
+     a sábado CONTA o sábado para chegar ao 5º dia útil, mas RECEBE na
+     sexta ou na segunda. Uma lista só acertava uma das duas. */
+  let diasPagamento = DIAS_UTEIS_PADRAO.slice();
+
+  /* Só dois lados fazem sentido; qualquer outra coisa cai no mais comum. */
+
+  function normalizeDiasUteis(v) {
+    if (!Array.isArray(v)) return DIAS_UTEIS_PADRAO.slice();
+    const limpos = [];
+    v.forEach(function (d) {
+      const n = Math.floor(Number(d));
+      if (n >= 0 && n <= 6 && limpos.indexOf(n) < 0) limpos.push(n);
+    });
+    /* Lista vazia faria a contagem do 5º dia útil nunca terminar, e
+       o deslocamento de data girar para sempre. */
+    if (!limpos.length) return DIAS_UTEIS_PADRAO.slice();
+    return limpos.sort(function (a, b) { return a - b; });
+  }
+
+  function ehDiaUtil(iso, uteis) {
+    const p = partesData(iso);
+    const dia = new Date(p.a, p.m - 1, p.d).getDay();
+    return normalizeDiasUteis(uteis).indexOf(dia) >= 0;
+  }
+
+  /**
+   * O enésimo dia útil do mês, contando só os dias que a empresa conta.
+   * Se o mês não tiver tantos (um mês com um único dia útil por semana),
+   * devolve o último dia útil que existir.
+   */
+  function diaUtilDoMes(ano, mes, n, uteis) {
+    const lista = normalizeDiasUteis(uteis);
+    const total = diasNoMes(ano, mes);
+    let contados = 0, ultimo = total;
+    for (let dia = 1; dia <= total; dia++) {
+      if (lista.indexOf(new Date(ano, mes - 1, dia).getDay()) < 0) continue;
+      contados++;
+      ultimo = dia;
+      if (contados === n) return dia;
+    }
+    return ultimo;
+  }
+
+  function quintoDiaUtil(ano, mes, uteis) {
+    return diaUtilDoMes(ano, mes, 5, uteis);
+  }
+
+  /**
+   * A data em que o dinheiro entra de verdade.
+   *
+   * Recebe a lista de dias em que o pagamento CAI — que não é a mesma
+   * dos dias que CONTAM para o 5º útil. Quem trabalha de segunda a
+   * sábado conta o sábado e ainda assim recebe na sexta ou na segunda.
+   *
+   * Quando a data cai fora dessa lista, ela anda para o dia de
+   * pagamento MAIS PRÓXIMO: sábado está a um dia da sexta e a dois da
+   * segunda, então vem para a sexta; no domingo é o contrário, e ele
+   * vai para a segunda.
+   *
+   * Não há escolha a fazer porque não há dúvida: a distância decide. Um
+   * seletor de "sempre antes" ou "sempre depois" erraria por dois dias
+   * numa das pontas do fim de semana, e obrigaria o usuário a resolver
+   * uma pergunta que o calendário já responde.
+   *
+   * No empate — possível num calendário com folga no meio da semana —
+   * volta: antecipar cumpre o combinado de "até o dia tal" enquanto
+   * adiar o quebra.
+   */
+  function ajustarParaDiaUtil(iso, pagamento) {
+    const data = dataOuNulo(iso);
+    if (!data) return null;
+    const lista = normalizeDiasUteis(pagamento);
+    const p = partesData(data);
+    const base = new Date(p.a, p.m - 1, p.d);
+    if (lista.indexOf(base.getDay()) >= 0) return data;
+
+    const iso3 = function (d) {
+      return d.getFullYear() + '-' +
+        String(d.getMonth() + 1).padStart(2, '0') + '-' +
+        String(d.getDate()).padStart(2, '0');
+    };
+    const anda = function (passo) {
+      const d = new Date(base.getTime());
+      // 7 passos bastam: alguma parada cai na lista, que nunca é vazia
+      for (let i = 1; i <= 7; i++) {
+        d.setDate(d.getDate() + passo);
+        if (lista.indexOf(d.getDay()) >= 0) return { iso: iso3(d), dist: i };
+      }
+      return null;
+    };
+
+    const atras = anda(-1), frente = anda(1);
+    if (!atras) return frente ? frente.iso : data;
+    if (!frente) return atras.iso;
+    return frente.dist < atras.dist ? frente.iso : atras.iso;
+  }
+
+
+  function partesData(iso) {
+    const p = String(iso).split('-').map(Number);
+    return { a: p[0], m: p[1], d: p[2] };
+  }
+
+  /** Quantos dias inteiros separam duas datas ISO (b - a). */
+  function diasEntre(a, b) {
+    const pa = partesData(a), pb = partesData(b);
+    const ta = Date.UTC(pa.a, pa.m - 1, pa.d), tb = Date.UTC(pb.a, pb.m - 1, pb.d);
+    return Math.round((tb - ta) / 86400000);
+  }
+
+  /**
+   * Qual é o índice da ocorrência que cairia em `data` — 0 é a
+   * primeira (a própria on_date). Negativo quando a data não é uma
+   * ocorrência possível daquela frequência.
+   */
+  function indiceOcorrencia(f, data) {
+    const ini = partesData(f.on_date), alvo = partesData(data);
+    if (f.repeat_freq === 'diaria') {
+      const n = diasEntre(f.on_date, data);
+      return n < 0 ? -1 : n;
+    }
+    if (f.repeat_freq === 'semanal') {
+      const n = diasEntre(f.on_date, data);
+      return (n < 0 || n % 7 !== 0) ? -1 : n / 7;
+    }
+    if (f.repeat_freq === 'anual') {
+      const n = alvo.a - ini.a;
+      return n < 0 ? -1 : n;
+    }
+    // mensal
+    const n = (alvo.a - ini.a) * 12 + (alvo.m - ini.m);
+    return n < 0 ? -1 : n;
+  }
+
+  /**
+   * O movimento `f` acontece no dia `data`?
+   *
+   * O dia esperado no mensal encolhe para o último dia do mês quando
+   * o original não existe ali — dia 31 em fevereiro cai no 28/29, em
+   * vez de simplesmente sumir daquele mês.
+   */
+  function fluxOcorreEm(f, data, uteis) {
+    if (!f || !dataOuNulo(data)) return false;
+    if (f.skipped && f.skipped.indexOf(data) >= 0) return false;
+    /* A data de origem NÃO vale sozinha quando há regra de dia útil: ela
+       carrega o dia combinado (o 5, o 10), não a data em que o dinheiro
+       cai. Deixá-la passar aqui furava o ajuste — o salário aparecia no
+       sábado da semente E na sexta calculada pela regra. */
+    const temRegra = f.repeat_freq === 'mensal' && f.repeat_rule !== 'data';
+    if (!temRegra && f.on_date === data) return true;
+    if (!f.repeat_freq) return false;
+
+    const i = indiceOcorrencia(f, data);
+    /* O índice 0 — o mês da própria semente — TAMBÉM conta. Ele estava
+       barrado junto com os negativos, e para um mensal com regra de dia
+       útil isso apagava o primeiro mês inteiro: o atalho da on_date não
+       vale (ela carrega o dia combinado, não a data de pagamento) e o
+       cálculo da regra nunca era alcançado. O lançamento de setembro só
+       nascia em outubro.
+       As contas derivadas sofriam o mesmo: primeira() escolhe o mês da
+       âncora de propósito, e esse mês vinha vazio. */
+    if (i < 0) return false;
+    if (f.repeat_times !== null && i >= f.repeat_times) return false;
+    if (f.repeat_freq === 'diaria' || f.repeat_freq === 'semanal') return true;
+
+    const ini = partesData(f.on_date);
+    // anual: mesmo mês E mesmo dia; sem o mês, cairia 12 vezes no ano
+    if (f.repeat_freq === 'anual' && partesData(data).m !== ini.m) return false;
+
+    const alvo = partesData(data);
+    /* dia_util: o dia combinado, andado quando não for dia de pagamento.
+       É o que uma conta fixa faz de verdade — vence no sábado, sai na
+       sexta. */
+    if (f.repeat_rule === 'dia_util' && f.repeat_freq === 'mensal') {
+      const combinado = alvo.a + '-' + String(alvo.m).padStart(2, '0') + '-' +
+        String(Math.min(ini.d, diasNoMes(alvo.a, alvo.m))).padStart(2, '0');
+      // a data anda pelos dias de PAGAMENTO, não pelos de contagem
+      return data === ajustarParaDiaUtil(combinado, diasPagamento);
+    }
+
+    /* quinto_util: a CONTAGEM usa os dias úteis, mas a data resultante
+       ainda precisa passar pelo ajuste — quem conta o sábado chega a um
+       5º útil que cai no sábado, e não recebe no sábado. Sem este passo
+       o dinheiro aparecia num dia em que ele não entra. */
+    if (f.repeat_rule === 'quinto_util' && f.repeat_freq === 'mensal') {
+      const quinto = alvo.a + '-' + String(alvo.m).padStart(2, '0') + '-' +
+        String(quintoDiaUtil(alvo.a, alvo.m, uteis || diasUteis)).padStart(2, '0');
+      return data === ajustarParaDiaUtil(quinto, diasPagamento);
+    }
+
+    return alvo.d === Math.min(ini.d, diasNoMes(alvo.a, alvo.m));
+  }
+
+  /** Só 'entrada' soma; os outros quatro tipos saem do bolso. */
+  function fluxSinal(kind) { return kind === 'entrada' ? 1 : -1; }
+
+  /** O que entrou menos o que saiu num dia. */
+  function fluxMovimentoEm(lista, data, uteis) {
+    return (lista || []).reduce(function (t, f) {
+      return fluxOcorreEm(f, data, uteis) ? t + fluxSinal(f.kind) * f.amount : t;
+    }, 0);
+  }
+
+  function somaIntervalo(lista, de, ate) {
+    let total = 0;
+    const passos = diasEntre(de, ate);
+    const p = partesData(de);
+    for (let i = 0; i <= passos; i++) {
+      const d = new Date(p.a, p.m - 1, p.d + i);
+      const iso = d.getFullYear() + '-' +
+        String(d.getMonth() + 1).padStart(2, '0') + '-' +
+        String(d.getDate()).padStart(2, '0');
+      total += fluxMovimentoEm(lista, iso);
+    }
+    return total;
+  }
+
+  /**
+   * O saldo do razão no fim do dia `alvo`.
+   *
+   * A âncora é a abertura do dia em que `saldoInicial` valia, e os
+   * movimentos do próprio dia da âncora já contam. Antes dela o
+   * cálculo anda para trás, desfazendo o que houve.
+   *
+   * O planejamento diário desconta só os dias DEPOIS de hoje: é
+   * previsão de gasto, não gasto. Por isso ele fica dentro do FLUX e
+   * nunca entra em entradasDoCalculo() — o simulador trata dinheiro
+   * incerto no cenário otimista, e um gasto previsto derrubando o
+   * acumulado seria a mesma desonestidade ao contrário.
+   */
+  function fluxSaldoEm(cfg) {
+    const lista = cfg.lancamentos || [];
+    const ancora = dataOuNulo(cfg.ancora) || hoje();
+    const alvo = dataOuNulo(cfg.alvo) || hoje();
+    const agora = dataOuNulo(cfg.hoje) || hoje();
+    const inicial = Number(cfg.saldoInicial) || 0;
+    const diario = Math.max(0, Number(cfg.diario) || 0);
+
+    const movimentos = alvo >= ancora
+      ? somaIntervalo(lista, ancora, alvo)
+      : -somaIntervalo(lista, alvo, ancora) + fluxMovimentoEm(lista, alvo);
+
+    const futuros = alvo > agora ? diasEntre(agora, alvo) : 0;
+    return inicial + movimentos - diario * futuros;
+  }
+
+  function fluxLimites(v) {
+    return (Array.isArray(v) && v.length === 6 && v.every(function (n) { return isFinite(Number(n)); }))
+      ? v.map(Number) : FLUX_LIMITES_PADRAO.slice();
+  }
+
+
+  /**
+   * As sete faixas proporcionais à renda mensal.
+   *
+   * Um saldo de R$ 2.000 é folga larga para quem ganha 1.600 e aperto
+   * para quem ganha 12.000 — faixas fixas dizem a mesma coisa para os
+   * dois, e uma delas está errada. As proporções, em relação à renda:
+   *
+   *   −5%  o vermelho cheio: já passou do limite
+   *    0   qualquer negativo é negativo
+   *   10%  sobra que não paga um imprevisto
+   *   25%  cerca de uma semana de folga
+   *   60%  mais de metade do mês coberto
+   *  125%  um mês inteiro na conta, e uma sobra
+   *
+   * São réguas de bolso, não lei — por isso a tela sugere e o usuário
+   * ajusta, em vez de o app decidir sozinho.
+   *
+   * Arredonda para a dezena mais próxima: um limiar de R$ 383,17 dá
+   * uma precisão que a conta não tem.
+   */
+  function fluxLimitesSugeridos(renda) {
+    const r = Math.max(0, Number(renda) || 0);
+    if (!r) return FLUX_LIMITES_PADRAO.slice();
+    const dez = (v) => Math.round(v / 10) * 10;
+    return [dez(-0.05 * r), 0, dez(0.10 * r), dez(0.25 * r), dez(0.60 * r), dez(1.25 * r)];
+  }
+  /** Em qual das 7 faixas o saldo cai (0 = pior, 6 = melhor). */
+  function fluxFaixa(valor, limites) {
+    const l = fluxLimites(limites);
+    if (valor <= l[0]) return 0;
+    let faixa = 1;
+    for (let i = 1; i < l.length; i++) if (valor >= l[i]) faixa = i + 1;
+    return faixa;
+  }
+
+  /* ── FLUX: cartões ──────────────────────────────────────
+     Um gasto no cartão não sai do bolso no dia da compra: sai no dia
+     em que a fatura vence. Qual fatura ele pegou depende do dia de
+     fechamento — e é por isso que o cartão precisa de cadastro. */
+
+  function validFluxCard(c) {
+    return !!c && typeof c === 'object'
+      && typeof c.name === 'string' && c.name.trim() !== ''
+      && isFinite(Number(c.closing_day)) && isFinite(Number(c.due_day));
+  }
+
+  function diaValido(v) {
+    const n = Math.floor(Number(v));
+    return isFinite(n) ? Math.min(31, Math.max(1, n)) : 1;
+  }
+
+  function normalizeFluxCard(c) {
+    return {
+      id:   isUuid(c.id) ? c.id : newId(),
+      name: String(c.name).trim().slice(0, 60),
+      /* 1 a 31 mesmo em mês curto: guardar "todo dia 31" e mostrar 28
+         é honesto; guardar 28 perderia o combinado. Quem encolhe para
+         o último dia é fluxFatura, na hora de calcular. */
+      closing_day: diaValido(c.closing_day),
+      due_day:     diaValido(c.due_day),
+    };
+  }
+
+  function toFluxCardRow(c, index) {
+    return {
+      id: c.id, user_id: user.id, name: c.name,
+      closing_day: c.closing_day, due_day: c.due_day, position: index,
+    };
+  }
+
+  function fromFluxCardRow(r) {
+    return normalizeFluxCard({
+      id: r.id, name: r.name, closing_day: r.closing_day, due_day: r.due_day,
+    });
+  }
+
+  function sameFluxCardRow(a, b) {
+    return JSON.stringify(toFluxCardRow(a, a.__pos)) === JSON.stringify(toFluxCardRow(b, b.__pos));
+  }
+
+  /** "AAAA-MM-DD" do dia pedido, encolhido ao último dia do mês curto. */
+  function diaNoMes(ano, mes, dia) {
+    const d = Math.min(diaValido(dia), diasNoMes(ano, mes));
+    return ano + '-' + String(mes).padStart(2, '0') + '-' + String(d).padStart(2, '0');
+  }
+
+  /**
+   * A fatura que uma compra pega, e quando ela vence.
+   *
+   * Duas regras, nesta ordem:
+   *
+   *   1. A compra entra na fatura que ainda não fechou. Comprou no dia
+   *      do fechamento, ainda entra nessa; um dia depois, já é a do mês
+   *      seguinte.
+   *   2. O vencimento é no mês do fechamento quando cai depois dele, e
+   *      no mês seguinte quando não cai — fecha dia 25 e vence dia 5
+   *      significa vencer em julho a fatura que fechou em junho.
+   *
+   * Sem a regra 2 o razão mostraria o dinheiro saindo até um mês antes
+   * do que sai de verdade, e o saldo do fim do mês ficaria menor que a
+   * realidade justamente nos meses apertados.
+   */
+  function fluxFatura(cartao, refISO) {
+    const c = normalizeFluxCard(cartao);
+    const ref = dataOuNulo(refISO) || hoje();
+    const p = partesData(ref);
+
+    let fa = p.a, fm = p.m;
+    if (ref > diaNoMes(fa, fm, c.closing_day)) {
+      const d = new Date(p.a, p.m, 1);      // mês seguinte, virando o ano sozinho
+      fa = d.getFullYear(); fm = d.getMonth() + 1;
+    }
+    const fechamento = diaNoMes(fa, fm, c.closing_day);
+
+    let va = fa, vm = fm;
+    if (c.due_day <= c.closing_day) {
+      const d = new Date(fa, fm, 1);
+      va = d.getFullYear(); vm = d.getMonth() + 1;
+    }
+    return { fechamento: fechamento, vencimento: diaNoMes(va, vm, c.due_day) };
+  }
   function toPaymentRow(p, index) {
     return {
       id: p.id, user_id: user.id,
@@ -655,6 +1140,12 @@
     { chave: 'favors',   tabela: 'favors',   toRow: toFavorRow,    same: sameFavorRow },
     { chave: 'payments', tabela: 'favor_payments',
                          toRow: toPaymentRow, same: samePaymentRow },
+    /* Antes de 'flux': o movimento aponta para o cartão, e inserir o
+       filho antes do pai bateria na chave estrangeira. */
+    { chave: 'fluxCards', tabela: 'flux_cards',
+                         toRow: toFluxCardRow, same: sameFluxCardRow },
+    { chave: 'flux',     tabela: 'flux_entries',
+                         toRow: toFluxRow,    same: sameFluxRow },
   ];
 
   /* O estado zerado. Existe como função porque um literal solto em
@@ -663,7 +1154,13 @@
      a tabela inteira. */
   function estadoVazio(saldo) {
     const vazio = { saldoInicial: saldo === undefined ? 0 : saldo,
-                    hubOrder: null, horizonte: 12 };
+                    hubOrder: null, horizonte: 12,
+                    /* O razão do FLUX tem abertura própria: somar a do
+                       simulador faria o mesmo dinheiro contar duas vezes. */
+                    fluxSaldo: 0, fluxAncora: null, fluxDiario: 0,
+                    fluxLimites: FLUX_LIMITES_PADRAO.slice(),
+                    diasUteis: DIAS_UTEIS_PADRAO.slice(),
+                    diasPagamento: DIAS_UTEIS_PADRAO.slice() };
     COLECOES.forEach(function (c) { vazio[c.chave] = []; });
     return vazio;
   }
@@ -685,6 +1182,14 @@
               ? d.payments.filter(validPayment).map(normalizePayment) : [],
                   hubOrder: Array.isArray(d.hubOrder) ? d.hubOrder : null,
             horizonte: normalizeHorizonte(d.horizonte),
+            flux: Array.isArray(d.flux) ? d.flux.filter(validFlux).map(normalizeFlux) : [],
+            fluxCards: Array.isArray(d.fluxCards) ? d.fluxCards.filter(validFluxCard).map(normalizeFluxCard) : [],
+            fluxSaldo: Number(d.fluxSaldo) || 0,
+            fluxAncora: dataOuNulo(d.fluxAncora),
+            fluxDiario: Math.max(0, Number(d.fluxDiario) || 0),
+            fluxLimites: fluxLimites(d.fluxLimites),
+            diasUteis: normalizeDiasUteis(d.diasUteis),
+            diasPagamento: normalizeDiasUteis(d.diasPagamento),
           };
         }
       } catch (e) {}
@@ -718,6 +1223,14 @@
       payments: state.payments || [],
       hubOrder: state.hubOrder || null,
       horizonte: normalizeHorizonte(state.horizonte),
+      flux: state.flux || [],
+      fluxCards: state.fluxCards || [],
+      fluxSaldo: Number(state.fluxSaldo) || 0,
+      fluxAncora: dataOuNulo(state.fluxAncora),
+      fluxDiario: Math.max(0, Number(state.fluxDiario) || 0),
+      fluxLimites: fluxLimites(state.fluxLimites),
+      diasUteis: normalizeDiasUteis(state.diasUteis),
+      diasPagamento: normalizeDiasUteis(state.diasPagamento),
       savedAt: Date.now(),
     }));
   }
@@ -750,9 +1263,18 @@
       .select('*').eq('user_id', user.id).order('position', { ascending: true });
     if (er.error) throw er.error;
 
-    /* hub_order só existe a partir da migração v3 */
+    /* Cada degrau é uma migração: hub_order veio na v3, horizon_months no
+       horizonte, os quatro flux_* no FLUX. Quem não rodou a última continua
+       lendo as anteriores em vez de perder tudo. */
+    const COLS_FLUX = 'flux_saldo_inicial, flux_saldo_inicial_data, flux_diario,' +
+      ' flux_limites, dias_uteis, dias_pagamento';
     let sr = await client.from('settings')
-      .select('saldo_inicial, hub_order, horizon_months').eq('user_id', user.id).maybeSingle();
+      .select('saldo_inicial, hub_order, horizon_months, ' + COLS_FLUX)
+      .eq('user_id', user.id).maybeSingle();
+    if (sr.error && /flux_|column/i.test(sr.error.message || '')) {
+      sr = await client.from('settings')
+        .select('saldo_inicial, hub_order, horizon_months').eq('user_id', user.id).maybeSingle();
+    }
     if (sr.error && /horizon_months|column/i.test(sr.error.message || '')) {
       sr = await client.from('settings')
         .select('saldo_inicial, hub_order').eq('user_id', user.id).maybeSingle();
@@ -779,9 +1301,12 @@
     const favors   = await opcional('favors',   fromFavorRow,   'supabase/schema-favors.sql');
     const payments = await opcional('favor_payments', fromPaymentRow,
                                     'supabase/schema-favors-pagamentos.sql');
+    const flux     = await opcional('flux_entries', fromFluxRow, 'supabase/schema-flux.sql');
+    const fluxCards = await opcional('flux_cards', fromFluxCardRow, 'supabase/schema-flux-cartoes.sql');
 
     if (!er.data.length && !sr.data && !loans.length
-        && !accounts.length && !favors.length && !payments.length) return null;
+        && !accounts.length && !favors.length && !payments.length
+        && !flux.length && !fluxCards.length) return null;
     return {
       entries: er.data.map(fromRow),
       saldoInicial: sr.data ? (Number(sr.data.saldo_inicial) || 0) : 0,
@@ -791,6 +1316,16 @@
       accounts: accounts,
       favors: favors,
       payments: payments,
+      flux: flux,
+      fluxCards: fluxCards,
+      /* Escalares do razão. Sem a migração eles vêm undefined e caem
+         no padrão — o módulo abre zerado em vez de quebrar. */
+      fluxSaldo: sr.data ? (Number(sr.data.flux_saldo_inicial) || 0) : 0,
+      fluxAncora: dataOuNulo(sr.data && sr.data.flux_saldo_inicial_data),
+      fluxDiario: sr.data ? Math.max(0, Number(sr.data.flux_diario) || 0) : 0,
+      fluxLimites: fluxLimites(sr.data && sr.data.flux_limites),
+      diasUteis: normalizeDiasUteis(sr.data && sr.data.dias_uteis),
+      diasPagamento: normalizeDiasUteis(sr.data && sr.data.dias_pagamento),
     };
   }
 
@@ -834,7 +1369,16 @@
       const ordemAgora = JSON.stringify(state.hubOrder || null);
       const saldoMudou = !synced || synced.saldoInicial !== state.saldoInicial
                          || ordemAntes !== ordemAgora
-                         || (synced.horizonte || 12) !== (state.horizonte || 12);
+                         || (synced.horizonte || 12) !== (state.horizonte || 12)
+                         || (synced.fluxSaldo || 0) !== (state.fluxSaldo || 0)
+                         || (synced.fluxAncora || null) !== (state.fluxAncora || null)
+                         || (synced.fluxDiario || 0) !== (state.fluxDiario || 0)
+                         || JSON.stringify(fluxLimites(synced.fluxLimites))
+                            !== JSON.stringify(fluxLimites(state.fluxLimites))
+                         || JSON.stringify(normalizeDiasUteis(synced.diasUteis))
+                            !== JSON.stringify(normalizeDiasUteis(state.diasUteis))
+                         || JSON.stringify(normalizeDiasUteis(synced.diasPagamento))
+                            !== JSON.stringify(normalizeDiasUteis(state.diasPagamento));
       const temTrabalho = saldoMudou || planos.some(function (p) {
         return p.upserts.length || p.deletes.length;
       });
@@ -860,7 +1404,21 @@
         const linha = { user_id: user.id, saldo_inicial: state.saldoInicial };
         if (state.hubOrder) linha.hub_order = state.hubOrder;
         linha.horizon_months = normalizeHorizonte(state.horizonte);
+        linha.flux_saldo_inicial = Number(state.fluxSaldo) || 0;
+        linha.flux_saldo_inicial_data = dataOuNulo(state.fluxAncora);
+        linha.flux_diario = Math.max(0, Number(state.fluxDiario) || 0);
+        linha.flux_limites = fluxLimites(state.fluxLimites);
+        linha.dias_uteis = normalizeDiasUteis(state.diasUteis);
+        linha.dias_pagamento = normalizeDiasUteis(state.diasPagamento);
         let r = await client.from('settings').upsert(linha, { onConflict: 'user_id' });
+        if (r.error && /flux_|dias_uteis|dia_nao_util|dias_pagamento|column/i.test(r.error.message || '')) {
+          // sem a migração do FLUX, o razão fica só no aparelho
+          delete linha.flux_saldo_inicial; delete linha.flux_saldo_inicial_data;
+          delete linha.flux_diario; delete linha.flux_limites;
+          delete linha.dias_uteis;
+          delete linha.dias_pagamento;
+          r = await client.from('settings').upsert(linha, { onConflict: 'user_id' });
+        }
         if (r.error && /horizon_months|column/i.test(r.error.message || '')) {
           // sem a migração do horizonte, ele fica só no aparelho
           delete linha.horizon_months;
@@ -874,7 +1432,16 @@
         if (r.error) throw r.error;
       }
 
-      const confirmado = { saldoInicial: state.saldoInicial, hubOrder: state.hubOrder || null };
+      const confirmado = {
+        saldoInicial: state.saldoInicial, hubOrder: state.hubOrder || null,
+        horizonte: normalizeHorizonte(state.horizonte),
+        fluxSaldo: Number(state.fluxSaldo) || 0,
+        fluxAncora: dataOuNulo(state.fluxAncora),
+        fluxDiario: Math.max(0, Number(state.fluxDiario) || 0),
+        fluxLimites: fluxLimites(state.fluxLimites),
+        diasUteis: normalizeDiasUteis(state.diasUteis),
+        diasPagamento: normalizeDiasUteis(state.diasPagamento),
+      };
       COLECOES.forEach(function (col) { confirmado[col.chave] = clone(state[col.chave] || []); });
       writeSynced(confirmado);
 
@@ -968,6 +1535,12 @@
     });
     cheio.hubOrder = cheio.hubOrder || null;
     cheio.horizonte = normalizeHorizonte(cheio.horizonte);
+    cheio.fluxSaldo = Number(cheio.fluxSaldo) || 0;
+    cheio.fluxAncora = dataOuNulo(cheio.fluxAncora);
+    cheio.fluxDiario = Math.max(0, Number(cheio.fluxDiario) || 0);
+    cheio.fluxLimites = fluxLimites(cheio.fluxLimites);
+    cheio.diasUteis = normalizeDiasUteis(cheio.diasUteis);
+    cheio.diasPagamento = normalizeDiasUteis(cheio.diasPagamento);
     return cheio;
   }
 
@@ -1074,6 +1647,39 @@
     validAccount: validAccount,
     normalizeFavor: normalizeFavor,
     validFavor: validFavor,
+
+    /* FLUX — o razão diário. A regra de ocorrência e o saldo ficam aqui,
+       fora do app.js, para terem teste: o app.js precisa de DOM. */
+    normalizeFlux: normalizeFlux,
+    validFlux: validFlux,
+    FLUX_KINDS: FLUX_KINDS,
+    FLUX_FREQS: FLUX_FREQS,
+    FLUX_LIMITES_PADRAO: FLUX_LIMITES_PADRAO,
+    fluxOcorreEm: fluxOcorreEm,
+    fluxMovimentoEm: fluxMovimentoEm,
+    fluxSaldoEm: fluxSaldoEm,
+    fluxFaixa: fluxFaixa,
+    fluxLimites: fluxLimites,
+    fluxLimitesSugeridos: fluxLimitesSugeridos,
+    fluxSinal: fluxSinal,
+    /* O número da ocorrência que cai numa data — 0 é a primeira. É o
+       que permite cortar uma série "daqui em diante". */
+    fluxIndiceOcorrencia: indiceOcorrencia,
+    quintoDiaUtil: quintoDiaUtil,
+    diaUtilDoMes: diaUtilDoMes,
+    ehDiaUtil: ehDiaUtil,
+    ajustarParaDiaUtil: ajustarParaDiaUtil,
+    normalizeDiasUteis: normalizeDiasUteis,
+    DIAS_UTEIS_PADRAO: DIAS_UTEIS_PADRAO,
+    setDiasPagamento: function (v) { diasPagamento = normalizeDiasUteis(v); return diasPagamento; },
+    getDiasPagamento: function () { return diasPagamento.slice(); },
+    /* Guardar a lista aqui evita repassá-la em cada desenho; o
+       adoptState do app.js a ajusta quando o estado chega. */
+    setDiasUteis: function (v) { diasUteis = normalizeDiasUteis(v); return diasUteis; },
+    getDiasUteis: function () { return diasUteis.slice(); },
+    normalizeFluxCard: normalizeFluxCard,
+    validFluxCard: validFluxCard,
+    fluxFatura: fluxFatura,
     normalizeHorizonte: normalizeHorizonte,
     normalizePayment: normalizePayment,
     validPayment: validPayment,
