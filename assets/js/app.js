@@ -1411,10 +1411,22 @@
         return a.on_date < b.on_date ? -1 : (a.on_date > b.on_date ? 1 : 0);
       }),
       procura: (f) => f.description,
-      abrir: (id) => openFlux(id),
-      /* Da tabela some a SERIE inteira: aqui nao ha dia tocado, e sem
-         ele removerFlux nao tem o que perguntar. */
-      excluir: (id) => { editFluxId = id; fxDiaEditado = null; removerFlux(); },
+      /* A tabela tambem entra por uma OCORRENCIA, e nao pela serie crua.
+
+         Sem dia de referencia, editar aqui reescrevia a repeticao inteira
+         calada, enquanto a mesma edicao pelo painel do dia perguntava o
+         alcance. Duas portas para o mesmo registro nao podem se comportar
+         diferente sem que o usuario veja a diferenca.
+
+         O dia escolhido e a proxima ocorrencia de hoje em diante: e a que
+         a pessoa tem em mente, e e o unico ponto de corte em que "este",
+         "os proximos" e "todos" querem dizer tres coisas distintas. */
+      abrir: (id) => openFlux(id, null, fxDiaDeReferencia(id)),
+      excluir: (id) => {
+        editFluxId = id;
+        fxDiaEditado = fxDiaDeReferencia(id);
+        removerFlux();
+      },
       linha: function (f) {
         const t = FX_TIPOS[f.kind];
         return {
@@ -1436,7 +1448,7 @@
         const m = KIND_META[c.kind];
         let sub = m.rotulo;
         if (c.kind === 'renda') sub += ' · ' + FREQ_LABEL[c.frequency];
-        if (c.due_day) sub += ' · dia ' + c.due_day;
+        if (c.kind !== 'renda') sub += ' · ' + (c.due_day ? 'dia ' + c.due_day : '5º útil');
         if (c.kind === 'assinatura') sub += ' · R$ ' + num(c.amount * 12) + '/ano';
         /* Só a conta fixa tem estado de pagamento; nas outras a etiqueta
            repete o tipo, que é a cor que o módulo já usa para elas. */
@@ -1933,6 +1945,28 @@
 
   /** O razão inteiro: o que foi lançado mais o que vem das contas. */
   function fluxTodo() { return fluxo.concat(contasComoFlux()); }
+
+  /**
+   * A ocorrencia que a tabela representa: a primeira de hoje em diante.
+   *
+   * Uma serie que ja acabou nao tem proxima — ai vale a semente, que e o
+   * unico dia que ela chegou a ter. Um ano de busca cobre a anual, que e
+   * a frequencia mais esparsa que existe aqui.
+   */
+  function fxDiaDeReferencia(id) {
+    const f = fluxo.find(function (x) { return x.id === id; });
+    if (!f) return null;
+    if (!f.repeat_freq) return f.on_date;
+
+    const de = Store.hoje() > f.on_date ? Store.hoje() : f.on_date;
+    const p = de.split('-').map(Number);
+    for (let i = 0; i <= 366; i++) {
+      const d = new Date(p[0], p[1] - 1, p[2] + i);
+      const iso = fxISO(d);
+      if (Store.fluxOcorreEm(f, iso)) return iso;
+    }
+    return f.on_date;
+  }
 
   /** Tudo que acontece num dia. */
   function fluxDoDia(iso) {
@@ -3523,6 +3557,15 @@
   function renderContas() {
     const r = contasResumo();
 
+    /* O dia em branco quer dizer 5º dia útil — é o combinado mais comum
+       no Brasil, e foi por isso que ele deixou de ser obrigatório. A tela
+       ainda concatenava o número cru e escrevia "vence dia null" em toda
+       conta sem dia. Como a regra vale para os cinco tipos, a frase mora
+       num lugar só. */
+    const quandoSai = function (c) {
+      return c.due_day ? 'dia ' + c.due_day : 'no 5º dia útil';
+    };
+
     $('ct-renda').textContent = 'R$ ' + num(r.renda);
     $('ct-sobra').textContent = num(r.sobra);
 
@@ -3539,7 +3582,7 @@
       const m = KIND_META.renda;
       const equiv = c.frequency !== 'mensal' && c.frequency !== 'pontual'
         ? ' · R$ ' + num(rendaMensal(c)) + '/mês' : '';
-      return linha(c, m, FREQ_LABEL[c.frequency] + equiv, 'renda');
+      return linha(c, m, FREQ_LABEL[c.frequency] + equiv + ' · cai ' + quandoSai(c), 'renda');
     }).join('') : vazio('Nenhuma renda', 'Toque no + para cadastrar o que entra.');
 
     /* contas fixas */
@@ -3547,7 +3590,7 @@
     $('ct-fixas-total').textContent = 'R$ ' + num(r.fixas) + '/mês';
     $('ct-fixas').innerHTML = fixas.length ? fixas.map(function (c) {
       const paga = estaPaga(c);
-      return cartao(c, KIND_META.fixa, 'vence dia ' + c.due_day, {
+      return cartao(c, KIND_META.fixa, 'vence ' + quandoSai(c), {
         texto: paga ? 'pago' : 'em aberto',
         bg: paga ? '#E9F6D6' : '#FAF2DF',
         fg: paga ? '#2F6142' : '#8A6A24',
@@ -3566,7 +3609,7 @@
       const varia = media > 0
         ? ' · variou ' + sinal + delta.toLocaleString('pt-BR', { maximumFractionDigits: 0 }) + '%'
         : '';
-      return cartao(c, m, 'média R$ ' + num(media) + '/mês' + varia);
+      return cartao(c, m, 'sai ' + quandoSai(c) + ' · média R$ ' + num(media) + '/mês' + varia);
     }).join('') : '<div class="card m-card">' + vazio('Nenhuma conta variável', 'Mercado, combustível…') + '</div>';
 
     /* assinaturas */
@@ -3575,7 +3618,8 @@
     $('ct-subs').innerHTML = subs.length
       ? '<div class="ct-subs-head"><span>Total mensal</span><span>R$ ' + num(r.assinaturas) + '</span></div>' +
         subs.map(function (c) {
-          return linha(c, KIND_META.assinatura, 'R$ ' + num(c.amount * 12) + '/ano');
+          return linha(c, KIND_META.assinatura,
+            'cobra ' + quandoSai(c) + ' · R$ ' + num(c.amount * 12) + '/ano');
         }).join('')
       : vazio('Nenhuma assinatura', 'Streaming, apps, academia…');
 
@@ -3584,7 +3628,8 @@
     $('ct-eco-total').textContent = 'R$ ' + num(r.economia) + '/mês';
     $('ct-economia').innerHTML = ecos.length
       ? ecos.map(function (c) {
-          return linha(c, KIND_META.economia, 'R$ ' + num(c.amount * 12) + '/ano', 'renda');
+          return linha(c, KIND_META.economia,
+            'sai ' + quandoSai(c) + ' · R$ ' + num(c.amount * 12) + '/ano', 'renda');
         }).join('')
       : vazio('Nada guardado ainda', 'Cadastre quanto você separa por mês.');
 
