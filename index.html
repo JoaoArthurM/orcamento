@@ -174,7 +174,7 @@
       <svg class="ico" aria-hidden="true"><use href="#i-share-android"/></svg>
     </button>
     <!-- quem compartilha economia comigo, sobreposto ao meu avatar -->
-    <span class="avatares" id="m-avatares" hidden></span>
+    <button class="avatares" id="m-avatares" type="button" hidden aria-label="Abrir compartilhamento da economia"></button>
     <button class="appbar-account" id="btn-account" type="button" aria-label="Abrir ajustes e conta">
       <span class="avatar" id="m-avatar">AM</span>
       <svg class="ico hub-avatar-chevron" aria-hidden="true"><use href="#i-nav-arrow-down"/></svg>
@@ -303,7 +303,6 @@
             <span class="m-hero-pfx">R$</span>
             <span class="m-hero-val" id="ct-sobra">0</span>
           </span>
-          <span class="m-hero-period" id="ct-sobra-note">0% da renda não comprometida</span>
           </div>
           <div class="ct-pizza-svg" id="ct-pizza"></div>
           </div>
@@ -311,7 +310,6 @@
           <div class="ct-fluxo">
             <div class="ct-pizza-leg" id="ct-pizza-leg"></div>
           </div>
-          <span class="ct-fluxo-base" id="ct-pizza-total">de R$ 0,00 de renda</span>
 
         </div>
 
@@ -609,16 +607,16 @@
 
   <!-- legenda -->
   <div id="c-legend" class="legend">
-    <span class="leg-item"><svg class="ico leg-ico" style="color:var(--dot-fs)" aria-hidden="true"><use href="#i-piggy-bank"/></svg>Poupança</span>
-    <span class="leg-item"><svg class="ico leg-ico" style="color:var(--dot-os)" aria-hidden="true"><use href="#i-safe"/></svg>Pontual</span>
-    <span class="leg-item"><svg class="ico leg-ico" style="color:var(--dot-ci)" aria-hidden="true"><use href="#i-coins"/></svg>Renda certa</span>
-    <span class="leg-item"><svg class="ico leg-ico" style="color:var(--dot-ui)" aria-hidden="true"><use href="#i-dice-five"/></svg>Renda incerta</span>
-    <span class="leg-item"><svg class="ico leg-ico" style="color:var(--dot-em)" aria-hidden="true"><use href="#i-hand-cash"/></svg>Empréstimo</span>
-    <span class="leg-item"><svg class="ico leg-ico" style="color:var(--dot-co)" aria-hidden="true"><use href="#i-bank"/></svg>Consórcio</span>
+    <span class="leg-item t-fs"><svg class="ico leg-ico" aria-hidden="true"><use href="#i-piggy-bank"/></svg>Poupança</span>
+    <span class="leg-item t-os"><svg class="ico leg-ico" aria-hidden="true"><use href="#i-safe"/></svg>Pontual</span>
+    <span class="leg-item t-ci"><svg class="ico leg-ico" aria-hidden="true"><use href="#i-coins"/></svg>Renda certa</span>
+    <span class="leg-item t-ui"><svg class="ico leg-ico" aria-hidden="true"><use href="#i-dice-five"/></svg>Renda incerta</span>
+    <span class="leg-item t-em"><svg class="ico leg-ico" aria-hidden="true"><use href="#i-hand-cash"/></svg>Empréstimo</span>
+    <span class="leg-item t-co"><svg class="ico leg-ico" aria-hidden="true"><use href="#i-bank"/></svg>Consórcio</span>
   </div>
 
   <!-- ajustes -->
-  <div id="c-settings" style="display:flex;flex-direction:column;gap:14px">
+  <div id="c-settings">
     <div class="settings-profile" aria-label="Seu perfil">
       <div class="settings-profile-avatar">
         <span id="profile-initials" aria-hidden="true">PL</span>

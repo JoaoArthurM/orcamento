@@ -669,8 +669,33 @@
          recebido: 0, emAberto: 0, ativos: 0, atrasados: 0 });
   }
 
+  /* Sem prazo vai para o fim da fila. O nome não é SEM_PRAZO porque esse já
+     existe acima, nos favores, e lá é um marcador de agrupamento, não uma data. */
+  const FIM_DA_FILA = '9999-12-31';
+
+  /**
+   * Em aberto primeiro, do vencimento mais próximo para o mais distante;
+   * quitados por último, em ordem cronológica.
+   *
+   * Os dois grupos usam chaves diferentes de propósito. Em aberto a pergunta
+   * é "o que recebo antes", então quem não tem due_on (a mensalidade, que
+   * não tem acerto marcado) cai no fim do grupo em vez de fingir uma data.
+   * Já entre os quitados não existe "próximo": eles se ordenam pelo que
+   * houve, e aí lent_on serve de substituto quando não há vencimento.
+   *
+   * ATENÇÃO: não há data de quitação no banco. `loans` não guarda quando o
+   * empréstimo fechou, e normalizeLoan descarta o updated_at que viria do
+   * Supabase. A ordem dos quitados é pelo vencimento combinado, que é uma
+   * aproximação — dois quitados no mesmo dia combinado ficam na ordem em
+   * que o banco devolveu. Uma ordem real exigiria coluna nova.
+   */
+  function ordemLoan(l, quitado) {
+    if (quitado) return l.due_on || l.lent_on || FIM_DA_FILA;
+    return l.due_on || FIM_DA_FILA;
+  }
+
   function loansFiltrados() {
-    return loans.filter(function (l) {
+    const visiveis = loans.filter(function (l) {
       if (loanPerson && chavePessoa(l.person) !== loanPerson) return false;
       const i = loanInfo(l);
       if (loanFilter === 'aberto')    return !i.quitado;
@@ -678,6 +703,30 @@
       if (loanFilter === 'quitados')  return i.quitado;
       return true;
     });
+
+    return ordenarLoans(visiveis);
+  }
+
+  /**
+   * A ordem da lista de empréstimos, uma só para a tela do módulo e para a
+   * aba de tabelas — se divergissem, o mesmo empréstimo apareceria em
+   * posições diferentes conforme por onde se chega nele.
+   *
+   * Não altera a lista recebida: o .map abre um array novo antes do .sort.
+   */
+  function ordenarLoans(lista) {
+    return lista
+      .map(function (l) { return { l: l, q: loanInfo(l).quitado }; })
+      .sort(function (a, b) {
+        if (a.q !== b.q) return a.q ? 1 : -1;            // quitado desce
+        const da = ordemLoan(a.l, a.q), db = ordemLoan(b.l, b.q);
+        if (da !== db) return da < db ? -1 : 1;
+        // desempate estável: a data de saída, depois o id
+        const sa = a.l.lent_on || FIM_DA_FILA, sb = b.l.lent_on || FIM_DA_FILA;
+        if (sa !== sb) return sa < sb ? -1 : 1;
+        return a.l.id < b.l.id ? -1 : (a.l.id > b.l.id ? 1 : 0);
+      })
+      .map(function (x) { return x.l; });
   }
 
   /** Uma entrada por pessoa, com o que ela ainda deve. */
@@ -1036,18 +1085,19 @@
     /* A chave é da economia: é a única tela que se compartilha. Aparece
        mesmo sem login — esconder um botão que o usuário procura é pior
        que abrir a folha e explicar que compartilhar precisa de conta. */
-    $('btn-share').hidden = noHub || screen !== 'eco';
+    /* Também precisa da aba: `screen` continua 'eco' quando se abre ajustes
+       ou tabelas vindo da economia, e sem esta parte a chave (e a pilha de
+       avatares, que depende dela) ficava no topo daquelas telas. */
+    $('btn-share').hidden = noHub || tab !== 'main' || screen !== 'eco';
     $('m-avatares').hidden = !pilhaVisivel();
-    $('appbar-title').textContent =
-      noHub ? 'orçamento.' :
-      tab === 'settings' ? 'ajustes.' :
-      tab === 'tabelas'  ? 'tabelas.' : mod.titulo;
-    if (noHub) {
-      const ponto = document.createElement('span');
-      ponto.className = 'brand-dot';
-      ponto.textContent = '.';
-      $('appbar-title').replaceChildren('orçamento', ponto);
-    }
+    const tituloAppbar =
+      noHub ? 'orçamento' :
+      tab === 'settings' ? 'ajustes' :
+      tab === 'tabelas'  ? 'tabelas' : (mod.titulo || '').replace(/\.$/, '');
+    const ponto = document.createElement('span');
+    ponto.className = 'brand-dot';
+    ponto.textContent = '.';
+    $('appbar-title').replaceChildren(tituloAppbar, ponto);
 
     /* a barra de baixo só existe dentro de um módulo */
     const semNavbar = noHub || tab === 'settings';
@@ -1287,14 +1337,14 @@
     },
     loans: {
       titulo: 'Empréstimos',
-      itens: () => loans,
+      itens: () => ordenarLoans(loans),
       procura: (l) => l.person,
       abrir: (id) => openLoan(id),
       linha: function (l) {
         const i = loanInfo(l);
         return {
           icoNome: 'hand-cash', icoBg: i.sbg, icoFg: i.sfg,
-          nome: l.person, sub: i.status + ' · ' + Math.round(i.pct * 100) + '% pago',
+          nome: l.person, sub: Math.round(i.pct * 100) + '% pago',
           valor: numRaw(l.total_due), tag: i.status, tagBg: i.sbg, tagFg: i.sfg,
         };
       },
@@ -1311,8 +1361,11 @@
           icoBg: i.quitado ? '#E9F6D6' : '#EEF3FD',
           icoFg: i.quitado ? '#2F6142' : '#2E5A8C',
           nome: f.person,
-          sub: f.reason + ' · ' + (i.quitado ? 'quitado' : 'falta R$ ' + num(i.falta)),
+          sub: f.reason + (i.quitado ? '' : ' · falta R$ ' + num(i.falta)),
           valor: numRaw(f.amount),
+          tag: i.quitado ? 'Quitado' : (i.atrasado ? 'Atrasado' : 'Em aberto'),
+          tagBg: i.quitado ? '#E9F6D6' : (i.atrasado ? '#FEF0EE' : '#DCEBF6'),
+          tagFg: i.quitado ? '#2F6142' : (i.atrasado ? '#8C3A2F' : '#14405C'),
         };
       },
     },
@@ -1325,11 +1378,17 @@
         const m = KIND_META[c.kind];
         let sub = m.rotulo;
         if (c.kind === 'renda') sub += ' · ' + FREQ_LABEL[c.frequency];
-        if (c.kind === 'fixa') sub += ' · dia ' + c.due_day + (estaPaga(c) ? ' · pago' : ' · em aberto');
+        if (c.kind === 'fixa') sub += ' · dia ' + c.due_day;
         if (c.kind === 'assinatura') sub += ' · R$ ' + num(c.amount * 12) + '/ano';
+        /* Só a conta fixa tem estado de pagamento; nas outras a etiqueta
+           repete o tipo, que é a cor que o módulo já usa para elas. */
+        const paga = c.kind === 'fixa' ? estaPaga(c) : null;
         return {
           icoNome: m.ico, icoBg: m.bg, icoFg: m.fg,
           nome: c.name, sub: sub, valor: numRaw(c.amount),
+          tag: paga === null ? m.rotulo : (paga ? 'Pago' : 'Em aberto'),
+          tagBg: paga === null ? m.bg : (paga ? '#E9F6D6' : '#FAF2DF'),
+          tagFg: paga === null ? m.fg : (paga ? '#2F6142' : '#856623'),
         };
       },
     },
@@ -1371,6 +1430,8 @@
           '<span class="ei-name">' + esc(r.nome) + '</span>' +
           '<span class="ei-meta">' + esc(r.sub) + '</span>' +
         '</span>' +
+        (r.tag ? '<span class="ei-tag" style="background:' + r.tagBg +
+          ';color:' + r.tagFg + '">' + esc(r.tag) + '</span>' : '') +
         '<span class="ei-amt"><span class="ei-pfx">R$</span>' +
           '<span class="ei-val">' + r.valor + '</span></span>' +
         '<div class="eacts">' +
@@ -1429,7 +1490,9 @@
     saldoEl.textContent = 'saldo R' + '$' + num(net);
     saldoEl.className = 'm-sel-saldo' + (net < 0 ? ' neg' : '');
 
-    // agrupadas na ordem dos tipos, como no resto do app
+    /* Cada linha guarda de quem é e quanto vale: a ordem aqui é por valor,
+       não pela ordem dos tipos como no resto do app. Primeiro as minhas, do
+       maior para o menor; depois as compartilhadas, na mesma regra. */
     const linhas = [];
 
     /* O saldo inicial de quem compartilha entra na conta do 1º mês, mas o
@@ -1438,15 +1501,16 @@
     if (i === 0 && verJunto) {
       compartilhadas.forEach(function (p) {
         if (!(Number(p.saldoInicial) > 0)) return;
-        linhas.push('<div class="m-erow de-outro cor-' + p.color + '">' +
+        linhas.push({ meu: false, valor: Number(p.saldoInicial) || 0, html:
+          '<div class="m-erow de-outro cor-' + p.color + '">' +
           '<span class="m-erow-icon cor-' + p.color + '">' + ico('wallet', 'ei-ico') + '</span>' +
           '<span class="m-erow-body">' +
             '<span class="m-erow-name">Saldo inicial</span>' +
-            '<span class="m-erow-grp">' + esc(p.email) + '</span>' +
+            '<span class="m-erow-grp">' + esc(primeiroNome(p.email)) + '</span>' +
           '</span>' +
           '<span class="m-erow-amt"><span class="m-erow-pfx">R$</span>' +
             '<span class="m-erow-val">' + num(p.saldoInicial) + '</span></span>' +
-        '</div>');
+        '</div>' });
       });
     }
     ORDER.forEach(function (type) {
@@ -1461,7 +1525,10 @@
         const valTxt = v.kind === 'range' ? num(v.lo) + '–' + num(v.hi) : num(v.val);
         const fora = e.deOutro ? ' de-outro cor-' + e.cor : '';
         const org = origemDaLinha(e, type);
-        linhas.push('<div class="m-erow' + (e.deContas ? ' de-contas' : '') + fora + '">' +
+        // faixa ordena pelo topo: o que o olho lê como o valor da linha
+        const ordena = v.kind === 'range' ? v.hi : v.val;
+        linhas.push({ meu: !e.deOutro, valor: Number(ordena) || 0, html:
+          '<div class="m-erow' + (e.deContas ? ' de-contas' : '') + fora + '">' +
           '<span class="m-erow-icon' + (e.deOutro ? ' cor-' + e.cor : '') + '"' +
             // a cor de quem compartilha vem da classe; a minha, do tipo
             (e.deOutro ? '' : ' style="background:' + ICON_BG[type] +
@@ -1472,18 +1539,26 @@
             '<span class="m-erow-grp">' + org.sec +
               // deixa claro que essa linha se edita em outro lugar
               (e.deContas ? ' · de contas' : '') +
-              (e.deOutro ? ' · ' + esc(e.email || 'compartilhado') : '') + '</span>' +
+              (e.deOutro ? ' · ' + esc(primeiroNome(e.email)) : '') + '</span>' +
           '</span>' +
           '<span class="m-erow-amt"><span class="m-erow-pfx">R$</span>' +
             '<span class="m-erow-val" style="color:' + ts.fg + '">' + valTxt + '</span></span>' +
-        '</div>');
+        '</div>' });
       });
     });
 
     /* Conta nova é diferente de mês vazio: sem nada lançado em lugar
        nenhum, a tela é só zero, e quem chegou agora precisa saber por
        onde começar. Antes isso ficava escondido pelos dados de exemplo. */
-    $('m-entries').innerHTML = linhas.length ? linhas.join('')
+    /* Minhas primeiro, depois as de quem compartilha; dentro de cada grupo,
+       do maior valor para o menor. */
+    linhas.sort(function (a, b) {
+      if (a.meu !== b.meu) return a.meu ? -1 : 1;
+      return b.valor - a.valor;
+    });
+
+    $('m-entries').innerHTML = linhas.length
+      ? linhas.map(function (x) { return x.html; }).join('')
       : (entries.length
         ? '<div class="m-empty"><span class="m-empty-dots"></span>' +
           '<span>Nenhuma entrada neste mês</span></div>'
@@ -1510,8 +1585,10 @@
           // o ano não é enfeite: numa janela de 24 meses ou mais o mesmo
           // mês aparece duas vezes, e sem ele as duas linhas ficam iguais
           MS[mo.m - 1] + '<span class="m-trow-y">/' + mo.y + '</span></span>' +
-        '<span class="m-trow-saldo' + (net < 0 ? ' neg' : '') + '">' + num(net) + '</span>' +
-        '<span class="m-trow-acum">' + num(acum[i]) + '</span>' +
+        '<span class="m-trow-saldo' + (net < 0 ? ' neg' : '') + '">' +
+          '<span class="m-trow-pfx">R$</span>' + num(net) + '</span>' +
+        '<span class="m-trow-acum">' +
+          '<span class="m-trow-pfx">R$</span>' + num(acum[i]) + '</span>' +
       '</button>';
     }).join('');
     $('m-table').innerHTML = h;
@@ -1650,7 +1727,9 @@
             esc(iniciais(l.person)) + '</span>' +
           '<span class="lo-who">' +
             '<span class="lo-name">' + esc(l.person) + '</span>' +
-            '<span class="lo-meta">emprestado em ' + dataCurta(l.lent_on) + ' · ' + metodo + '</span>' +
+            '<span class="lo-meta">' +
+              (l.due_on ? 'vence ' + dataCurta(l.due_on) : 'desde ' + dataCurta(l.lent_on)) +
+              ' · <span class="lo-meta-v">' + metodo + '</span></span>' +
           '</span>' +
           '<span class="lo-status" style="background:' + i.sbg + ';color:' + i.sfg + '">' + i.status + '</span>' +
         '</span>' +
@@ -1712,6 +1791,22 @@
    * A inicial do e-mail. Uma letra só: as bolinhas se sobrepõem, e a
    * segunda letra acabaria escondida atrás da vizinha.
    */
+  /**
+   * O primeiro nome de quem compartilha, tirado do e-mail.
+   *
+   * É o único dado de identidade que existe: minhas_conexoes devolve
+   * owner_email e nada mais — não há nome em settings nem no perfil.
+   * Com separador ("ana.souza@") sai certo; sem ele ("anasouza@") não há
+   * como saber onde um nome acaba e o outro começa, e sai o local inteiro.
+   */
+  function primeiroNome(email) {
+    const local = String(email || '').split('@')[0];
+    const parte = local.split(/[._+-]/)[0].replace(/[0-9]+/g, '');
+    const limpo = parte || local.replace(/[0-9]+/g, '') || local;
+    if (!limpo) return 'Compartilhado';
+    return limpo.charAt(0).toUpperCase() + limpo.slice(1);
+  }
+
   function iniciaisEmail(email) {
     const nome = String(email || '').split('@')[0].replace(/[^a-zA-Z0-9]/g, '');
     return (nome[0] || '?').toUpperCase();
@@ -1851,8 +1946,7 @@
         '</span>' + cores +
         '<button class="sh-remover" data-remover="' + c.id +
           '" data-papel="' + c.papel + '" data-email="' + esc(c.email || '') +
-          '" aria-label="Desconectar">' +
-          ico('log-out') + '</button>' +
+          '">desconectar</button>' +
       '</div>';
     }).join('');
   }
@@ -1892,14 +1986,11 @@
 
     $('ct-renda').textContent = 'R$ ' + num(r.renda);
     $('ct-sobra').textContent = num(r.sobra);
-    $('ct-sobra-note').textContent = r.renda > 0
-      ? Math.round(r.pctSobra) + '% da renda não comprometida'
-      : 'cadastre uma renda para ver a sobra';
 
     /* A barra empilhada que ficava aqui saiu: repetia a decomposição da
        rosca abaixo, e a faixa de Economia (#2F6142 sobre o cartão escuro)
        tinha contraste 1.74 — a segunda maior fatia, invisível. O "Livre"
-       que só ela mostrava já está escrito no ct-sobra-note. */
+       continua na legenda da rosca, com valor e porcentagem. */
     renderPizza(r);
 
     /* rendas */
@@ -2007,7 +2098,6 @@
     if (!total) {
       cartao.classList.add('vazio');
       $('ct-pizza').innerHTML = '';
-      $('ct-pizza-total').textContent = '';
       $('ct-pizza-leg').innerHTML =
         '<span class="ct-pz-nome">Cadastre uma renda e uma conta ' +
         'para ver para onde vai o seu dinheiro.</span>';
@@ -2041,11 +2131,7 @@
       '</svg>' +
       '<span class="ct-pizza-centro">' +
         '<span class="ct-pizza-pct">' + (iLivre >= 0 ? pcts[iLivre] : 0) + '%</span>' +
-        '<span class="ct-pizza-cap">livre</span>' +
       '</span>';
-
-    // a base do percentual, dita por extenso: agora é uma só
-    $('ct-pizza-total').textContent = 'de R$ ' + num(r.renda) + ' de renda';
 
     $('ct-pizza-leg').innerHTML = fatias.map(function (f, i) {
       return '<span class="ct-pz' + (f.nome === 'Livre' ? ' livre' : '') + '">' +
@@ -3792,6 +3878,9 @@
 
     /* ── compartilhar ─────────────────────────────── */
     $('btn-share').addEventListener('click', abrirShare);
+    /* A pilha só existe na economia (pilhaVisivel exige o btn-share visível),
+       então o atalho não vaza para outro módulo. */
+    $('m-avatares').addEventListener('click', abrirShare);
     $('sh-gerar').addEventListener('click', gerarCodigo);
     $('sh-usar').addEventListener('click', usarCodigo);
     $('sh-entrada').addEventListener('keydown', function (ev) {
@@ -3939,8 +4028,26 @@
     /* deslizar para trocar de mês */
     let tx = 0, ty = 0, tracking = false;
     const vp = $('view-sim');
+    /**
+     * O deslize vale para a view, mas dentro dela há trilhos que rolam
+     * sozinhos — os chips de mês, os KPIs. Arrastar um deles rolava o trilho
+     * E trocava o mês no touchend: a tela saltava (herói, KPIs e lista
+     * redesenhados, e o chip novo puxado para o centro) enquanto o dedo
+     * ainda estava rolando. Quem começa num trilho não conta como deslize.
+     */
+    function dentroDeTrilho(no) {
+      for (let n = no; n && n !== vp; n = n.parentElement) {
+        if (n.scrollWidth > n.clientWidth + 1) {
+          const ox = getComputedStyle(n).overflowX;
+          if (ox === 'auto' || ox === 'scroll') return true;
+        }
+      }
+      return false;
+    }
+
     vp.addEventListener('touchstart', function (ev) {
       if (ev.touches.length !== 1) { tracking = false; return; }
+      if (dentroDeTrilho(ev.target)) { tracking = false; return; }
       tx = ev.touches[0].clientX; ty = ev.touches[0].clientY; tracking = true;
     }, { passive: true });
     vp.addEventListener('touchend', function (ev) {

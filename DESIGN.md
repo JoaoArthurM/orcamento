@@ -576,3 +576,47 @@ vez de aviso de que rola. Os KPIs da economia mostram 2,7 cartões de 320 a
 - **Don't** confiar na Poppins estar presente. Ela vem do Google Fonts e não é cacheada pelo service worker: offline o app cai na pilha do sistema, e o layout tem de aguentar.
 - **Don't** deixar canto vivo (`border-radius: 0`) num componente do shell mobile.
 - **Don't** mudar a altura do cartão do hub nem o gap de 14px entre eles sem ajustar o `passo` em `ligarArrasto`.
+
+## Densidade mobile — 15/09/2026
+
+A superfície prioritária é mobile e foi reconferida em 393 × 852 (iPhone 16),
+412 × 915 (Galaxy S24 Ultra) e 320 × 740 (altura reduzida). O arquivo
+`assets/css/sizing.css`, carregado por último, concentra o ajuste compartilhado:
+
+- appbar com 64px e navegação inferior com 60px de superfície, preservando as
+  áreas seguras do aparelho;
+- cartões do hub com 84px mínimos (78px somente abaixo de 360px), raio 18px e
+  10px de intervalo;
+- heróis de Contas, Empréstimos, Favores e Economia com 13px de respiro e raio
+  20px, para evitar que o destaque domine a primeira tela;
+- controles editáveis com 48px de altura e 16px de fonte; ações secundárias
+  recebem fundo `#F1F6ED` e borda `#DFE8D9`, em vez de parecerem texto solto;
+- pílulas de status usam marca visual compacta, mas conservam área de toque de
+  44px ao redor do botão;
+- o trilho de meses da Economia permanece horizontal e os KPIs continuam em
+  duas colunas nos aparelhos-alvo.
+- a tela de Ajustes usa títulos de cartão em 14px com peso 600 e textos
+  auxiliares (descrição, rótulo, retorno, rodapé) em 12px — o peso e a cor
+  carregam a hierarquia, não o corpo da fonte; o rótulo dos botões é 13px.
+  Campos editáveis permanecem em 16px de fonte para evitar zoom no iOS. Nesta
+  tela — e só nela — campo e botão medem **44px** de altura, não os 48px de
+  `--tap`: é o piso confortável documentado acima, e foi preciso porque o
+  conjunto 48px + largura total fazia a tela parecer grande. Em troca, o botão
+  deixou de ocupar a largura inteira e se ajusta ao rótulo, alinhado à esquerda
+  do cartão — foi a largura, mais que a altura, que carregava o peso visual.
+  Cartões e cartão de perfil usam raio 18px, 12px entre eles e avatar de 42px;
+- a navegação inferior subiu para 66px de pastilha: em 60px ela ficava baixa
+  demais sob o FAB;
+- no cabeçalho de folha (`.record-sheet .fhd`) a marca dos botões é 36px com
+  ícone de 20px, e o alvo continua `--tap` por um `::after` centrado — é a
+  Regra da Marca Menor que o Alvo. A lixeira perdeu o disco: fica só o ícone,
+  para não competir com o voltar;
+- o herói de contas mostra o número, a rosca e a legenda, e nada mais. Saíram
+  o subtítulo "% da renda não comprometida", a base "de R$ … de renda" e a
+  legenda "livre" no miolo da rosca: os três repetiam o que a linha **Livre**
+  da legenda já diz com valor e porcentagem;
+- `.m-sel-hd` alinha por `center`, nunca por `baseline`. O rótulo é um flex
+  com ícone, e a linha-base de um flex é a do seu primeiro item — o SVG —,
+  então `baseline` descia a nota da direita alguns pixels;
+- o ponto do wordmark é sempre um elemento separado em verde claro `#92CA7B`,
+  inclusive nos títulos dinâmicos das telas internas.

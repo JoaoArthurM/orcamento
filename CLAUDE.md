@@ -1,9 +1,10 @@
 # orçamento. — PWA de finanças pessoais
 
-Site estático, **sem build**. Não há `package.json`; não rode `npm install`.
+Site estático, sem build de produção. O `package.json` só expõe o servidor local;
+não rode `npm install` para esta base.
 
-Três módulos (economia, empréstimos, contas) sobre um hub, com login e
-sincronização via Supabase. Detalhes de produto e de schema no `README.md`.
+Quatro módulos (economia, empréstimos, contas e favores) sobre um hub, com login
+e sincronização via Supabase. Detalhes de produto e de schema no `README.md`.
 
 ## Rodar e testar
 
@@ -11,6 +12,12 @@ sincronização via Supabase. Detalhes de produto e de schema no `README.md`.
 npx serve -l 4173 .            # o service worker não roda em file://
 node tests/run-all.js          # asserções da camada de dados
 ```
+
+Para a auditoria visual mobile, mantenha o servidor estático ativo e valide em
+393 × 852 (iPhone 16) e 412 × 915 (Galaxy S24 Ultra). O arquivo
+`assets/css/sizing.css` é carregado por último e concentra as proporções
+responsivas compartilhadas; campos e botões mantêm área de toque mínima de
+48px mesmo quando o respiro visual é compacto.
 
 Para testar sem login, **copie o projeto** para um diretório temporário e
 esvazie o `config.js` da cópia. Esvaziar o do repositório já fez as

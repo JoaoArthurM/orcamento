@@ -57,3 +57,55 @@ Validação em navegador com viewport mobile, não em aparelhos físicos. As ope
 O detector não apontou erros de severidade `error`. Os avisos restantes incluem cores/raios fora da documentação auxiliar, elementos decorativos já aprovados, animações existentes de barras e a imagem de perfil cujo endereço é preenchido em runtime. Não equivalem a certificação completa de acessibilidade. Esta revisão trata de proporções, leitura, toque e distribuição.
 
 O carregador reportou `.impeccable/design.json` desatualizado em relação a `DESIGN.md`. A documentação auxiliar pode ser atualizada com `impeccable document`; essa regeneração não foi incluída na revisão de interface.
+
+# Auditoria final mobile — 15/09/2026
+
+Foi feita uma segunda passagem manual no host local isolado, reabrindo as telas
+depois da edição e comparando-as com a auditoria anterior. A checagem cobriu o
+hub, Empréstimos, Contas, Favores, Economia, Tabelas, Ajustes, os quatro
+formulários de criação, Compartilhar economia e Até onde projetar.
+
+## Medidas observadas em 393 × 852
+
+| Superfície | Resultado final |
+| --- | ---: |
+| Cartões do hub | 91 × 357px, intervalo vertical de 9–10px |
+| Herói de Empréstimos | 237 × 357px |
+| Vazio de Empréstimos | 129 × 357px |
+| Herói de Contas | 234 × 357px |
+| Herói de Favores | 208 × 357px |
+| Vazio de Favores | 129 × 357px |
+| Cabeçalho de Tabelas | 105 × 357px |
+| Vazio de Tabelas | 139 × 357px |
+| Curva da Economia | 121 × 314px |
+| KPIs da Economia | 172 × 342px, grade 2 × 2 |
+| Folha de Economia | rodapé em 787–852px |
+| Folha de Empréstimos | rodapé em 787–852px |
+| Folha de Contas | rodapé em 787–852px |
+| Folha de Favores | rodapé em 787–852px |
+
+Todos os campos editáveis visíveis mediram 48px de altura e 16px de fonte;
+as folhas de Empréstimos e Favores mantiveram `overflow` vertical igual a zero
+na altura padrão, e o documento permaneceu com `scrollWidth === innerWidth`.
+No 412 × 915, o conteúdo ganhou espaço sem ampliar artificialmente os cartões;
+a faixa de meses da Economia continuou sendo a única rolagem horizontal
+intencional.
+
+Após a revisão do usuário, a navbar foi recalibrada de 52px para 60px, com
+rótulos de 13px, ícones de 22px e FAB de 52px. O aumento foi verificado nos
+dois viewports-alvo sem alterar a ordem de leitura nem criar sobreposição com
+o conteúdo rolável. As pílulas de status das contas passaram a ter marca
+visual menor, com área de toque expandida em volta do botão.
+
+`node tests/run-all.js` continua passando nas oito suítes. A regressão de
+navegador `tests/ui-sizing.browser.cjs` segue dependente do pacote Playwright,
+ausente neste ambiente; a validação equivalente foi feita pelo navegador
+conectado, com árvore de acessibilidade, capturas e medidas DOM.
+
+## Polish de Ajustes — 15/09/2026
+
+Na tela de Ajustes, a segunda passagem reduziu títulos de seção e nome do
+perfil para 16px e textos auxiliares, rótulos e rodapé para 12px. Campos
+editáveis continuam em 16px e 48px de altura, preservando a prevenção de zoom
+do iOS e a área de toque. O ponto do título agora é um `span.brand-dot` em
+`#92CA7B` em todas as telas, inclusive Ajustes.

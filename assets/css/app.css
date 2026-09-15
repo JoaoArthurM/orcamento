@@ -494,6 +494,15 @@ svg { display: block; flex: none; }
            white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .ei-meta { font-size: var(--text-secondary); color: #63746A;
            white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* Etiqueta de estado: pilula arredondada com o par fundo/tinta do proprio
+   modulo, vindo do JS — a mesma forma da pilula de tipo da legenda. Ela e
+   filha direta do cartao, nao da meta: dentro da meta disputava largura
+   com o texto e quebrava a linha em duas. */
+.ei-tag {
+  flex: none; padding: 2px 9px; border-radius: 99px;
+  font-size: var(--text-caption); font-weight: 600; letter-spacing: -.01em;
+  line-height: 1.5; white-space: nowrap;
+}
 .ei-amt  { display: flex; align-items: baseline; gap: 2px; white-space: nowrap; flex: none; }
 .ei-pfx  { font-size: var(--text-secondary); color: #63746A; align-self: flex-start; padding-top: 2px; }
 .ei-val  { font-size: var(--text-secondary); font-weight: 600; letter-spacing: -.025em;
@@ -512,9 +521,22 @@ svg { display: block; flex: none; }
 .ib.del:active, .ib.del:hover { color: #A83232; background: rgba(200,75,75,.08); }
 
 /* legenda */
-.legend { display: flex; flex-wrap: wrap; gap: 9px 14px; padding: 2px 6px 4px; }
-.leg-item { display: flex; align-items: center; gap: 7px; font-size: var(--text-secondary); color: var(--tx-m); }
-.leg-ico  { width: 15px; height: 15px; }
+.legend { display: flex; flex-wrap: wrap; gap: 7px; padding: 2px 6px 4px; }
+/* etiqueta, não estado: o mesmo par fundo/tinta que a pílula de tipo usa na
+   lista, para a legenda e a linha falarem a mesma língua. O ícone herda a
+   tinta por currentColor em vez de trazer a sua própria. */
+.leg-item {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 5px 11px 5px 9px; border-radius: 99px;
+  font-size: var(--text-caption); font-weight: 600; letter-spacing: -.01em;
+}
+.leg-ico  { width: 14px; height: 14px; }
+.leg-item.t-fs { background: var(--fs-bg); color: var(--fs-fg); }
+.leg-item.t-os { background: var(--os-bg); color: var(--os-fg); }
+.leg-item.t-ci { background: var(--ci-bg); color: var(--ci-fg); }
+.leg-item.t-ui { background: var(--ui-bg); color: var(--ui-fg); }
+.leg-item.t-em { background: var(--em-bg); color: var(--em-fg); }
+.leg-item.t-co { background: var(--co-bg); color: var(--co-fg); }
 
 /* ══════════════════════════════════════════════════════
    AJUSTES
@@ -1598,6 +1620,11 @@ svg { display: block; flex: none; }
 .m-trow-saldo { font-weight: 500; }
 .m-trow-acum  { font-weight: 600; color: var(--dark); }
 .m-trow-saldo.neg { color: #8C3A2F; }
+/* o R$ acompanha o numero mas nao compete com ele — mesma ideia dos outros
+   prefixos do app: menor, mais claro, e fora da coluna de digitos */
+.m-trow-pfx { font-size: var(--text-caption); font-weight: 500; color: #637169; margin-right: 3px; }
+.m-trow-acum .m-trow-pfx { color: #5D7668; }
+.m-trow-saldo.neg .m-trow-pfx { color: #A8695F; }
 
 /* ══════════════════════════════════════════════════════
    NAV FLUTUANTE
@@ -2128,7 +2155,6 @@ svg { display: block; flex: none; }
   font-size: var(--text-section); font-weight: 700; letter-spacing: -.03em; line-height: 1;
   color: var(--lime);
 }
-.ct-pizza-cap { font-size: var(--text-secondary); color: #A9C4B5; text-align: center; line-height: 1.2; }
 
 .ct-pizza-leg { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 8px; }
 .ct-pz {
@@ -2155,17 +2181,8 @@ svg { display: block; flex: none; }
 .ct-pz.livre .ct-pz-nome, .ct-pz.livre .ct-pz-pct { color: var(--lime); }
 .ct-pz.livre .ct-pz-val { color: var(--lime); }
 
-/* a base do percentual, por extenso: uma só para todo o cartão */
-.ct-fluxo-base {
-  position: relative;
-  width: 100%;
-  font-size: var(--text-secondary); color: #8FB0A0;
-  padding-top: 12px;
-}
-
-/* sem renda nem gastos: a rosca sai e a frase ocupa a faixa inteira */
-.ct-hero.vazio .ct-pizza-svg,
-.ct-hero.vazio .ct-fluxo-base { display: none; }
+/* sem renda nem gastos: a rosca sai e a legenda ocupa a faixa inteira */
+.ct-hero.vazio .ct-pizza-svg { display: none; }
 .ct-hero.vazio .ct-pz-nome {
   white-space: normal; overflow: visible; text-overflow: clip;
   line-height: 1.5; color: #A9C4B5;

@@ -41,7 +41,8 @@
 #slot-sim .m-curve-final { font-size: var(--text-secondary); color: #cef29b; }
 #slot-sim .m-curve-body { height: 60px; margin-top: 8px; }
 #slot-sim .m-curve-axis span { color: #aac8ba; font-size: var(--text-secondary); min-width: 0; overflow: visible; }
-#slot-sim .m-curve-axis span:nth-child(even) { visibility: hidden; }
+/* Em 12 meses cabem os doze rotulos: ~27px por coluna contra ~19px de "Set".
+   O ralear so comeca em 24, onde a coluna cai para 13px e eles se tocariam. */
 #slot-sim .m-curve-axis:has(span:nth-child(13)) span { visibility: hidden; }
 #slot-sim .m-curve-axis:has(span:nth-child(13)):not(:has(span:nth-child(25))) span:nth-child(4n + 1) { visibility: visible; }
 #slot-sim .m-curve-axis:has(span:nth-child(25)) span { visibility: hidden; }

@@ -1,4 +1,6 @@
 /* Ajustes, compartilhamento e decisões: conclusão do visual mobile. */
+/* Empilhamento dos ajustes: vive no CSS para o mobile poder adensar. */
+#c-settings { display: flex; flex-direction: column; gap: 14px; }
 .settings-profile { display: flex; align-items: center; gap: 14px; padding: 17px; border-radius: 22px; background: radial-gradient(ellipse at 100% 0, #46764355, transparent 65%), linear-gradient(135deg, #084936, #03372c); box-shadow: 0 8px 24px #123a2c10; color: #fff; }
 .settings-profile-avatar { position: relative; display: grid; place-items: center; width: 56px; height: 56px; flex: none; border-radius: 50%; overflow: hidden; background: #d5edb3; color: #063c30; border: 3px solid #ffffff30; font-size: var(--text-section); font-weight: 600; }
 .settings-profile-avatar img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; background: #d5edb3; }
